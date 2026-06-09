@@ -15,6 +15,27 @@ Targets off screen are stacked by name on the left or right screen edge,
 whichever side they fall off on, nearest first. Vanilla nameplates of players
 in render distance are also tinted to match (mixin).
 
+## Screenshots
+
+An enemy marker pinned on screen, with a friend stacked on the left edge
+(off-FOV, 326m away on that side):
+
+![Enemy marker with off-screen friend on the left edge](docs/marker-enemy.png)
+
+Off-screen players stack on whichever edge they fall off, nearest first:
+
+![Right-edge stack of off-screen players](docs/edge-stack.png)
+
+A focus target (`/oi focus` / `!focus`) renders bright purple with a ◆ for
+everyone on the relay:
+
+![Focus target marker in purple next to a friend marker](docs/focus-target.png)
+
+First sighting of an enemy raises a local chat + sound alert (and one
+deduplicated Discord ping via the relay):
+
+![Enemy spotted chat alert](docs/enemy-alert-chat.png)
+
 ### Roles & focus targets
 
 Users in `users.json` can have `"role": "member"` (default), `"captain"`, or
