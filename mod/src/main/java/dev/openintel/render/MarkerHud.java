@@ -3,7 +3,6 @@ package dev.openintel.render;
 import dev.openintel.OpenIntelClient;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.tracker.Tracker.RemotePlayer;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.math.Vec3d;
@@ -27,30 +26,17 @@ import java.util.List;
  * Focused players (set by Captains via /oi focus) render in bright purple
  * with a ◆ prefix and take color precedence over everything else.
  *
- * The camera rotation + FOV are captured once per frame from the world render
- * pass so HUD projection matches the actual view.
+ * The camera pos + rotation are read from the game renderer at draw time
+ * (same frame and thread as the HUD pass), so projection matches the view.
  */
 public final class MarkerHud {
     private MarkerHud() { }
 
-    // Captured each frame from the world render pass.
-    private static volatile Vec3d camPos = Vec3d.ZERO;
-    private static final Quaternionf camRot = new Quaternionf();
-    private static volatile boolean captured = false;
-
     private record EdgeEntry(String label, int color, double dist) { }
-
-    public static void captureCamera(WorldRenderContext ctx) {
-        camPos = ctx.camera().getPos();
-        synchronized (camRot) {
-            camRot.set(ctx.camera().getRotation());
-        }
-        captured = true;
-    }
 
     public static void render(DrawContext ctx) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (!captured || client.player == null || client.world == null || client.options.hudHidden) return;
+        if (client.player == null || client.world == null || client.options.hudHidden) return;
 
         var cfg = OpenIntelClient.config();
         String myDim = client.world.getRegistryKey().getValue().toString();
@@ -64,10 +50,9 @@ public final class MarkerHud {
         float fovDeg = client.options.getFov().getValue();
         float focal = (h / 2f) / (float) Math.tan(Math.toRadians(fovDeg) / 2.0);
 
-        Quaternionf worldToCam;
-        synchronized (camRot) {
-            worldToCam = new Quaternionf(camRot).conjugate();
-        }
+        var camera = client.gameRenderer.getCamera();
+        Vec3d camPos = camera.getCameraPos();
+        Quaternionf worldToCam = new Quaternionf(camera.getRotation()).conjugate();
 
         List<EdgeEntry> left = new ArrayList<>();
         List<EdgeEntry> right = new ArrayList<>();
@@ -82,7 +67,7 @@ public final class MarkerHud {
             if (dist < 2 || dist > cfg.maxMarkerDistance) continue;
 
             if (!cfg.markVisiblePlayers && client.world.getPlayers().stream()
-                    .anyMatch(e -> e.getGameProfile().getName().equals(p.name))) {
+                    .anyMatch(e -> e.getGameProfile().name().equals(p.name))) {
                 continue;
             }
 
