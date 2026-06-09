@@ -69,13 +69,13 @@ public class Tracker {
         JsonArray reports = new JsonArray();
 
         // Myself.
-        reports.add(report(client.player.getGameProfile().getName(),
+        reports.add(report(client.player.getGameProfile().name(),
                 client.player.getX(), client.player.getY(), client.player.getZ(), dim));
 
         // Everyone the vanilla client is rendering near me — mod user or not.
         for (AbstractClientPlayerEntity p : client.world.getPlayers()) {
             if (p == client.player) continue;
-            reports.add(report(p.getGameProfile().getName(), p.getX(), p.getY(), p.getZ(), dim));
+            reports.add(report(p.getGameProfile().name(), p.getX(), p.getY(), p.getZ(), dim));
         }
 
         JsonObject msg = new JsonObject();
@@ -127,7 +127,7 @@ public class Tracker {
 
     private void applyState(JsonObject msg, MinecraftClient client) {
         if (client.player == null) return;
-        String self = client.player.getGameProfile().getName().toLowerCase(Locale.ROOT);
+        String self = client.player.getGameProfile().name().toLowerCase(Locale.ROOT);
         long now = System.currentTimeMillis();
 
         JsonArray arr = msg.getAsJsonArray("players");

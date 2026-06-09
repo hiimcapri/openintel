@@ -11,11 +11,11 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 
 public class OpenIntelClient implements ClientModInitializer {
 
@@ -45,9 +45,10 @@ public class OpenIntelClient implements ClientModInitializer {
             tracker.tick(client);
         });
 
-        // Capture camera each frame in the world pass; draw everything on the HUD.
-        WorldRenderEvents.LAST.register(MarkerHud::captureCamera);
-        HudRenderCallback.EVENT.register((ctx, tickCounter) -> MarkerHud.render(ctx));
+        // Markers draw on the HUD layer; the camera is read from the game
+        // renderer at draw time (same frame, same render thread).
+        HudElementRegistry.addLast(Identifier.of("openintel", "markers"),
+                (ctx, tickCounter) -> MarkerHud.render(ctx));
 
         registerCommands();
     }
