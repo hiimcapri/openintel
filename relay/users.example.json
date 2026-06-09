@@ -1,0 +1,6 @@
+{
+  "users": [
+    { "name": "SomeCaptain", "token": "GENERATE_LONG_RANDOM_TOKEN", "role": "captain" },
+    { "name": "SomeMember", "token": "GENERATE_ANOTHER_TOKEN", "role": "member" }
+  ]
+}

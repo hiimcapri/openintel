@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "openintel",
+  "version": "${version}",
+  "name": "OpenIntel",
+  "description": "Open-source position sharing for Civ servers. Friends green, allies purple, enemies red, neutrals grey. Relay + Discord webhook alerts.",
+  "authors": ["OpenIntel contributors"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.openintel.OpenIntelClient"]
+  },
+  "mixins": ["openintel.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1",
+    "java": ">=21"
+  }
+}

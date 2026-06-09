@@ -1,0 +1,21 @@
+# --- secrets: real configs never ship, only *.example.json ---
+relay/config.json
+relay/users.json
+relay/allegiances.json
+
+# --- node ---
+relay/node_modules/
+
+# --- gradle / loom ---
+mod/.gradle/
+mod/build/
+mod/run/
+mod/.idea/
+mod/*.iml
+
+# --- IDE ---
+.idea/
+*.iml
+
+# --- misc ---
+*.log

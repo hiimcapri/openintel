@@ -1,0 +1,17 @@
+{
+  "port": 8765,
+  "adminToken": "CHANGE_ME_LONG_RANDOM_STRING",
+  "broadcastIntervalMs": 250,
+  "staleMs": 10000,
+  "alertCooldownMs": 300000,
+  "discord": {
+    "botToken": "",
+    "terminalChannelId": "",
+    "captainRoleId": ""
+  },
+  "webhooks": {
+    "admin": "",
+    "alerts": "",
+    "alertRoleId": ""
+  }
+}

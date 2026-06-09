@@ -1,0 +1,5 @@
+{
+  "allies": ["AlliedPlayerName"],
+  "enemies": ["EnemyPlayerName"],
+  "focus": []
+}
