@@ -69,7 +69,7 @@ each change is announced in both the alerts and admin Discord channels.
 
 ## Repo layout
 
-- `mod/` — Fabric client mod (Java 21, Minecraft 1.21.1, Fabric API)
+- `mod/` — Fabric client mod (Java 25, Minecraft 26.1.2, Fabric API)
 - `relay/` — Node.js relay server + webhook integration
 
 ## Quick start
