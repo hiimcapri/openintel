@@ -17,6 +17,9 @@ in render distance are also tinted to match (mixin).
 
 ## Screenshots
 
+*Taken on Minecraft 1.21.11 — the current build targets 26.1.2, where the
+markers render identically.*
+
 An enemy marker pinned on screen, with a friend stacked on the left edge
 (off-FOV, 326m away on that side):
 
