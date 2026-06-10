@@ -6,11 +6,11 @@ import com.google.gson.JsonObject;
 import dev.openintel.OpenIntelClient;
 import dev.openintel.allegiance.AllegianceManager;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 
 import java.util.Locale;
 import java.util.Map;
@@ -53,19 +53,19 @@ public class Tracker {
     //  Outbound: what do *I* see right now?                               //
     // ------------------------------------------------------------------ //
 
-    public void tick(MinecraftClient client) {
+    public void tick(Minecraft client) {
         var cfg = OpenIntelClient.config();
         long now = System.currentTimeMillis();
 
         // Expire stale markers.
         players.values().removeIf(p -> now - p.lastSeen > cfg.staleAfterMs);
 
-        if (client.player == null || client.world == null) return;
+        if (client.player == null || client.level == null) return;
         if (!OpenIntelClient.relay().isConnected()) return;
         if (now - lastReport < cfg.reportIntervalMs) return;
         lastReport = now;
 
-        String dim = client.world.getRegistryKey().getValue().toString();
+        String dim = client.level.dimension().identifier().toString();
         JsonArray reports = new JsonArray();
 
         // Myself.
@@ -73,7 +73,7 @@ public class Tracker {
                 client.player.getX(), client.player.getY(), client.player.getZ(), dim));
 
         // Everyone the vanilla client is rendering near me — mod user or not.
-        for (AbstractClientPlayerEntity p : client.world.getPlayers()) {
+        for (AbstractClientPlayer p : client.level.players()) {
             if (p == client.player) continue;
             reports.add(report(p.getGameProfile().name(), p.getX(), p.getY(), p.getZ(), dim));
         }
@@ -98,7 +98,7 @@ public class Tracker {
     //  Inbound: merged network state from the relay                       //
     // ------------------------------------------------------------------ //
 
-    public void handleMessage(JsonObject msg, MinecraftClient client) {
+    public void handleMessage(JsonObject msg, Minecraft client) {
         String type = msg.has("type") ? msg.get("type").getAsString() : "";
         switch (type) {
             case "welcome", "allegiances" -> applyAllegiances(msg);
@@ -125,7 +125,7 @@ public class Tracker {
         return out;
     }
 
-    private void applyState(JsonObject msg, MinecraftClient client) {
+    private void applyState(JsonObject msg, Minecraft client) {
         if (client.player == null) return;
         String self = client.player.getGameProfile().name().toLowerCase(Locale.ROOT);
         long now = System.currentTimeMillis();
@@ -154,20 +154,20 @@ public class Tracker {
         }
     }
 
-    private void localEnemyAlert(MinecraftClient client, RemotePlayer rp, long now) {
+    private void localEnemyAlert(Minecraft client, RemotePlayer rp, long now) {
         if (!OpenIntelClient.config().localEnemyAlert) return;
         if (now - lastAlertSweep < 3000) return; // don't stack sounds during a raid
         lastAlertSweep = now;
 
         client.execute(() -> {
             if (client.player == null) return;
-            client.player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 0.6f);
-            client.player.sendMessage(Text.literal("[OpenIntel] ")
-                    .formatted(Formatting.GOLD)
-                    .append(Text.literal("⚠ Enemy " + rp.name + " spotted at "
+            client.player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0f, 0.6f);
+            client.player.sendSystemMessage(Component.literal("[OpenIntel] ")
+                    .withStyle(ChatFormatting.GOLD)
+                    .append(Component.literal("⚠ Enemy " + rp.name + " spotted at "
                                     + (int) rp.x + ", " + (int) rp.z
                                     + " (by " + rp.reporter + ")")
-                            .formatted(Formatting.RED)), false);
+                            .withStyle(ChatFormatting.RED)));
         });
     }
 }

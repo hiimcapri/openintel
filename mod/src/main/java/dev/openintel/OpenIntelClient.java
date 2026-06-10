@@ -8,14 +8,14 @@ import dev.openintel.net.RelayClient;
 import dev.openintel.render.MarkerHud;
 import dev.openintel.tracker.Tracker;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 public class OpenIntelClient implements ClientModInitializer {
 
@@ -35,7 +35,7 @@ public class OpenIntelClient implements ClientModInitializer {
         tracker = new Tracker();
         allegiances = new AllegianceManager();
         relay = new RelayClient(
-                msg -> tracker.handleMessage(msg, MinecraftClient.getInstance()),
+                msg -> tracker.handleMessage(msg, Minecraft.getInstance()),
                 OpenIntelClient::status);
 
         relay.connect(config.relayUrl, config.token);
@@ -47,7 +47,7 @@ public class OpenIntelClient implements ClientModInitializer {
 
         // Markers draw on the HUD layer; the camera is read from the game
         // renderer at draw time (same frame, same render thread).
-        HudElementRegistry.addLast(Identifier.of("openintel", "markers"),
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("openintel", "markers"),
                 (ctx, tickCounter) -> MarkerHud.render(ctx));
 
         registerCommands();
@@ -55,28 +55,28 @@ public class OpenIntelClient implements ClientModInitializer {
 
     private void registerCommands() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-                dispatcher.register(ClientCommandManager.literal("oi")
-                        .then(ClientCommandManager.literal("reconnect").executes(c -> {
+                dispatcher.register(ClientCommands.literal("oi")
+                        .then(ClientCommands.literal("reconnect").executes(c -> {
                             relay.disconnect();
                             relay.connect(config.relayUrl, config.token);
                             status("reconnecting…");
                             return 1;
                         }))
-                        .then(ClientCommandManager.literal("status").executes(c -> {
+                        .then(ClientCommands.literal("status").executes(c -> {
                             status(relay.isConnected() ? "connected to " + config.relayUrl
                                                        : "not connected");
                             return 1;
                         }))
-                        .then(ClientCommandManager.literal("url")
-                                .then(ClientCommandManager.argument("url", StringArgumentType.greedyString())
+                        .then(ClientCommands.literal("url")
+                                .then(ClientCommands.argument("url", StringArgumentType.greedyString())
                                         .executes(c -> {
                                             config.relayUrl = StringArgumentType.getString(c, "url");
                                             config.save();
                                             status("relay url set — run /oi reconnect");
                                             return 1;
                                         })))
-                        .then(ClientCommandManager.literal("token")
-                                .then(ClientCommandManager.argument("token", StringArgumentType.greedyString())
+                        .then(ClientCommands.literal("token")
+                                .then(ClientCommands.argument("token", StringArgumentType.greedyString())
                                         .executes(c -> {
                                             config.token = StringArgumentType.getString(c, "token");
                                             config.save();
@@ -84,18 +84,18 @@ public class OpenIntelClient implements ClientModInitializer {
                                             return 1;
                                         })))
                         // Captain-only (enforced server-side): mark a priority target.
-                        .then(ClientCommandManager.literal("focus")
-                                .then(ClientCommandManager.literal("clear").executes(c -> {
+                        .then(ClientCommands.literal("focus")
+                                .then(ClientCommands.literal("clear").executes(c -> {
                                     sendFocus("clear", null);
                                     return 1;
                                 }))
-                                .then(ClientCommandManager.argument("player", StringArgumentType.word())
+                                .then(ClientCommands.argument("player", StringArgumentType.word())
                                         .executes(c -> {
                                             sendFocus("add", StringArgumentType.getString(c, "player"));
                                             return 1;
                                         })))
-                        .then(ClientCommandManager.literal("unfocus")
-                                .then(ClientCommandManager.argument("player", StringArgumentType.word())
+                        .then(ClientCommands.literal("unfocus")
+                                .then(ClientCommands.argument("player", StringArgumentType.word())
                                         .executes(c -> {
                                             sendFocus("remove", StringArgumentType.getString(c, "player"));
                                             return 1;
@@ -115,11 +115,11 @@ public class OpenIntelClient implements ClientModInitializer {
     }
 
     public static void status(String message) {
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         client.execute(() -> {
             if (client.player != null) {
-                client.player.sendMessage(Text.literal("[OpenIntel] ").formatted(Formatting.GOLD)
-                        .append(Text.literal(message).formatted(Formatting.GRAY)), false);
+                client.player.sendSystemMessage(Component.literal("[OpenIntel] ").withStyle(ChatFormatting.GOLD)
+                        .append(Component.literal(message).withStyle(ChatFormatting.GRAY)));
             }
         });
     }
