@@ -155,9 +155,27 @@ Type these in the terminal channel:
 | `!focus <player>` | mark focus target (bright purple ◆ for everyone) | ✔ |
 | `!unfocus <player>` / `!focus clear` | unmark / clear all | ✔ |
 
-Positions still travel over the relay's own WebSocket — Discord rate limits
-(~5 msgs/5 s per channel) make it unusable as the position transport, so the
-bot is command/control only.
+### Snitch ping ingestion
+
+The bot can also watch a snitch-alert channel and turn pings into in-game
+markers for everyone on the relay. Set `discord.snitchChannelId` to the
+channel where your snitch bot posts (and give the bot View access to it).
+Messages matching
+
+```
+<snitchname>: <playername> entered snitch at (x, y, z)
+```
+
+are parsed (markdown bold/code tolerated, parens optional, negative coords
+fine) and injected into the shared state with reporter `snitch:<snitchname>`.
+Snitch markers live for `discord.snitchMarkerTtlMs` (default 30 s — longer
+than live reports, since pings are one-shot). The overworld is assumed, since
+pings don't carry a dimension, and enemies tripping snitches still raise the
+deduplicated alert webhook + in-game alarms.
+
+Positions from *players* still travel over the relay's own WebSocket — Discord
+rate limits (~5 msgs/5 s per channel) make it unusable as the live position
+transport, so the bot remains command/control + snitch ingestion only.
 
 ## Admin panel
 

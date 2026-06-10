@@ -191,10 +191,11 @@ wss.on("connection", (ws, req) => {
   });
 });
 
-// Fan shared state out ~4x/sec.
+// Fan shared state out ~4x/sec. Entries may carry their own ttl (snitch
+// pings live longer than live position reports, which refresh constantly).
 setInterval(() => {
   const now = Date.now();
-  for (const [k, v] of positions) if (now - v.t > STALE_MS) positions.delete(k);
+  for (const [k, v] of positions) if (now - v.t > (v.ttl ?? STALE_MS)) positions.delete(k);
   if (positions.size === 0) return;
   broadcast({ type: "state", players: [...positions.values()] });
 }, CONFIG.broadcastIntervalMs ?? 250);
@@ -269,8 +270,39 @@ if (DISCORD.botToken) {
     ].join("\n")
   );
 
+  // "<snitchname>: <playername> entered snitch at (x, y, z)"
+  // Tolerant of markdown decoration and missing parens; coordinates may be
+  // negative. Dimension is not part of the ping; overworld is assumed.
+  const SNITCH_RE = /^(.+?):\s+(\S+)\s+entered\s+snitch\s+at\s+\(?\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)?/i;
+
+  function handleSnitchPing(msg) {
+    // Strip bold/code markdown only — underscores are legal in MC names.
+    const text = msg.content.replace(/[*`]/g, "").trim();
+    const m = text.match(SNITCH_RE);
+    if (!m) return false;
+
+    const [, snitch, player, x, y, z] = m;
+    positions.set(lower(player), {
+      name: player,
+      x: +x, y: +y, z: +z,
+      dim: "minecraft:overworld",
+      t: Date.now(),
+      ttl: DISCORD.snitchMarkerTtlMs ?? 30000,
+      reporter: `snitch:${snitch.trim()}`,
+    });
+    if (isEnemy(player)) enemyAlert(player, +x, +z, "minecraft:overworld", `snitch ${snitch.trim()}`);
+    return true;
+  }
+
   bot.on("messageCreate", async (msg) => {
     try {
+      // Snitch pings come from other bots/webhooks, so check them before the
+      // bot filter below — skipping only ourselves to avoid loops.
+      if (DISCORD.snitchChannelId && msg.channelId === DISCORD.snitchChannelId
+          && msg.author.id !== bot.user.id) {
+        if (handleSnitchPing(msg)) return;
+      }
+
       if (msg.author.bot || !msg.guild) return;
       if (DISCORD.terminalChannelId && msg.channelId !== DISCORD.terminalChannelId) return;
       if (!msg.content.startsWith("!")) return;
