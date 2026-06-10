@@ -14,7 +14,7 @@
   "depends": {
     "fabricloader": ">=0.16.0",
     "fabric-api": "*",
-    "minecraft": "~1.21.11",
-    "java": ">=21"
+    "minecraft": "~26.1",
+    "java": ">=25"
   }
 }

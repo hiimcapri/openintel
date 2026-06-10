@@ -3,9 +3,9 @@ package dev.openintel.render;
 import dev.openintel.OpenIntelClient;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.tracker.Tracker.RemotePlayer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -34,25 +34,25 @@ public final class MarkerHud {
 
     private record EdgeEntry(String label, int color, double dist) { }
 
-    public static void render(DrawContext ctx) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.world == null || client.options.hudHidden) return;
+    public static void render(GuiGraphicsExtractor ctx) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.level == null || client.options.hideGui) return;
 
         var cfg = OpenIntelClient.config();
-        String myDim = client.world.getRegistryKey().getValue().toString();
+        String myDim = client.level.dimension().identifier().toString();
 
-        int w = ctx.getScaledWindowWidth();
-        int h = ctx.getScaledWindowHeight();
+        int w = ctx.guiWidth();
+        int h = ctx.guiHeight();
         float cx = w / 2f, cy = h / 2f;
 
         // Vertical focal length from the FOV option. (Dynamic FOV effects like
         // sprinting shift this slightly; close enough for marker placement.)
-        float fovDeg = client.options.getFov().getValue();
+        float fovDeg = client.options.fov().get();
         float focal = (h / 2f) / (float) Math.tan(Math.toRadians(fovDeg) / 2.0);
 
-        var camera = client.gameRenderer.getCamera();
-        Vec3d camPos = camera.getCameraPos();
-        Quaternionf worldToCam = new Quaternionf(camera.getRotation()).conjugate();
+        var camera = client.gameRenderer.getMainCamera();
+        Vec3 camPos = camera.position();
+        Quaternionf worldToCam = new Quaternionf(camera.rotation()).conjugate();
 
         List<EdgeEntry> left = new ArrayList<>();
         List<EdgeEntry> right = new ArrayList<>();
@@ -66,7 +66,7 @@ public final class MarkerHud {
             double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (dist < 2 || dist > cfg.maxMarkerDistance) continue;
 
-            if (!cfg.markVisiblePlayers && client.world.getPlayers().stream()
+            if (!cfg.markVisiblePlayers && client.level.players().stream()
                     .anyMatch(e -> e.getGameProfile().name().equals(p.name))) {
                 continue;
             }
@@ -77,7 +77,7 @@ public final class MarkerHud {
 
             // World → camera-local space. Camera.setRotation builds the quaternion
             // as rotationYXZ(PI - yaw, -pitch, 0), i.e. the OpenGL view frame:
-            // -Z forward, +X = view-right, +Y up.
+            // -Z forward, +X = view-right, +Y up. (Verified on 26.1.2 bytecode.)
             Vector3f rel = new Vector3f((float) dx, (float) dy, (float) dz);
             worldToCam.transform(rel);
             float fwd = -rel.z;
@@ -102,31 +102,31 @@ public final class MarkerHud {
     }
 
     /** Name over chevron at the target's projected screen position, fixed 1x scale. */
-    private static void drawProjected(DrawContext ctx, MinecraftClient client,
+    private static void drawProjected(GuiGraphicsExtractor ctx, Minecraft client,
                                       float sx, float sy, String label, int color,
                                       boolean focused) {
-        var tr = client.textRenderer;
+        var font = client.font;
         int x = Math.round(sx), y = Math.round(sy);
-        ctx.drawText(tr, label, x - tr.getWidth(label) / 2, y - 19, color, true);
+        ctx.text(font, label, x - font.width(label) / 2, y - 19, color, true);
         String chev = focused ? "◆" : "▼";
-        ctx.drawText(tr, chev, x - tr.getWidth(chev) / 2, y - 8, color, true);
+        ctx.text(font, chev, x - font.width(chev) / 2, y - 8, color, true);
     }
 
     /** Off-screen names stacked on one screen edge, vertically centered, nearest first. */
-    private static void drawEdgeStack(DrawContext ctx, MinecraftClient client,
+    private static void drawEdgeStack(GuiGraphicsExtractor ctx, Minecraft client,
                                       List<EdgeEntry> entries, boolean rightSide,
                                       int w, float cy) {
         if (entries.isEmpty()) return;
         entries.sort(Comparator.comparingDouble(EdgeEntry::dist));
 
-        var tr = client.textRenderer;
-        int lineH = tr.fontHeight + 2;
+        var font = client.font;
+        int lineH = font.lineHeight + 2;
         int y = Math.round(cy) - (entries.size() * lineH) / 2;
 
         for (EdgeEntry e : entries) {
             String text = rightSide ? e.label() + " ▶" : "◀ " + e.label();
-            int x = rightSide ? w - 4 - tr.getWidth(text) : 4;
-            ctx.drawText(tr, text, x, y, e.color(), true);
+            int x = rightSide ? w - 4 - font.width(text) : 4;
+            ctx.text(font, text, x, y, e.color(), true);
             y += lineH;
         }
     }
