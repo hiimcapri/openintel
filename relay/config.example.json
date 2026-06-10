@@ -7,7 +7,9 @@
   "discord": {
     "botToken": "",
     "terminalChannelId": "",
-    "captainRoleId": ""
+    "captainRoleId": "",
+    "snitchChannelId": "",
+    "snitchMarkerTtlMs": 30000
   },
   "webhooks": {
     "admin": "",
