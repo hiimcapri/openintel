@@ -2,6 +2,7 @@ package dev.openintel.render;
 
 import dev.openintel.OpenIntelClient;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
+import dev.openintel.ping.PingManager.Ping;
 import dev.openintel.tracker.Tracker.RemotePlayer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -31,6 +32,8 @@ import java.util.List;
  */
 public final class MarkerHud {
     private MarkerHud() { }
+
+    private static final int PING_COLOR = 0xFFFFD83D; // gold, distinct from allegiances
 
     private record EdgeEntry(String label, int color, double dist) { }
 
@@ -87,7 +90,7 @@ public final class MarkerHud {
                 float sx = cx + (rel.x / fwd) * focal;
                 float sy = cy - (rel.y / fwd) * focal;
                 if (sx >= 0 && sx <= w && sy >= 0 && sy <= h) {
-                    drawProjected(ctx, client, sx, sy, label, color, focused);
+                    drawProjected(ctx, client, sx, sy, label, color, focused ? "◆" : "▼");
                     drawnOnScreen = true;
                 }
             }
@@ -97,19 +100,48 @@ public final class MarkerHud {
             }
         }
 
+        // Location pings: same projection, gold, ✖ glyph instead of a chevron.
+        for (Ping ping : OpenIntelClient.pings().all()) {
+            if (!ping.dimension.equals(myDim)) continue;
+
+            double dx = ping.x - camPos.x;
+            double dy = ping.y - camPos.y;
+            double dz = ping.z - camPos.z;
+            double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            String label = ping.by + " " + (int) dist + "m";
+
+            Vector3f rel = new Vector3f((float) dx, (float) dy, (float) dz);
+            worldToCam.transform(rel);
+            float fwd = -rel.z;
+
+            boolean drawnOnScreen = false;
+            if (fwd > 0.05f) {
+                float sx = cx + (rel.x / fwd) * focal;
+                float sy = cy - (rel.y / fwd) * focal;
+                if (sx >= 0 && sx <= w && sy >= 0 && sy <= h) {
+                    drawProjected(ctx, client, sx, sy, label, PING_COLOR, "✖");
+                    drawnOnScreen = true;
+                }
+            }
+
+            if (!drawnOnScreen && cfg.edgeChevrons) {
+                (rel.x >= 0 ? right : left).add(new EdgeEntry("✖ " + label, PING_COLOR, dist));
+            }
+        }
+
         drawEdgeStack(ctx, client, left, false, w, cy);
         drawEdgeStack(ctx, client, right, true, w, cy);
     }
 
-    /** Name over chevron at the target's projected screen position, fixed 1x scale. */
+    /** Name over a glyph at the target's projected screen position, fixed 1x scale. */
     private static void drawProjected(GuiGraphicsExtractor ctx, Minecraft client,
                                       float sx, float sy, String label, int color,
-                                      boolean focused) {
+                                      String glyph) {
         var font = client.font;
         int x = Math.round(sx), y = Math.round(sy);
         ctx.text(font, label, x - font.width(label) / 2, y - 19, color, true);
-        String chev = focused ? "◆" : "▼";
-        ctx.text(font, chev, x - font.width(chev) / 2, y - 8, color, true);
+        ctx.text(font, glyph, x - font.width(glyph) / 2, y - 8, color, true);
     }
 
     /** Off-screen names stacked on one screen edge, vertically centered, nearest first. */

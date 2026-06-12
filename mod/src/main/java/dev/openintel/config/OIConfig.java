@@ -44,6 +44,9 @@ public class OIConfig {
     /** Play a sound + chat line when an enemy first enters someone's render. */
     public boolean localEnemyAlert = true;
 
+    /** How long (ms) a location ping marker stays on screen. */
+    public int pingTtlMs = 10_000;
+
     public static OIConfig load() {
         try {
             if (Files.exists(PATH)) {

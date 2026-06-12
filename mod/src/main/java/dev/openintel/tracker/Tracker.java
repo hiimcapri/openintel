@@ -103,6 +103,7 @@ public class Tracker {
         switch (type) {
             case "welcome", "allegiances" -> applyAllegiances(msg);
             case "state" -> applyState(msg, client);
+            case "ping" -> OpenIntelClient.pings().handlePing(msg, client);
             case "notice" -> OpenIntelClient.status(msg.has("msg") ? msg.get("msg").getAsString() : "");
             case "deny" -> OpenIntelClient.status("relay rejected token — ask an admin to approve you");
             default -> { }
