@@ -50,6 +50,12 @@ instead of render-distance-limited, and it works cross-dimension-safe
 (pings only render in the dimension they were made in). The relay rate
 limits pings to one per second per user.
 
+Here Capri pinged a spot in the treeline ~285m out — the gold ✖ ping sits
+just below Capri's own green player marker, so you can see both the player
+and what they're pointing at:
+
+![Gold ping marker below the sender's player marker](docs/ping-marker.png)
+
 ### Roles & focus targets
 
 Users in `users.json` can have `"role": "member"` (default), `"captain"`, or
