@@ -39,6 +39,17 @@ deduplicated Discord ping via the relay):
 
 ![Enemy spotted chat alert](docs/enemy-alert-chat.png)
 
+### Location pings
+
+Press **V** (rebindable in Controls) to ping the block you're aiming at —
+up to 256 blocks out, or the aim direction's endpoint if you're pointing at
+the sky. The ping shows for **everyone on the relay** as a gold ✖ marker
+with your name and distance for 10 seconds (`pingTtlMs` in the client
+config), with a bell sound. Same idea as Ping Wheel, but network-wide
+instead of render-distance-limited, and it works cross-dimension-safe
+(pings only render in the dimension they were made in). The relay rate
+limits pings to one per second per user.
+
 ### Roles & focus targets
 
 Users in `users.json` can have `"role": "member"` (default), `"captain"`, or

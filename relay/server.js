@@ -173,6 +173,22 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // Ping-wheel-style location ping: fan out to every authed client.
+    if (msg.type === "ping") {
+      const now = Date.now();
+      if (now - (ws.lastPing ?? 0) < 1000) return; // per-user rate limit
+      const x = +msg.x, y = +msg.y, z = +msg.z;
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return;
+      ws.lastPing = now;
+      broadcast({
+        type: "ping",
+        x, y, z,
+        dim: String(msg.dim ?? "minecraft:overworld"),
+        by: ws.authedAs,
+      });
+      return;
+    }
+
     if (msg.type === "positions" && Array.isArray(msg.reports)) {
       const now = Date.now();
       for (const r of msg.reports.slice(0, 100)) {
