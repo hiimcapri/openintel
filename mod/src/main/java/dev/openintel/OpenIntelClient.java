@@ -38,6 +38,8 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.Locale;
+
 public class OpenIntelClient implements ClientModInitializer {
 
     private static final KeyBinding.Category OI_CATEGORY =
@@ -78,8 +80,6 @@ public class OpenIntelClient implements ClientModInitializer {
         relay = new RelayClient(
                 msg -> tracker.handleMessage(msg, MinecraftClient.getInstance()),
                 OpenIntelClient::status);
-
-        relay.connect(config.relayUrl, config.token);
 
         registerKeybinds();
 
@@ -126,13 +126,51 @@ public class OpenIntelClient implements ClientModInitializer {
         // The 10s text dedupe in SnitchRelay covers any double-fire.
         ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, instant) ->
                 SnitchRelay.onGameMessage(message, false));
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> reconnectRelay());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            relay.disconnect();
             EventFeed.clear();
             PingManager.clear();
             tracker.clear();
         });
 
         registerCommands();
+    }
+
+    public static boolean reconnectRelay() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        relay.disconnect();
+        String actual = currentMinecraftServer(client);
+        String selected = normalizeMinecraftServer(config.minecraftServer);
+        if (actual == null) {
+            status("relay disabled outside multiplayer");
+            return false;
+        }
+        if (selected.isEmpty() || !selected.equals(actual)) {
+            status("relay disabled on " + actual + " — selected server is "
+                    + (selected.isEmpty() ? "not configured" : selected));
+            return false;
+        }
+        relay.connect(config.relayUrl, config.token, actual);
+        status("connecting to relay for " + actual);
+        return true;
+    }
+
+    public static String currentMinecraftServer(MinecraftClient client) {
+        var entry = client.getCurrentServerEntry();
+        return entry == null ? null : normalizeMinecraftServer(entry.address);
+    }
+
+    public static String normalizeMinecraftServer(String address) {
+        if (address == null) return "";
+        String normalized = address.trim().toLowerCase(Locale.ROOT);
+        int scheme = normalized.indexOf("://");
+        if (scheme >= 0) normalized = normalized.substring(scheme + 3);
+        int path = normalized.indexOf('/');
+        if (path >= 0) normalized = normalized.substring(0, path);
+        while (normalized.endsWith(".")) normalized = normalized.substring(0, normalized.length() - 1);
+        if (normalized.endsWith(":25565")) normalized = normalized.substring(0, normalized.length() - 6);
+        return normalized;
     }
 
     private void registerKeybinds() {
@@ -160,9 +198,7 @@ public class OpenIntelClient implements ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
                 dispatcher.register(ClientCommandManager.literal("oi")
                         .then(ClientCommandManager.literal("reconnect").executes(c -> {
-                            relay.disconnect();
-                            relay.connect(config.relayUrl, config.token);
-                            status("reconnecting…");
+                            reconnectRelay();
                             return 1;
                         }))
                         .then(ClientCommandManager.literal("status").executes(c -> {

@@ -1,5 +1,6 @@
 {
   "port": 8765,
+  "minecraftServer": "play.example.net",
   "adminToken": "CHANGE_ME_LONG_RANDOM_STRING",
   "broadcastIntervalMs": 250,
   "staleMs": 10000,

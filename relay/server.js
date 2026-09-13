@@ -5,6 +5,12 @@ const crypto = require("crypto");
 const USER_ROLES = ["member", "operator", "captain", "admin"];
 const MINECRAFT_NAME = /^[A-Za-z0-9_]{3,16}$/;
 const lower = (s) => String(s).toLowerCase();
+const normalizeMinecraftServer = (value) => {
+  let normalized = lower(value ?? "").trim().replace(/^[a-z]+:\/\//, "").split("/")[0];
+  while (normalized.endsWith(".")) normalized = normalized.slice(0, -1);
+  if (normalized.endsWith(":25565")) normalized = normalized.slice(0, -6);
+  return normalized;
+};
 const validName = (name) => MINECRAFT_NAME.test(String(name ?? ""));
 const validRole = (role) => USER_ROLES.includes(lower(role));
 const roleRank = (role) => Math.max(0, USER_ROLES.indexOf(lower(role ?? "member")));
@@ -27,6 +33,8 @@ function pageText(label, entries, requestedPage = 1, pageSize = 20) {
 }
 function runSelfTest() {
   const assert = require("assert");
+  assert.equal(normalizeMinecraftServer("PLAY.CIV.PLUS:25565"), "play.civ.plus");
+  assert.equal(normalizeMinecraftServer("minecraft://play.civ.plus/"), "play.civ.plus");
   assert(validName("Player_123"));
   assert(!validName("ab"));
   assert(!validName("bad-name"));
@@ -64,6 +72,8 @@ const { WebSocketServer } = require("ws");
 
 const filePath = (name) => path.join(__dirname, name);
 const CONFIG = JSON.parse(fs.readFileSync(filePath("config.json"), "utf8"));
+const MINECRAFT_SERVER = normalizeMinecraftServer(CONFIG.minecraftServer);
+if (!MINECRAFT_SERVER) throw new Error("config.minecraftServer is required");
 let USERS = loadJson("users.json", { users: [] });
 let ALLEGIANCES = loadJson("allegiances.json", { allies: [], enemies: [] });
 
@@ -271,14 +281,22 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "hello") {
       const user = userByToken(msg.token);
       if (!user) {
-        ws.send(JSON.stringify({ type: "deny" }));
+        ws.send(JSON.stringify({ type: "deny", reason: "bad_token" }));
         adminLog(`❌ Auth failure from \`${ip}\``);
         ws.close();
         return;
       }
+      const minecraftServer = normalizeMinecraftServer(msg.minecraftServer);
+      if (minecraftServer !== MINECRAFT_SERVER) {
+        ws.send(JSON.stringify({ type: "deny", reason: "wrong_server", expectedServer: MINECRAFT_SERVER }));
+        adminLog(`❌ **${user.name}** rejected from Minecraft server \`${minecraftServer || "missing"}\``);
+        ws.close(4003, "wrong Minecraft server");
+        return;
+      }
+      ws.minecraftServer = minecraftServer;
       ws.authedAs = user.name;
       ws.role = validRole(user.role) ? lower(user.role) : "member";
-      ws.send(JSON.stringify({ ...allegiancePayload(), type: "welcome" }));
+      ws.send(JSON.stringify({ ...allegiancePayload(), type: "welcome", minecraftServer: MINECRAFT_SERVER }));
       adminLog(`✅ **${user.name}** connected (${ws.role})`);
       return;
     }
@@ -517,6 +535,7 @@ if (DISCORD.botToken) {
       { name: "Online", value: String(onlineRows().length), inline: true },
       { name: "Users", value: String(USERS.users.length), inline: true },
       { name: "Focus", value: String((ALLEGIANCES.focus ?? []).length), inline: true },
+      { name: "Minecraft server", value: MINECRAFT_SERVER, inline: false },
     )
     .setTimestamp();
 
@@ -766,6 +785,6 @@ if (DISCORD.botToken) {
 }
 
 server.listen(CONFIG.port ?? 8765, () => {
-  console.log(`OpenIntel relay listening on :${CONFIG.port ?? 8765}`);
+  console.log(`OpenIntel relay listening on :${CONFIG.port ?? 8765} for ${MINECRAFT_SERVER}`);
   adminLog("🟢 Relay server started");
 });

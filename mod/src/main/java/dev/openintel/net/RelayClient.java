@@ -28,6 +28,7 @@ public class RelayClient implements WebSocket.Listener {
 
     private volatile String url;
     private volatile String token;
+    private volatile String minecraftServer;
     private volatile boolean wantConnected = false;
     private volatile long lastAttempt = 0;
     private volatile int backoffMs = 1000;
@@ -37,9 +38,10 @@ public class RelayClient implements WebSocket.Listener {
         this.onStatus = onStatus;
     }
 
-    public void connect(String url, String token) {
+    public void connect(String url, String token, String minecraftServer) {
         this.url = url;
         this.token = token;
+        this.minecraftServer = minecraftServer;
         this.wantConnected = true;
         generation.incrementAndGet();
         WebSocket previous = socket.getAndSet(null);
@@ -83,6 +85,7 @@ public class RelayClient implements WebSocket.Listener {
         lastAttempt = System.currentTimeMillis();
         String attemptUrl = url;
         String attemptToken = token;
+        String attemptMinecraftServer = minecraftServer;
         try {
             HttpClient.newHttpClient()
                     .newWebSocketBuilder()
@@ -108,6 +111,7 @@ public class RelayClient implements WebSocket.Listener {
                         JsonObject hello = new JsonObject();
                         hello.addProperty("type", "hello");
                         hello.addProperty("token", attemptToken);
+                        hello.addProperty("minecraftServer", attemptMinecraftServer);
                         ws.sendText(GSON.toJson(hello), true);
                         onStatus.accept("connected to relay");
                     });

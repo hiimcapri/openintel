@@ -26,6 +26,9 @@ public class OIConfig {
     /** WebSocket URL of the relay server, e.g. ws://51.222.24.116:8765 */
     public String relayUrl = "ws://51.222.24.116:8765";
 
+    /** Minecraft multiplayer server allowed to use this relay. */
+    public String minecraftServer = "play.civ.plus";
+
     /** Personal auth token issued by the relay admin (matches users.json on the relay).
      *  Default comes from a bundled resource so token-specific builds can be
      *  baked by patching one text file inside the jar — no recompile. */
