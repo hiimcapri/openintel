@@ -181,8 +181,12 @@ function allegiancePayload() {
 
 function broadcast(obj) {
   const data = JSON.stringify(obj);
+  const delivered = new Set();
   for (const client of wss.clients) {
-    if (client.readyState === 1 && client.authedAs) client.send(data);
+    const identity = client.authedAs ? lower(client.authedAs) : null;
+    if (client.readyState !== 1 || !identity || delivered.has(identity)) continue;
+    client.send(data);
+    delivered.add(identity);
   }
 }
 function socketsFor(name) {
