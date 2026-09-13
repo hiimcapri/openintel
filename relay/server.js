@@ -1,3 +1,50 @@
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+
+const USER_ROLES = ["member", "operator", "captain", "admin"];
+const MINECRAFT_NAME = /^[A-Za-z0-9_]{3,16}$/;
+const lower = (s) => String(s).toLowerCase();
+const validName = (name) => MINECRAFT_NAME.test(String(name ?? ""));
+const validRole = (role) => USER_ROLES.includes(lower(role));
+const roleRank = (role) => Math.max(0, USER_ROLES.indexOf(lower(role ?? "member")));
+const hasTier = (role, required) => roleRank(role) >= roleRank(required);
+const tokenFingerprint = (token) => token
+  ? crypto.createHash("sha256").update(String(token)).digest("hex").slice(0, 12)
+  : null;
+function safeAuditValue(value, key = "") {
+  if (value == null || typeof value !== "object") {
+    return /token|secret/i.test(key) && value != null ? `sha256:${tokenFingerprint(value)}` : value;
+  }
+  if (Array.isArray(value)) return value.map((item) => safeAuditValue(item));
+  return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, safeAuditValue(v, k)]));
+}
+function pageText(label, entries, requestedPage = 1, pageSize = 20) {
+  const pages = Math.max(1, Math.ceil(entries.length / pageSize));
+  const page = Math.min(pages, Math.max(1, Number.parseInt(requestedPage, 10) || 1));
+  const rows = entries.slice((page - 1) * pageSize, page * pageSize);
+  return `${label} — page ${page}/${pages} (${entries.length})\n${rows.length ? rows.join("\n") : "(none)"}`;
+}
+function runSelfTest() {
+  const assert = require("assert");
+  assert(validName("Player_123"));
+  assert(!validName("ab"));
+  assert(!validName("bad-name"));
+  assert(validRole("operator"));
+  assert(!validRole("owner"));
+  assert(hasTier("admin", "captain"));
+  assert(!hasTier("operator", "captain"));
+  assert.equal(pageText("users", ["a", "b", "c"], 2, 2), "users — page 2/2 (3)\nc");
+  const safe = safeAuditValue({ token: "test-token", nested: { botToken: "bot" } });
+  assert.equal(safe.token, `sha256:${tokenFingerprint("test-token")}`);
+  assert(!JSON.stringify(safe).includes("test-token"));
+  console.log("relay self-test passed");
+}
+if (process.argv.includes("--self-test")) {
+  runSelfTest();
+  process.exit(0);
+}
+
 /**
  * OpenIntel relay server
  * ----------------------
@@ -11,29 +58,32 @@
  *
  * Run:  npm install && node server.js
  */
-const fs = require("fs");
 const http = require("http");
 const express = require("express");
 const { WebSocketServer } = require("ws");
 
-const CONFIG = JSON.parse(fs.readFileSync("config.json", "utf8"));
+const filePath = (name) => path.join(__dirname, name);
+const CONFIG = JSON.parse(fs.readFileSync(filePath("config.json"), "utf8"));
 let USERS = loadJson("users.json", { users: [] });
 let ALLEGIANCES = loadJson("allegiances.json", { allies: [], enemies: [] });
 
-function loadJson(path, fallback) {
-  try { return JSON.parse(fs.readFileSync(path, "utf8")); } catch { return fallback; }
+function loadJson(name, fallback) {
+  try { return JSON.parse(fs.readFileSync(filePath(name), "utf8")); } catch { return fallback; }
 }
-function saveJson(path, data) {
-  fs.writeFileSync(path, JSON.stringify(data, null, 2));
+function saveJson(name, data) {
+  const destination = filePath(name);
+  const temporary = `${destination}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(data, null, 2));
+  fs.renameSync(temporary, destination);
 }
 
-const lower = (s) => String(s).toLowerCase();
-const userByToken = (token) => USERS.users.find((u) => u.token === token);
-const userNames = () => USERS.users.map((u) => u.name);
+const userByToken = (token) => USERS.users.find((u) => !u.disabled && u.token === token);
+const userByName = (name) => USERS.users.find((u) => lower(u.name) === lower(name));
+const userNames = () => USERS.users.filter((u) => !u.disabled).map((u) => u.name);
 const isEnemy = (name) =>
   ALLEGIANCES.enemies.map(lower).includes(lower(name)) ||
   (ALLEGIANCES.focus ?? []).map(lower).includes(lower(name));
-const isCaptain = (role) => role === "captain" || role === "admin";
+const isOperator = (role) => hasTier(role, "operator");
 
 // ---------------------------------------------------------------- webhooks
 async function postWebhook(url, payload) {
@@ -49,7 +99,24 @@ async function postWebhook(url, payload) {
   }
 }
 const adminLog = (msg) =>
-  postWebhook(CONFIG.webhooks.admin, { content: `🛠️ ${msg}`, username: "OpenIntel Admin" });
+  postWebhook(CONFIG.webhooks.admin, {
+    content: `🛠️ ${msg}`, username: "OpenIntel Admin", allowed_mentions: { parse: [] },
+  });
+const recentAudit = [];
+function audit({ actor, tier, action, target = null, source = {}, before = null, after = null, success = true, reason = null }) {
+  const entry = safeAuditValue({
+    timestamp: new Date().toISOString(), actor, tier, action, target,
+    source: { guild: source.guild ?? null, channel: source.channel ?? null },
+    before, after, success: Boolean(success), reason,
+  });
+  try { fs.appendFileSync(filePath("audit.jsonl"), `${JSON.stringify(entry)}\n`); }
+  catch (e) { console.error("audit write failed:", e.message); }
+  recentAudit.unshift(entry);
+  if (recentAudit.length > 20) recentAudit.length = 20;
+  const outcome = entry.success ? "succeeded" : `failed${entry.reason ? `: ${entry.reason}` : ""}`;
+  adminLog(`**${entry.actor}** (${entry.tier}) — \`${entry.action}\`${entry.target ? ` on **${entry.target}**` : ""} ${outcome}`);
+  return entry;
+}
 
 const alertCooldowns = new Map(); // enemyName -> last ping ms
 const recentSnitch = new Map();   // dedupe key -> first seen ms
@@ -116,47 +183,74 @@ function broadcast(obj) {
     if (client.readyState === 1 && client.authedAs) client.send(data);
   }
 }
+function socketsFor(name) {
+  return [...wss.clients].filter((client) => client.authedAs && lower(client.authedAs) === lower(name));
+}
+function revokeSessions(name, reason = "session revoked") {
+  const sockets = socketsFor(name);
+  for (const socket of sockets) socket.close(4001, reason);
+  return sockets.length;
+}
+function removeReportedPositions(name) {
+  for (const [key, value] of positions) if (lower(value.reporter) === lower(name)) positions.delete(key);
+}
+function currentSocketUser(ws) {
+  return ws.authedAs ? userByName(ws.authedAs) : null;
+}
 
 // Shared by the in-game /oi focus command and the Discord terminal.
 // Returns a human-readable description of what changed, or null if the
 // action was invalid / a no-op.
-function applyFocus(action, subject, actorLabel) {
+function applyFocus(action, subject, actorLabel, context = {}) {
+  const before = [...(ALLEGIANCES.focus ?? [])];
   ALLEGIANCES.focus = ALLEGIANCES.focus ?? [];
-  if (action === "add" && subject) {
+  if (action === "add" && subject && validName(subject)) {
     if (!ALLEGIANCES.focus.map(lower).includes(lower(subject))) ALLEGIANCES.focus.push(subject);
-  } else if (action === "remove" && subject) {
+  } else if (action === "remove" && subject && validName(subject)) {
     ALLEGIANCES.focus = ALLEGIANCES.focus.filter((n) => lower(n) !== lower(subject));
   } else if (action === "clear") {
     ALLEGIANCES.focus = [];
   } else {
+    audit({ ...context, actor: actorLabel, action: `focus.${action}`, target: subject, success: false, reason: "invalid action or player name" });
     return null;
   }
   saveJson("allegiances.json", ALLEGIANCES);
   broadcast(allegiancePayload());
   const what = action === "clear" ? "cleared all focus targets"
                                   : `${action === "add" ? "focused" : "unfocused"} **${subject}**`;
-  adminLog(`🎯 Captain **${actorLabel}** ${what}`);
+  audit({ ...context, actor: actorLabel, action: `focus.${action}`, target: subject, before, after: ALLEGIANCES.focus });
   postWebhook(CONFIG.webhooks.alerts, {
     username: "OpenIntel",
-    content: `🎯 Captain **${actorLabel}** ${what}`,
+    content: `🎯 **${actorLabel}** ${what}`,
   });
   return what;
 }
 
 // kind: "allies" | "enemies"; action: "add" | "remove". Returns a result line.
-function applyAllegiance(kind, action, name, actorLabel) {
+function applyAllegiance(kind, action, name, actorLabel, context = {}) {
   const list = ALLEGIANCES[kind] ?? (ALLEGIANCES[kind] = []);
+  const before = [...list];
   const present = list.map(lower).includes(lower(name));
+  if (!validName(name)) {
+    audit({ ...context, actor: actorLabel, action: `${kind}.${action}`, target: name, before, after: before, success: false, reason: "invalid player name" });
+    return "invalid Minecraft player name";
+  }
   if (action === "add") {
-    if (present) return `${name} is already on the ${kind} list`;
+    if (present) {
+      audit({ ...context, actor: actorLabel, action: `${kind}.${action}`, target: name, before, after: before, success: false, reason: "already present" });
+      return `${name} is already on the ${kind} list`;
+    }
     list.push(name);
   } else {
-    if (!present) return `${name} is not on the ${kind} list`;
+    if (!present) {
+      audit({ ...context, actor: actorLabel, action: `${kind}.${action}`, target: name, before, after: before, success: false, reason: "not present" });
+      return `${name} is not on the ${kind} list`;
+    }
     ALLEGIANCES[kind] = list.filter((n) => lower(n) !== lower(name));
   }
   saveJson("allegiances.json", ALLEGIANCES);
   broadcast(allegiancePayload());
-  adminLog(`📋 **${actorLabel}** ${action === "add" ? "added" : "removed"} **${name}** ${action === "add" ? "to" : "from"} ${kind}`);
+  audit({ ...context, actor: actorLabel, action: `${kind}.${action}`, target: name, before, after: ALLEGIANCES[kind] });
   return `${action === "add" ? "added" : "removed"} ${name} ${action === "add" ? "to" : "from"} ${kind}`;
 }
 
@@ -177,25 +271,38 @@ wss.on("connection", (ws, req) => {
         return;
       }
       ws.authedAs = user.name;
-      ws.role = user.role ?? "member";
+      ws.role = validRole(user.role) ? lower(user.role) : "member";
       ws.send(JSON.stringify({ ...allegiancePayload(), type: "welcome" }));
       adminLog(`✅ **${user.name}** connected (${ws.role})`);
       return;
     }
 
     if (!ws.authedAs) return;
+    const user = currentSocketUser(ws);
+    if (!user || user.disabled || user.token == null) {
+      ws.close(4001, "session revoked");
+      return;
+    }
+    ws.role = validRole(user.role) ? lower(user.role) : "member";
 
     if (msg.type === "focus") {
-      if (!isCaptain(ws.role)) {
-        ws.send(JSON.stringify({ type: "notice", msg: "/oi focus requires the Captain role" }));
+      if (user.quarantined) {
+        ws.send(JSON.stringify({ type: "notice", msg: "quarantined sessions cannot change focus targets" }));
         return;
       }
-      applyFocus(msg.action, msg.subject ? String(msg.subject) : null, ws.authedAs);
+      if (!isOperator(ws.role)) {
+        ws.send(JSON.stringify({ type: "notice", msg: "/oi focus requires the Operator role" }));
+        return;
+      }
+      applyFocus(msg.action, msg.subject ? String(msg.subject) : null, ws.authedAs, {
+        tier: ws.role, source: { guild: null, channel: "websocket" },
+      });
       return;
     }
 
     // Shared pings + forwarded snitch alerts: stamp the sender and fan out.
     if (msg.type === "ping" || msg.type === "snitch") {
+      if (user.quarantined) return;
       // Several clients can see the same snitch line — don't multiply it.
       if (msg.type === "snitch" && !dedupeSnitch(msg)) return;
       msg.from = ws.authedAs;
@@ -205,9 +312,11 @@ wss.on("connection", (ws, req) => {
     }
 
     if (msg.type === "positions" && Array.isArray(msg.reports)) {
+      if (user.quarantined) return;
       const now = Date.now();
       for (const r of msg.reports.slice(0, 100)) {
-        if (typeof r.subject !== "string") continue;
+        if (typeof r.subject !== "string" || !validName(r.subject)) continue;
+        if (![r.x, r.y, r.z].every(Number.isFinite) || typeof r.dim !== "string") continue;
         positions.set(lower(r.subject), {
           name: r.subject, x: +r.x, y: +r.y, z: +r.z,
           dim: String(r.dim), t: now, reporter: ws.authedAs,
@@ -240,6 +349,7 @@ function requireAdmin(req, res, next) {
 
 app.get("/allegiances", requireAdmin, (req, res) => res.json(ALLEGIANCES));
 app.put("/allegiances", requireAdmin, (req, res) => {
+  const before = ALLEGIANCES;
   ALLEGIANCES = {
     allies: req.body.allies ?? [],
     enemies: req.body.enemies ?? [],
@@ -247,17 +357,22 @@ app.put("/allegiances", requireAdmin, (req, res) => {
   };
   saveJson("allegiances.json", ALLEGIANCES);
   broadcast(allegiancePayload());
-  adminLog(`📋 Allegiances updated — allies: ${ALLEGIANCES.allies.length}, enemies: ${ALLEGIANCES.enemies.length}`);
+  audit({ actor: "REST admin", tier: "admin", action: "allegiances.replace", source: { channel: "REST" }, before, after: ALLEGIANCES });
   res.json({ ok: true });
 });
 
 app.get("/users", requireAdmin, (req, res) =>
   res.json({ users: USERS.users.map((u) => u.name) })); // never expose tokens
 app.put("/users", requireAdmin, (req, res) => {
+  const before = USERS;
   USERS = { users: req.body.users ?? [] };
   saveJson("users.json", USERS);
   broadcast(allegiancePayload());
-  adminLog(`👥 Approved-user list updated — ${USERS.users.length} users`);
+  for (const client of wss.clients) {
+    const user = currentSocketUser(client);
+    if (client.authedAs && (!user || user.disabled)) client.close(4001, "session revoked");
+  }
+  audit({ actor: "REST admin", tier: "admin", action: "users.replace", source: { channel: "REST" }, before, after: USERS });
   res.json({ ok: true });
 });
 
@@ -311,10 +426,15 @@ const idSet = (many, one) => new Set([
 ].map(String).filter(Boolean));
 const TERMINAL_CHANNELS = idSet(DISCORD.terminalChannelIds, DISCORD.terminalChannelId);
 const SNITCH_CHANNELS = idSet(DISCORD.snitchChannelIds, DISCORD.snitchChannelId);
+const OPERATOR_ROLES = idSet(DISCORD.operatorRoleIds, DISCORD.operatorRoleId);
 const CAPTAIN_ROLES = idSet(DISCORD.captainRoleIds, DISCORD.captainRoleId);
+const ADMIN_ROLES = idSet(DISCORD.adminRoleIds, DISCORD.adminRoleId);
 
 if (DISCORD.botToken) {
-  const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
+  const {
+    ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder,
+    GatewayIntentBits, PermissionsBitField,
+  } = require("discord.js");
   const bot = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -323,26 +443,76 @@ if (DISCORD.botToken) {
     ],
   });
 
-  const fence = (s) => "```\n" + s + "\n```";
-  const none = (arr) => (arr && arr.length ? arr.join(", ") : "(none)");
-  const canMutate = (member) =>
-    member != null &&
-    (member.permissions.has(PermissionsBitField.Flags.Administrator) ||
-      [...CAPTAIN_ROLES].some((id) => member.roles.cache.has(id)));
-
+  const fence = (s) => "```\n" + String(s).slice(0, 1900) + "\n```";
+  const discordTier = (member) => {
+    if (!member) return "member";
+    if (member.permissions.has(PermissionsBitField.Flags.Administrator)) return "admin";
+    if ([...ADMIN_ROLES].some((id) => member.roles.cache.has(id))) return "admin";
+    if ([...CAPTAIN_ROLES].some((id) => member.roles.cache.has(id))) return "captain";
+    if ([...OPERATOR_ROLES].some((id) => member.roles.cache.has(id))) return "operator";
+    return "member";
+  };
+  const sourceOf = (value) => ({ guild: value.guildId ?? null, channel: value.channelId ?? null });
+  const actorOf = (value) => `${value.member?.displayName ?? value.user?.username ?? value.author?.username ?? "unknown"} (${value.user?.id ?? value.author?.id ?? "unknown"})`;
+  const onlineRows = () => [...wss.clients]
+    .filter((c) => c.authedAs)
+    .map((c) => `${c.authedAs} (${c.role}${userByName(c.authedAs)?.quarantined ? ", quarantined" : ""})`);
+  const listRows = (kind) => {
+    if (kind === "users") return USERS.users.map((u) => `${u.name} (${u.role ?? "member"}${u.disabled ? ", disabled" : ""}${u.quarantined ? ", quarantined" : ""})`);
+    if (kind === "allies") return (ALLEGIANCES.allies ?? []).map(String);
+    if (kind === "enemies") return (ALLEGIANCES.enemies ?? []).map(String);
+    if (kind === "focus") return (ALLEGIANCES.focus ?? []).map(String);
+    if (kind === "online") return onlineRows();
+    return [
+      ...USERS.users.map((u) => `user: ${u.name} (${u.role ?? "member"}${u.disabled ? ", disabled" : ""}${u.quarantined ? ", quarantined" : ""})`),
+      ...(ALLEGIANCES.allies ?? []).map((n) => `ally: ${n}`),
+      ...(ALLEGIANCES.enemies ?? []).map((n) => `enemy: ${n}`),
+      ...(ALLEGIANCES.focus ?? []).map((n) => `focus: ${n}`),
+    ];
+  };
+  const renderList = (kind = "all", page = 1) => pageText(kind, listRows(kind), page);
+  const commandAudit = (msg, tier, action, target, details = {}) => audit({
+    actor: actorOf(msg), tier, action, target, source: sourceOf(msg), ...details,
+  });
+  const requireTier = async (msg, tier, required, action, target = null) => {
+    if (hasTier(tier, required)) return true;
+    commandAudit(msg, tier, action, target, { success: false, reason: `requires ${required}` });
+    await msg.reply(`⛔ requires the ${required} role`);
+    return false;
+  };
   const HELP = fence(
     [
-      "!online                      who is connected to the relay",
-      "!list                        users / allies / enemies / focus",
-      "!where <player>              last known position of a tracked player",
-      "!ally add|remove <player>    edit allies        (captain)",
-      "!enemy add|remove <player>   edit enemies       (captain)",
-      "!focus <player>              mark focus target  (captain)",
-      "!focus clear                 clear all focus    (captain)",
-      "!unfocus <player>            unmark target      (captain)",
-      "!help                        this message",
+      "!online [page]                       who is connected to the relay",
+      "!list [users|allies|enemies|focus|online|all] [page]",
+      "!where <player>                      last known position of a tracked player",
+      "!broadcast <message>                 relay notice (operator)",
+      "!focus <player>|clear / !unfocus     focus management (operator)",
+      "!panel                               interactive status panel (operator)",
+      "!ally|enemy add|remove <player>      allegiance management (captain)",
+      "!kick <user>                         close active sessions (captain)",
+      "!quarantine|unquarantine <user>      control submissions (captain)",
+      "!user add <name> [role]              create user + DM token (admin)",
+      "!user remove|disable|enable <name>   user lifecycle (admin)",
+      "!user role <name> <role>             set user role (admin)",
+      "!user rotate-token|info <name>       token/user details (admin)",
+      "!help                                this message",
     ].join("\n")
   );
+  const panelRows = () => new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId("oi:status").setLabel("Refresh Status").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("oi:online").setLabel("Online").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("oi:lists").setLabel("Lists").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("oi:audit").setLabel("Recent Activity").setStyle(ButtonStyle.Secondary),
+  );
+  const panelEmbed = () => new EmbedBuilder()
+    .setTitle("OpenIntel Relay")
+    .setDescription("Relay administration and live status")
+    .addFields(
+      { name: "Online", value: String(onlineRows().length), inline: true },
+      { name: "Users", value: String(USERS.users.length), inline: true },
+      { name: "Focus", value: String((ALLEGIANCES.focus ?? []).length), inline: true },
+    )
+    .setTimestamp();
 
   bot.on("messageCreate", async (msg) => {
     try {
@@ -357,24 +527,20 @@ if (DISCORD.botToken) {
 
       const parts = msg.content.slice(1).trim().split(/\s+/);
       const cmd = lower(parts[0] ?? "");
-      const actor = msg.member?.displayName ?? msg.author.username;
+      const actor = actorOf(msg);
+      const tier = discordTier(msg.member);
+      const context = { tier, source: sourceOf(msg) };
 
       if (cmd === "help") return void msg.reply(HELP);
 
-      if (cmd === "online") {
-        const online = [...wss.clients].filter((c) => c.authedAs).map((c) => `${c.authedAs} (${c.role})`);
-        return void msg.reply(fence(`online (${online.length}): ${none(online)}`));
-      }
+      if (cmd === "online") return void msg.reply(fence(renderList("online", parts[1])));
 
       if (cmd === "list") {
-        return void msg.reply(fence(
-          [
-            `users:   ${none(userNames())}`,
-            `allies:  ${none(ALLEGIANCES.allies)}`,
-            `enemies: ${none(ALLEGIANCES.enemies)}`,
-            `focus:   ${none(ALLEGIANCES.focus)}`,
-          ].join("\n")
-        ));
+        const kinds = ["users", "allies", "enemies", "focus", "online", "all"];
+        const requested = lower(parts[1] ?? "all");
+        const kind = kinds.includes(requested) ? requested : "all";
+        const page = kinds.includes(requested) ? parts[2] : parts[1];
+        return void msg.reply(fence(renderList(kind, page)));
       }
 
       if (cmd === "where") {
@@ -390,38 +556,199 @@ if (DISCORD.botToken) {
       }
 
       // Everything below mutates state.
-      if (!["ally", "enemy", "focus", "unfocus"].includes(cmd)) return;
-      if (!canMutate(msg.member)) {
-        return void msg.reply("⛔ requires the captain role");
+      if (cmd === "broadcast") {
+        const text = parts.slice(1).join(" ").trim();
+        if (!(await requireTier(msg, tier, "operator", "broadcast", null))) return;
+        if (!text || text.length > 1500) {
+          commandAudit(msg, tier, "broadcast", null, { success: false, reason: "message must be 1-1500 characters" });
+          return void msg.reply("usage: `!broadcast <message>` (maximum 1500 characters)");
+        }
+        broadcast({ type: "notice", msg: `[Broadcast] ${text}`, from: actor, t: Date.now() });
+        commandAudit(msg, tier, "broadcast", null, { after: { message: text } });
+        return void msg.reply("broadcast sent");
+      }
+
+      if (cmd === "panel") {
+        if (!(await requireTier(msg, tier, "operator", "panel.open", null))) return;
+        commandAudit(msg, tier, "panel.open", null);
+        return void msg.reply({ embeds: [panelEmbed()], components: [panelRows()] });
+      }
+
+      if (cmd === "focus" || cmd === "unfocus") {
+        if (!(await requireTier(msg, tier, "operator", `focus.${cmd === "unfocus" ? "remove" : "add"}`, parts[1]))) return;
+        const arg = parts[1];
+        if (!arg) return void msg.reply(cmd === "focus" ? "usage: `!focus <player>` or `!focus clear`" : "usage: `!unfocus <player>`");
+        const action = cmd === "unfocus" ? "remove" : lower(arg) === "clear" ? "clear" : "add";
+        const what = applyFocus(action, action === "clear" ? null : arg, actor, context);
+        return void msg.reply(what ? fence(what.replace(/\*\*/g, "")) : "invalid Minecraft player name");
       }
 
       if (cmd === "ally" || cmd === "enemy") {
+        if (!(await requireTier(msg, tier, "captain", `${cmd}.${parts[1]}`, parts[2]))) return;
         const action = lower(parts[1] ?? "");
         const name = parts[2];
         if (!["add", "remove"].includes(action) || !name) {
           return void msg.reply(`usage: \`!${cmd} add|remove <player>\``);
         }
-        const result = applyAllegiance(cmd === "ally" ? "allies" : "enemies", action, name, actor);
+        const result = applyAllegiance(cmd === "ally" ? "allies" : "enemies", action, name, actor, context);
         return void msg.reply(fence(result));
       }
 
-      if (cmd === "focus") {
-        const arg = parts[1];
-        if (!arg) return void msg.reply("usage: `!focus <player>` or `!focus clear`");
-        const what = lower(arg) === "clear"
-          ? applyFocus("clear", null, actor)
-          : applyFocus("add", arg, actor);
-        return void msg.reply(fence(what.replace(/\*\*/g, "")));
+      if (cmd === "kick") {
+        const name = parts[1];
+        if (!(await requireTier(msg, tier, "captain", "session.kick", name))) return;
+        if (!name || !validName(name)) {
+          commandAudit(msg, tier, "session.kick", name, { success: false, reason: "invalid player name" });
+          return void msg.reply("usage: `!kick <user>`");
+        }
+        const user = userByName(name);
+        if (!user) {
+          commandAudit(msg, tier, "session.kick", name, { success: false, reason: "user not found" });
+          return void msg.reply("user not found");
+        }
+        const count = revokeSessions(user.name, "kicked by relay captain");
+        commandAudit(msg, tier, "session.kick", user.name, { before: { sessions: count }, after: { sessions: 0 } });
+        return void msg.reply(`closed ${count} active session(s) for ${user.name}`);
       }
 
-      if (cmd === "unfocus") {
+      if (cmd === "quarantine" || cmd === "unquarantine") {
         const name = parts[1];
-        if (!name) return void msg.reply("usage: `!unfocus <player>`");
-        const what = applyFocus("remove", name, actor);
-        return void msg.reply(fence(what.replace(/\*\*/g, "")));
+        if (!(await requireTier(msg, tier, "captain", `user.${cmd}`, name))) return;
+        const user = name ? userByName(name) : null;
+        if (!user) {
+          commandAudit(msg, tier, `user.${cmd}`, name, { success: false, reason: "user not found" });
+          return void msg.reply("user not found");
+        }
+        const before = { quarantined: Boolean(user.quarantined) };
+        user.quarantined = cmd === "quarantine";
+        if (!user.quarantined) delete user.quarantined;
+        if (cmd === "quarantine") removeReportedPositions(user.name);
+        saveJson("users.json", USERS);
+        commandAudit(msg, tier, `user.${cmd}`, user.name, { before, after: { quarantined: Boolean(user.quarantined) } });
+        return void msg.reply(`${user.name} ${cmd === "quarantine" ? "quarantined; submissions are blocked" : "unquarantined"}`);
+      }
+
+      if (cmd === "user") {
+        const action = lower(parts[1] ?? "");
+        const name = parts[2];
+        if (!(await requireTier(msg, tier, "admin", `user.${action || "unknown"}`, name))) return;
+        if (!["add", "remove", "disable", "enable", "role", "rotate-token", "info"].includes(action)) {
+          return void msg.reply("usage: `!user add|remove|disable|enable|role|rotate-token|info ...`");
+        }
+        if (!name || !validName(name)) {
+          commandAudit(msg, tier, `user.${action}`, name, { success: false, reason: "invalid Minecraft name" });
+          return void msg.reply("invalid Minecraft name; expected 3-16 letters, numbers, or underscores");
+        }
+        if (action === "add") {
+          const role = lower(parts[3] ?? "member");
+          if (!validRole(role)) {
+            commandAudit(msg, tier, "user.add", name, { success: false, reason: "invalid role" });
+            return void msg.reply("role must be member, operator, captain, or admin");
+          }
+          if (userByName(name)) {
+            commandAudit(msg, tier, "user.add", name, { success: false, reason: "user already exists" });
+            return void msg.reply("user already exists");
+          }
+          const token = crypto.randomBytes(32).toString("base64url");
+          const user = { name, token, role };
+          try {
+            await msg.author.send(`OpenIntel token for **${name}** (${role}):\n\`${token}\`\nStore it securely; it will not be shown in the command channel.`);
+          } catch {
+            commandAudit(msg, tier, "user.add", name, { before: null, after: null, success: false, reason: "DM delivery failed; user not created" });
+            return void msg.reply(`user was not created because DM delivery failed. Enable DMs and retry.`);
+          }
+          USERS.users.push(user);
+          saveJson("users.json", USERS);
+          broadcast(allegiancePayload());
+          commandAudit(msg, tier, "user.add", name, { before: null, after: user });
+          return void msg.reply(`user ${name} added; the token was sent to you by DM`);
+        }
+        const user = userByName(name);
+        if (!user) {
+          commandAudit(msg, tier, `user.${action}`, name, { success: false, reason: "user not found" });
+          return void msg.reply("user not found");
+        }
+        const before = { ...user };
+        if (action === "info") {
+          commandAudit(msg, tier, "user.info", user.name, { before: null, after: null });
+          return void msg.reply(fence([
+            `name: ${user.name}`,
+            `role: ${user.role ?? "member"}`,
+            `disabled: ${Boolean(user.disabled)}`,
+            `quarantined: ${Boolean(user.quarantined)}`,
+            `token fingerprint: sha256:${tokenFingerprint(user.token)}`,
+            `active sessions: ${socketsFor(user.name).length}`,
+          ].join("\n")));
+        }
+        if (action === "remove") USERS.users = USERS.users.filter((u) => lower(u.name) !== lower(user.name));
+        if (action === "disable") user.disabled = true;
+        if (action === "enable") delete user.disabled;
+        if (action === "role") {
+          const role = lower(parts[3] ?? "");
+          if (!validRole(role)) {
+            commandAudit(msg, tier, "user.role", user.name, { before, after: before, success: false, reason: "invalid role" });
+            return void msg.reply("role must be member, operator, captain, or admin");
+          }
+          user.role = role;
+        }
+        let newToken = null;
+        if (action === "rotate-token") {
+          newToken = crypto.randomBytes(32).toString("base64url");
+          try {
+            await msg.author.send(`New OpenIntel token for **${user.name}**:\n\`${newToken}\`\nStore it securely; the prior token will be revoked now.`);
+          } catch {
+            commandAudit(msg, tier, `user.${action}`, user.name, { before, after: before, success: false, reason: "DM delivery failed; token unchanged" });
+            return void msg.reply(`token was not rotated because DM delivery failed. Enable DMs and retry.`);
+          }
+          user.token = newToken;
+        }
+        saveJson("users.json", USERS);
+        broadcast(allegiancePayload());
+        const revoked = ["remove", "disable", "rotate-token"].includes(action)
+          ? revokeSessions(user.name, `${action} by relay admin`) : 0;
+        const auditDetails = {
+          before, after: action === "remove" ? null : user,
+          reason: revoked ? `${revoked} session(s) revoked` : null,
+        };
+        if (newToken) {
+          commandAudit(msg, tier, `user.${action}`, user.name, auditDetails);
+          return void msg.reply(`token rotated for ${user.name}; the new token was sent to you by DM`);
+        }
+        commandAudit(msg, tier, `user.${action}`, user.name, auditDetails);
+        return void msg.reply(`${user.name}: ${action} complete${revoked ? `; ${revoked} session(s) revoked` : ""}`);
       }
     } catch (e) {
-      console.error("discord command failed:", e);
+      console.error("discord command failed:", e.message);
+    }
+  });
+
+  bot.on("interactionCreate", async (interaction) => {
+    if (!interaction.isButton() || !interaction.customId.startsWith("oi:") || !interaction.guild) return;
+    try {
+      if (TERMINAL_CHANNELS.size > 0 && !TERMINAL_CHANNELS.has(interaction.channelId)) {
+        return void interaction.reply({ content: "This panel is not active in this channel.", ephemeral: true });
+      }
+      const tier = discordTier(interaction.member);
+      const action = `panel.${interaction.customId.slice(3)}`;
+      if (!hasTier(tier, "operator")) {
+        audit({ actor: actorOf(interaction), tier, action, source: sourceOf(interaction), success: false, reason: "requires operator" });
+        return void interaction.reply({ content: "Requires the operator role.", ephemeral: true });
+      }
+      audit({ actor: actorOf(interaction), tier, action, source: sourceOf(interaction) });
+      if (interaction.customId === "oi:status") {
+        return void interaction.update({ embeds: [panelEmbed()], components: [panelRows()] });
+      }
+      if (interaction.customId === "oi:online") {
+        return void interaction.reply({ content: fence(renderList("online", 1)), ephemeral: true });
+      }
+      if (interaction.customId === "oi:lists") {
+        return void interaction.reply({ content: fence(renderList("all", 1)), ephemeral: true });
+      }
+      const lines = recentAudit.slice(0, 8).map((entry) =>
+        `${entry.timestamp} ${entry.actor}: ${entry.action}${entry.target ? ` ${entry.target}` : ""} [${entry.success ? "ok" : "failed"}]`);
+      return void interaction.reply({ content: fence(pageText("recent activity", lines, 1, 8)), ephemeral: true });
+    } catch (e) {
+      console.error("discord interaction failed:", e.message);
     }
   });
 

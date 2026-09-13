@@ -80,8 +80,18 @@ features on top of the original position/allegiance/focus core.
   all render toggles, keybind rebinding, links into radar/macro screens,
   and the color pickers.
 
+### Discord relay administration
+- Added member, operator, captain, and admin permission tiers with multi-guild
+  role mapping and Discord Administrator override.
+- Added admin-only user lifecycle, role, disable, and secure token rotation
+  commands; new tokens are delivered only by DM and affected sessions revoke.
+- Added captain quarantine/kick controls, operator broadcasts, paginated lists,
+  and an interactive status panel with per-click permission checks.
+- Added atomic relay JSON persistence and structured, secret-redacted JSONL
+  auditing mirrored to the admin webhook.
+
 ### Infra
 - Token-specific builds bake `openintel_token.txt` inside the jar — no
   recompile per user.
-- Relay server: snitch dedupe, Discord snitch-channel watch, existing
-  position/allegiance/focus/ping/Discord-terminal unchanged.
+- Relay server: snitch dedupe, Discord snitch-channel watch, granular Discord
+  administration, and a deterministic `node server.js --self-test` harness.

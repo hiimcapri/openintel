@@ -148,7 +148,11 @@ public class Tracker {
             case "state" -> applyState(msg, client);
             case "ping" -> PingManager.receive(msg);
             case "snitch" -> applySnitch(msg);
-            case "notice" -> OpenIntelClient.status(msg.has("msg") ? msg.get("msg").getAsString() : "");
+            case "notice" -> {
+                String text = msg.has("msg") ? msg.get("msg").getAsString() : "";
+                OpenIntelClient.status(text);
+                if (text.startsWith("[Broadcast]")) EventFeed.add(text, 0xFFFFAA00);
+            }
             case "deny" -> OpenIntelClient.status("relay rejected token — ask an admin to approve you");
             default -> { }
         }

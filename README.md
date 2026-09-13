@@ -107,8 +107,17 @@ Focus and enemy-alert behavior is shared across the relay:
 
 ## Relay roles and focus targets
 
-Users in `users.json` can have `"role": "member"` (default), `"captain"`, or
-`"admin"`. Captains and admins can mark priority targets in-game:
+Users in `users.json` have one of four backward-compatible tiers:
+
+- `member` (default): authenticate and read relay intel.
+- `operator`: member access plus focus management and admin broadcasts.
+- `captain`: operator access plus allegiance management, quarantine, and session kicks.
+- `admin`: captain access plus user, token, role, and disable management.
+
+Existing `member`, `captain`, and `admin` entries remain valid. Disabled users cannot
+authenticate. Quarantined users can authenticate and read, but their positions,
+pings, and snitch reports are ignored. Operators and above can mark priority
+targets in-game:
 
 ```
 /oi focus <player>    mark a focus target (bright purple ◆ for everyone)
@@ -190,16 +199,18 @@ marker. The bot runs inside the relay process and is disabled until
    **Message Content Intent** under *Privileged Gateway Intents*. Without this
    the bot logs in fine but every message looks empty to it.
 3. **Invite it:** **OAuth2 → URL Generator** → scope `bot` → bot permissions
-   *View Channels*, *Send Messages*, *Read Message History* → open the
-   generated URL and add it to every Discord server you want bridged.
+   *View Channels*, *Send Messages*, *Embed Links*, *Read Message History* →
+   open the generated URL and add it to every Discord server you want bridged.
+   Admins who create or rotate users must allow DMs from the bot; failed DMs
+   never cause tokens to be posted publicly.
 4. **Pick terminal channels:** enable Discord Developer Mode, right-click each
    private command channel, copy its ID, and add it to `terminalChannelIds`.
 5. **Pick snitch channels:** copy every channel ID that receives JukeAlert
    relay posts and add it to `snitchChannelIds`. Bot-authored messages are
    accepted in these channels because they are the payload.
-6. **Map captain roles:** copy the Captain role from each Discord server into
-   `captainRoleIds`. Members with any listed role—or Discord Administrator in
-   that server—can run mutating commands.
+6. **Map permission roles:** copy role IDs from every Discord server into
+   `operatorRoleIds`, `captainRoleIds`, and `adminRoleIds`. Each tier includes
+   the tiers below it; Discord Administrator always maps to OpenIntel admin.
 7. Restart the relay. Startup reports its guild, terminal-channel, and
    snitch-channel counts.
 
@@ -209,12 +220,15 @@ marker. The bot runs inside the relay process and is disabled until
   "botToken": "MTIz...",
   "terminalChannelIds": ["1513...", "2846..."],
   "snitchChannelIds": ["3927...", "4018..."],
-  "captainRoleIds": ["987...", "654..."]
+  "operatorRoleIds": ["321..."],
+  "captainRoleIds": ["987...", "654..."],
+  "adminRoleIds": ["765..."]
 }
 ```
 
-The legacy singular fields `terminalChannelId`, `snitchChannelId`, and
-`captainRoleId` remain supported and are merged with their array equivalents.
+The legacy singular fields `terminalChannelId`, `snitchChannelId`,
+`operatorRoleId`, `captainRoleId`, and `adminRoleId` remain supported and are
+merged with their array equivalents.
 
 The bot token is a secret like everything else in `config.json` — gitignored,
 never ships in the client jar. If it ever leaks, *Reset Token* in the dev
@@ -224,16 +238,23 @@ portal invalidates the old one.
 
 Type these in the terminal channel:
 
-| Command | Does | Needs captain |
+| Command | Does | Tier |
 |---|---|---|
-| `!help` | list commands | |
-| `!online` | who is connected to the relay | |
-| `!list` | users / allies / enemies / focus lists | |
-| `!where <player>` | last known position of a tracked player | |
-| `!ally add\|remove <player>` | edit ally list (pushed live to clients) | ✔ |
-| `!enemy add\|remove <player>` | edit enemy list (pushed live to clients) | ✔ |
-| `!focus <player>` | mark focus target (bright purple ◆ for everyone) | ✔ |
-| `!unfocus <player>` / `!focus clear` | unmark / clear all | ✔ |
+| `!help` | list commands | member |
+| `!online [page]` | paginated connected relay users | member |
+| `!list [users\|allies\|enemies\|focus\|online\|all] [page]` | paginated relay lists; bare `!list` still lists all | member |
+| `!where <player>` | last known position of a tracked player | member |
+| `!broadcast <message>` | show a relay notice in connected clients | operator |
+| `!focus <player>` / `!unfocus <player>` / `!focus clear` | manage focus targets | operator |
+| `!panel` | post an interactive status/list/activity panel | operator |
+| `!ally add\|remove <player>` / `!enemy add\|remove <player>` | edit allegiance lists | captain |
+| `!kick <user>` | immediately close active sockets | captain |
+| `!quarantine <user>` / `!unquarantine <user>` | block or restore a user's submissions | captain |
+| `!user add <name> [role]` | create a user and DM the token to the invoking admin | admin |
+| `!user remove\|disable\|enable <name>` | manage user access and revoke affected sessions | admin |
+| `!user role <name> <member\|operator\|captain\|admin>` | change relay role | admin |
+| `!user rotate-token <name>` | rotate token, revoke sessions, and DM the new token | admin |
+| `!user info <name>` | safe status, token fingerprint, and session count | admin |
 
 Positions still travel over the relay's own WebSocket — Discord rate limits
 (~5 msgs/5 s per channel) make it unusable as the position transport, so the
@@ -249,8 +270,12 @@ The relay exposes a small authenticated REST API (header `x-admin-token`):
 | `/users` | GET / PUT | Read or replace approved-user list |
 | `/online` | GET | Who is currently connected |
 
-Every admin change and every connect/auth-failure is logged to the admin
-webhook, so the admin Discord channel doubles as an audit trail.
+Administrative actions are appended as structured JSON lines to
+`relay/audit.jsonl` and mirrored in human-readable form to the admin webhook.
+Audit entries include actor/tier, action/target, guild/channel source,
+before/after state, and success/reason. Tokens and other secrets are never
+recorded; tokens appear only as short SHA-256 fingerprints. The audit file and
+all live relay JSON configuration files are gitignored.
 
 ## Client commands and controls
 
@@ -265,7 +290,7 @@ webhook, so the admin Discord channel doubles as an audit trail.
 | `/oi reconnect` | Reconnect after changing relay credentials |
 | `/oi url <url>` | Set the relay WebSocket URL |
 | `/oi token <token>` | Set the personal relay token |
-| `/oi focus <player>` | Captain-only priority target |
+| `/oi focus <player>` | Operator-or-higher priority target |
 | `/oi unfocus <player>` | Remove a priority target |
 
 All controls are rebindable under the OpenIntel keybind category.
