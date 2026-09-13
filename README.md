@@ -174,8 +174,11 @@ or relaunch.
 
 ## Discord terminal (optional bot)
 
-A Discord channel can act as the relay's admin terminal. The bot runs inside
-the relay process — no extra service — and is disabled until
+One Discord bot can bridge any number of Discord servers and channels into the
+relay. Configured terminal channels expose admin commands; configured snitch
+channels ingest JukeAlert posts. Every source shares the same semantic snitch
+deduplication, so mirrored posts across Discord servers and in-game become one
+marker. The bot runs inside the relay process and is disabled until
 `config.discord.botToken` is set.
 
 ### Setup
@@ -188,24 +191,30 @@ the relay process — no extra service — and is disabled until
    the bot logs in fine but every message looks empty to it.
 3. **Invite it:** **OAuth2 → URL Generator** → scope `bot` → bot permissions
    *View Channels*, *Send Messages*, *Read Message History* → open the
-   generated URL and add it to your server.
-4. **Pick the terminal channel:** in Discord, *User Settings → Advanced →
-   Developer Mode* ON, then right-click your private intel channel →
-   *Copy Channel ID* → paste into `discord.terminalChannelId`. (Leave empty to
-   accept commands from any channel the bot can read — not recommended.)
-5. **Map the captain role:** right-click your Captain role → *Copy Role ID* →
-   `discord.captainRoleId`. Members with this role (or Discord Administrator)
-   can run the mutating commands; everyone in the channel can run read-only ones.
-6. Restart the relay. You should see `Discord terminal ready as OpenIntel#1234`.
+   generated URL and add it to every Discord server you want bridged.
+4. **Pick terminal channels:** enable Discord Developer Mode, right-click each
+   private command channel, copy its ID, and add it to `terminalChannelIds`.
+5. **Pick snitch channels:** copy every channel ID that receives JukeAlert
+   relay posts and add it to `snitchChannelIds`. Bot-authored messages are
+   accepted in these channels because they are the payload.
+6. **Map captain roles:** copy the Captain role from each Discord server into
+   `captainRoleIds`. Members with any listed role—or Discord Administrator in
+   that server—can run mutating commands.
+7. Restart the relay. Startup reports its guild, terminal-channel, and
+   snitch-channel counts.
 
 ```jsonc
 // config.json
 "discord": {
-  "botToken": "MTIz...",          // Bot tab → Reset Token
-  "terminalChannelId": "1513...", // right-click channel → Copy Channel ID
-  "captainRoleId": "987..."       // right-click role → Copy Role ID
+  "botToken": "MTIz...",
+  "terminalChannelIds": ["1513...", "2846..."],
+  "snitchChannelIds": ["3927...", "4018..."],
+  "captainRoleIds": ["987...", "654..."]
 }
 ```
+
+The legacy singular fields `terminalChannelId`, `snitchChannelId`, and
+`captainRoleId` remain supported and are merged with their array equivalents.
 
 The bot token is a secret like everything else in `config.json` — gitignored,
 never ships in the client jar. If it ever leaks, *Reset Token* in the dev

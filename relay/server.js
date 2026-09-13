@@ -305,6 +305,14 @@ function forwardDiscordSnitch(text) {
 }
 
 const DISCORD = CONFIG.discord ?? {};
+const idSet = (many, one) => new Set([
+  ...(Array.isArray(many) ? many : []),
+  ...(one ? [one] : []),
+].map(String).filter(Boolean));
+const TERMINAL_CHANNELS = idSet(DISCORD.terminalChannelIds, DISCORD.terminalChannelId);
+const SNITCH_CHANNELS = idSet(DISCORD.snitchChannelIds, DISCORD.snitchChannelId);
+const CAPTAIN_ROLES = idSet(DISCORD.captainRoleIds, DISCORD.captainRoleId);
+
 if (DISCORD.botToken) {
   const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
   const bot = new Client({
@@ -320,7 +328,7 @@ if (DISCORD.botToken) {
   const canMutate = (member) =>
     member != null &&
     (member.permissions.has(PermissionsBitField.Flags.Administrator) ||
-      (DISCORD.captainRoleId && member.roles.cache.has(DISCORD.captainRoleId)));
+      [...CAPTAIN_ROLES].some((id) => member.roles.cache.has(id)));
 
   const HELP = fence(
     [
@@ -338,13 +346,13 @@ if (DISCORD.botToken) {
 
   bot.on("messageCreate", async (msg) => {
     try {
-      // Snitch relay channel gets its own lane — bot posts are the payload.
-      if (DISCORD.snitchChannelId && msg.channelId === DISCORD.snitchChannelId) {
+      // Snitch relay channels share one lane and one global dedupe map.
+      if (SNITCH_CHANNELS.has(msg.channelId)) {
         forwardDiscordSnitch(msg.content);
         return;
       }
       if (msg.author.bot || !msg.guild) return;
-      if (DISCORD.terminalChannelId && msg.channelId !== DISCORD.terminalChannelId) return;
+      if (TERMINAL_CHANNELS.size > 0 && !TERMINAL_CHANNELS.has(msg.channelId)) return;
       if (!msg.content.startsWith("!")) return;
 
       const parts = msg.content.slice(1).trim().split(/\s+/);
@@ -417,7 +425,10 @@ if (DISCORD.botToken) {
     }
   });
 
-  bot.once("ready", () => console.log(`Discord terminal ready as ${bot.user.tag}`));
+  bot.once("ready", () => console.log(
+    `Discord bridge ready as ${bot.user.tag} across ${bot.guilds.cache.size} guild(s), ` +
+    `${TERMINAL_CHANNELS.size} terminal channel(s), ${SNITCH_CHANNELS.size} snitch channel(s)`
+  ));
   bot.login(DISCORD.botToken).catch((e) => console.error("Discord login failed:", e.message));
 }
 
