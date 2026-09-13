@@ -29,12 +29,14 @@ public abstract class PlayerNameplateMixin {
     )
     private void openintel$recolorNameplate(PlayerLikeEntity entity, PlayerEntityRenderState state,
                                             float tickProgress, CallbackInfo ci) {
-        if (state.displayName == null || state.playerName == null) return;
+        if (state.displayName == null) return;
 
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || state.id == client.player.getId()) return;
 
-        Allegiance a = OpenIntelClient.allegiances().of(state.playerName.getString());
+        // playerName is only populated for mannequins — real players render
+        // through displayName, so the name comes from the entity itself.
+        Allegiance a = OpenIntelClient.allegiances().of(entity.getName().getString());
         int rgb = a.argb & 0x00FFFFFF; // Text styles take RGB without alpha
         state.displayName = state.displayName.copy().styled(style -> style.withColor(rgb));
     }

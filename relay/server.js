@@ -52,6 +52,27 @@ const adminLog = (msg) =>
   postWebhook(CONFIG.webhooks.admin, { content: `🛠️ ${msg}`, username: "OpenIntel Admin" });
 
 const alertCooldowns = new Map(); // enemyName -> last ping ms
+const recentSnitch = new Map();   // dedupe key -> first seen ms
+
+// Semantic dedupe: the same tripper at the same coords is ONE hit, even when
+// the in-game chat line and the Discord relay post word it differently.
+function snitchDedupeKey(m) {
+  if (m.x != null && m.y != null && m.z != null)
+    return `${String(m.player ?? "?").toLowerCase()}@${m.x},${m.y},${m.z}`;
+  return String(m.message ?? "");
+}
+function dedupeSnitch(m) {
+  const key = snitchDedupeKey(m);
+  if (!key) return true;
+  const now = Date.now();
+  const last = recentSnitch.get(key) ?? 0;
+  if (now - last < 10_000) return false;
+  recentSnitch.set(key, now);
+  if (recentSnitch.size > 200) {
+    for (const [k, v] of recentSnitch) if (now - v > 60_000) recentSnitch.delete(k);
+  }
+  return true;
+}
 function enemyAlert(enemy, x, z, dim, reporter) {
   const now = Date.now();
   const last = alertCooldowns.get(lower(enemy)) ?? 0;
@@ -173,6 +194,16 @@ wss.on("connection", (ws, req) => {
       return;
     }
 
+    // Shared pings + forwarded snitch alerts: stamp the sender and fan out.
+    if (msg.type === "ping" || msg.type === "snitch") {
+      // Several clients can see the same snitch line — don't multiply it.
+      if (msg.type === "snitch" && !dedupeSnitch(msg)) return;
+      msg.from = ws.authedAs;
+      msg.t = Date.now();
+      broadcast(msg);
+      return;
+    }
+
     if (msg.type === "positions" && Array.isArray(msg.reports)) {
       const now = Date.now();
       for (const r of msg.reports.slice(0, 100)) {
@@ -237,6 +268,47 @@ app.get("/online", requireAdmin, (req, res) =>
 // Reads plain-text "!" commands from one Discord channel, so the channel works
 // like an admin terminal. Disabled unless config.discord.botToken is set.
 // Mutating commands require the configured captain role (or Discord Administrator).
+// Snitch relay channel: bot-authored JukeAlert posts get parsed and turned
+// into the same "snitch" broadcast clients forward — marker, feed line, all
+// of it. dedupeSnitch keys on player@coords so a teammate who also saw the
+// in-game alert doesn't produce a second hit.
+// "Snitch Name: Player entered snitch at (x, y, z)" — Discord relay style.
+const DISCORD_SNITCH =
+  /^\s*(?<snitch>.+?):\s*(?<player>\w{3,16})\s+entered snitch at\s*\((?<x>-?\d+)[,\s]+(?<y>-?\d+)[,\s]+(?<z>-?\d+)\s*\)/i;
+// "Player entered snitch at name [world x y z]" — in-game relay style.
+const DISCORD_SNITCH_INGAME =
+  /(?<player>\w{3,16})\s+entered snitch at\s+(?<snitch>\S+)[^\[(]*\[\s*(?<world>\S+)\s+(?<x>-?\d+)\s+(?<y>-?\d+)\s+(?<z>-?\d+)\s*\]/i;
+const DISCORD_COORDS_PAREN = /\((-?\d+)[,\s]+(-?\d+)[,\s]+(-?\d+)\s*\)/;
+
+function forwardDiscordSnitch(text) {
+  let player = null, snitch = null, world = null, x, y, z;
+  let m = text.match(DISCORD_SNITCH) ?? text.match(DISCORD_SNITCH_INGAME);
+  if (m) {
+    player = m.groups.player; snitch = m.groups.snitch; world = m.groups.world ?? null;
+    x = +m.groups.x; y = +m.groups.y; z = +m.groups.z;
+  } else {
+    if (!/snitch/i.test(text)) return;
+    const c = text.match(DISCORD_COORDS_PAREN);
+    if (!c) return;                                     // no coords → nothing to map
+    const pm = text.match(/(\w{3,16})\s+entered/i);
+    player = pm ? pm[1] : null;
+    const sm = text.match(/([^:]+):\s*\w{3,16}\s+entered/i) ?? text.match(/snitch at\s+(\S+)/i);
+    snitch = sm ? sm[1] : null;
+    x = +c[1]; y = +c[2]; z = +c[3];
+  }
+  if (snitch) snitch = snitch.replace(/^[+\s*]+|[+\s*]+$/g, "");
+  if (snitch && snitch.startsWith("(")) snitch = null;  // grabbed a coord, not a name
+  const msg = { type: "snitch", message: text, reporter: "discord", x, y, z };
+  if (player) msg.player = player;
+  if (snitch) msg.snitch = snitch;
+  if (world) msg.world = world;
+  if (!dedupeSnitch(msg)) return;
+  msg.from = "discord";
+  msg.t = Date.now();
+  broadcast(msg);
+  adminLog(`📡 Snitch hit via Discord relay: ${snitch ?? "?"} by ${player ?? "?"}`);
+}
+
 const DISCORD = CONFIG.discord ?? {};
 if (DISCORD.botToken) {
   const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
@@ -271,6 +343,11 @@ if (DISCORD.botToken) {
 
   bot.on("messageCreate", async (msg) => {
     try {
+      // Snitch relay channel gets its own lane — bot posts are the payload.
+      if (DISCORD.snitchChannelId && msg.channelId === DISCORD.snitchChannelId) {
+        forwardDiscordSnitch(msg.content);
+        return;
+      }
       if (msg.author.bot || !msg.guild) return;
       if (DISCORD.terminalChannelId && msg.channelId !== DISCORD.terminalChannelId) return;
       if (!msg.content.startsWith("!")) return;

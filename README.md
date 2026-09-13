@@ -172,6 +172,32 @@ The relay exposes a small authenticated REST API (header `x-admin-token`):
 Every admin change and every connect/auth-failure is logged to the admin
 webhook, so the admin Discord channel doubles as an audit trail.
 
+## Radar & macros
+
+The mod also carries a radar dial and the CivModern-style input macros.
+
+**Radar** — circular HUD dial. In-render players get face icons with
+`name (distance)` colored by allegiance; boats/minecarts draw as item icons;
+dropped items are optional. Relay-reported players outside your render
+distance pin to the rim as allegiance-colored dots, so the dial answers
+"which way" even at 400m out.
+
+- `R` — toggle radar (default, rebindable under the OpenIntel category)
+- `/oi radar` — options screen with a live preview (size, range, rings,
+  position, north-up/rotate, log scale, item/vehicle/relay toggles, alpha)
+
+**Macros** — toggle-on-keypress; any of: screen opening, mouse unlocking,
+hotbar slot change (scroll/number keys), or a held hotbar key disengages.
+
+| Key (default) | Macro |
+|---|---|
+| `0` | Attack macro — discrete attack presses every `attackMacroIntervalMs` (200ms ≈ 5 CPS) |
+| `-` | Hold attack |
+| `=` | Hold use |
+| `Backspace` | Ice road — snaps yaw to 45°, holds sprint+forward, alternates jump, auto-eats from main hand, optional park-at-low-hunger |
+
+Macro + ice road settings live in `config/openintel.json`.
+
 ## Fair-play notes
 
 This project exists because server admins never requested an open, equal-access
