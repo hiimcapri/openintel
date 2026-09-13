@@ -39,7 +39,10 @@ public class Tracker {
         public volatile String reporter;
         public volatile Allegiance allegiance;
 
-        RemotePlayer(String name) { this.name = name; }
+        RemotePlayer(String name) {
+            this.name = name;
+            this.allegiance = Allegiance.NEUTRAL;
+        }
     }
 
     /** A snitch hit: which snitch, who tripped it, where, when. */
@@ -324,17 +327,23 @@ public class Tracker {
             String name = o.get("name").getAsString();
             if (name.toLowerCase(Locale.ROOT).equals(self)) continue;
 
-            RemotePlayer rp = players.computeIfAbsent(name, RemotePlayer::new);
-            boolean isNew = rp.lastSeen == 0;
-            rp.x = o.get("x").getAsDouble();
-            rp.y = o.get("y").getAsDouble();
-            rp.z = o.get("z").getAsDouble();
-            rp.dimension = o.get("dim").getAsString();
-            rp.reporter = o.has("reporter") ? o.get("reporter").getAsString() : "?";
-            rp.lastSeen = now;
-            rp.allegiance = OpenIntelClient.allegiances().of(name);
+            boolean[] isNew = {false};
+            RemotePlayer rp = players.compute(name, (key, current) -> {
+                if (current == null) {
+                    current = new RemotePlayer(key);
+                    isNew[0] = true;
+                }
+                current.x = o.get("x").getAsDouble();
+                current.y = o.get("y").getAsDouble();
+                current.z = o.get("z").getAsDouble();
+                current.dimension = o.get("dim").getAsString();
+                current.reporter = o.has("reporter") ? o.get("reporter").getAsString() : "?";
+                current.allegiance = OpenIntelClient.allegiances().of(name);
+                current.lastSeen = now;
+                return current;
+            });
 
-            if (isNew && (rp.allegiance == Allegiance.ENEMY || rp.allegiance == Allegiance.FOCUS)) {
+            if (isNew[0] && (rp.allegiance == Allegiance.ENEMY || rp.allegiance == Allegiance.FOCUS)) {
                 localEnemyAlert(client, rp, now);
             }
         }
