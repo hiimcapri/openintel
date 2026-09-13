@@ -45,6 +45,9 @@ features on top of the original position/allegiance/focus core.
 - Ping-wheel-style shared pings (`/oi ping`), enable toggle + keybind.
 
 ### Event feed
+- Snitch parsing distinguishes normal presence events from interactions and
+  refreshes player markers for container, block, sanctuary, and similar events.
+- Incomplete snitch messages remain feed-only instead of creating `?` markers.
 - Teammate death/logout/enemy-in-range toasts; feed duration slider.
 
 ### Snitch intel

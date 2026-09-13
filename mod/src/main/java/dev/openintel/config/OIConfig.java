@@ -19,6 +19,9 @@ import java.nio.file.Path;
 public class OIConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("openintel.json");
+    private static final String OLD_SNITCH_PATTERN = "(?i)entered snitch|snitch at|you have entered";
+    private static final String DEFAULT_SNITCH_PATTERN = OLD_SNITCH_PATTERN
+            + "|opened container|logged in at|logged out at|damaged sanctuary|broke block|placed block";
 
     /** WebSocket URL of the relay server, e.g. ws://51.222.24.116:8765 */
     public String relayUrl = "ws://51.222.24.116:8765";
@@ -128,7 +131,7 @@ public class OIConfig {
     public boolean snitchRelay = true;
 
     /** Regex matched against incoming chat text to detect a snitch hit. */
-    public String snitchPattern = "(?i)entered snitch|snitch at|you have entered";
+    public String snitchPattern = DEFAULT_SNITCH_PATTERN;
 
     /** Seconds a snitch-hit marker stays on screen, fading linearly to zero. */
     public int snitchMarkerSeconds = 120;
@@ -208,6 +211,7 @@ public class OIConfig {
                 // The old default (4096) silently hid teammates across the map.
                 // Migrate it to unlimited; explicit non-default caps survive.
                 if (c.maxMarkerDistance == 4096) c.maxMarkerDistance = 0;
+                if (OLD_SNITCH_PATTERN.equals(c.snitchPattern)) c.snitchPattern = DEFAULT_SNITCH_PATTERN;
                 return c;
             }
         } catch (Exception ignored) {

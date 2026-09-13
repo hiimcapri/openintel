@@ -272,35 +272,30 @@ app.get("/online", requireAdmin, (req, res) =>
 // into the same "snitch" broadcast clients forward — marker, feed line, all
 // of it. dedupeSnitch keys on player@coords so a teammate who also saw the
 // in-game alert doesn't produce a second hit.
-// "Snitch Name: Player entered snitch at (x, y, z)" — Discord relay style.
-const DISCORD_SNITCH =
-  /^\s*(?<snitch>.+?):\s*(?<player>\w{3,16})\s+entered snitch at\s*\((?<x>-?\d+)[,\s]+(?<y>-?\d+)[,\s]+(?<z>-?\d+)\s*\)/i;
-// "Player entered snitch at name [world x y z]" — in-game relay style.
+const DISCORD_SNITCH_EVENT =
+  /^\s*(?<snitch>.+?):\s*(?<player>\w{3,16})\s+(?<action>entered snitch|logged (?:in|out))\s+at\s*\((?<x>-?\d+)[,\s]+(?<y>-?\d+)[,\s]+(?<z>-?\d+)\s*\)/i;
+const DISCORD_SNITCH_INTERACTION =
+  /^\s*(?<snitch>.+?):\s*(?<player>\w{3,16})\s+(?<action>(?!entered snitch\b|logged (?:in|out)\b).{2,96}?)\s+at\s*\((?<x>-?\d+)[,\s]+(?<y>-?\d+)[,\s]+(?<z>-?\d+)\s*\)/i;
 const DISCORD_SNITCH_INGAME =
-  /(?<player>\w{3,16})\s+entered snitch at\s+(?<snitch>\S+)[^\[(]*\[\s*(?<world>\S+)\s+(?<x>-?\d+)\s+(?<y>-?\d+)\s+(?<z>-?\d+)\s*\]/i;
-const DISCORD_COORDS_PAREN = /\((-?\d+)[,\s]+(-?\d+)[,\s]+(-?\d+)\s*\)/;
+  /(?<player>\w{3,16})\s+(?<action>entered snitch)\s+at\s+(?<snitch>\S+)[^\[(]*\[\s*(?<world>\S+)\s+(?<x>-?\d+)\s+(?<y>-?\d+)\s+(?<z>-?\d+)\s*\]/i;
 
 function forwardDiscordSnitch(text) {
-  let player = null, snitch = null, world = null, x, y, z;
-  let m = text.match(DISCORD_SNITCH) ?? text.match(DISCORD_SNITCH_INGAME);
-  if (m) {
-    player = m.groups.player; snitch = m.groups.snitch; world = m.groups.world ?? null;
-    x = +m.groups.x; y = +m.groups.y; z = +m.groups.z;
-  } else {
-    if (!/snitch/i.test(text)) return;
-    const c = text.match(DISCORD_COORDS_PAREN);
-    if (!c) return;                                     // no coords → nothing to map
-    const pm = text.match(/(\w{3,16})\s+entered/i);
-    player = pm ? pm[1] : null;
-    const sm = text.match(/([^:]+):\s*\w{3,16}\s+entered/i) ?? text.match(/snitch at\s+(\S+)/i);
-    snitch = sm ? sm[1] : null;
-    x = +c[1]; y = +c[2]; z = +c[3];
+  let eventKind = "event";
+  let m = text.match(DISCORD_SNITCH_EVENT) ?? text.match(DISCORD_SNITCH_INGAME);
+  if (!m) {
+    m = text.match(DISCORD_SNITCH_INTERACTION);
+    eventKind = "interaction";
   }
-  if (snitch) snitch = snitch.replace(/^[+\s*]+|[+\s*]+$/g, "");
-  if (snitch && snitch.startsWith("(")) snitch = null;  // grabbed a coord, not a name
-  const msg = { type: "snitch", message: text, reporter: "discord", x, y, z };
-  if (player) msg.player = player;
-  if (snitch) msg.snitch = snitch;
+  if (!m) return;
+  const player = m.groups.player;
+  let snitch = m.groups.snitch.replace(/^[+\s*]+|[+\s*]+$/g, "");
+  const world = m.groups.world ?? null;
+  const x = +m.groups.x, y = +m.groups.y, z = +m.groups.z;
+  if (!player || !snitch) return;
+  const msg = {
+    type: "snitch", message: text, reporter: "discord", player, snitch,
+    action: m.groups.action.trim(), eventKind, x, y, z,
+  };
   if (world) msg.world = world;
   if (!dedupeSnitch(msg)) return;
   msg.from = "discord";

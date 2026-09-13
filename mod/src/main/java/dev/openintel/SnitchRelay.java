@@ -30,9 +30,13 @@ public final class SnitchRelay {
 
     private static final Pattern PLAYER =
             Pattern.compile("\\*\\s*(?<player>[A-Za-z0-9_]{3,16})");
-    // "Snitch Name: Player entered snitch at ..." — relay-channel style lines.
-    private static final Pattern NAMED_SNITCH = Pattern.compile(
-            "(?<snitch>[^:\\[\\(]{2,64}?)\\s*:\\s*(?<player>[A-Za-z0-9_]{3,16})\\s+entered snitch",
+    private static final Pattern NAMED_EVENT = Pattern.compile(
+            "(?<snitch>[^:]{2,64}?)\\s*:\\s*(?<player>[A-Za-z0-9_]{3,16})\\s+" +
+                    "(?<action>entered snitch|logged (?:in|out))\\s+at\\b",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern NAMED_INTERACTION = Pattern.compile(
+            "(?<snitch>[^:]{2,64}?)\\s*:\\s*(?<player>[A-Za-z0-9_]{3,16})\\s+" +
+                    "(?<action>(?!entered snitch\\b|logged (?:in|out)\\b).{2,96}?)\\s+at\\b",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern SNITCH =
             Pattern.compile("(?i)entered snitch at\\s+(?<snitch>\\S+)");
@@ -78,13 +82,19 @@ public final class SnitchRelay {
         int x = 0, y = 0, z = 0;
         boolean hasCoords = false;
 
-        // "Snitch Name: Player entered ..." gives us both fields at once.
-        Matcher nm = NAMED_SNITCH.matcher(text);
-        if (nm.find()) {
+        Matcher nm = NAMED_EVENT.matcher(text);
+        String eventKind = "event";
+        if (!nm.find()) {
+            nm = NAMED_INTERACTION.matcher(text);
+            eventKind = "interaction";
+        }
+        if (nm.find(0)) {
             player = nm.group("player");
             snitchName = nm.group("snitch").replaceAll("^[+\\s*]+|[+\\s*]+$", "");
             msg.addProperty("player", player);
             msg.addProperty("snitch", snitchName);
+            msg.addProperty("action", nm.group("action").trim());
+            msg.addProperty("eventKind", eventKind);
         }
         if (player == null) {
             Matcher pm = PLAYER.matcher(text);
@@ -137,12 +147,10 @@ public final class SnitchRelay {
 
         // Local marker now — the relay echo refreshes the same hit later, and
         // this still works if the relay is unreachable.
-        if (hasCoords) {
+        if (hasCoords && snitchName != null && player != null) {
             String me = client.player != null ? client.player.getGameProfile().name() : "?";
             OpenIntelClient.tracker().addSnitchHit(
-                    snitchName != null ? snitchName : "snitch",
-                    player != null ? player : "?",
-                    me, x, y, z, world, System.currentTimeMillis());
+                    snitchName, player, me, x, y, z, world, System.currentTimeMillis());
         }
 
         OpenIntelClient.relay().send(msg);
