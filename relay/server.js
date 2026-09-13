@@ -73,7 +73,9 @@ function loadJson(name, fallback) {
 function saveJson(name, data) {
   const destination = filePath(name);
   const temporary = `${destination}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify(data, null, 2));
+  const mode = name === "users.json" ? 0o600 : 0o640;
+  fs.writeFileSync(temporary, JSON.stringify(data, null, 2), { mode });
+  fs.chmodSync(temporary, mode);
   fs.renameSync(temporary, destination);
 }
 
@@ -109,7 +111,7 @@ function audit({ actor, tier, action, target = null, source = {}, before = null,
     source: { guild: source.guild ?? null, channel: source.channel ?? null },
     before, after, success: Boolean(success), reason,
   });
-  try { fs.appendFileSync(filePath("audit.jsonl"), `${JSON.stringify(entry)}\n`); }
+  try { fs.appendFileSync(filePath("audit.jsonl"), `${JSON.stringify(entry)}\n`, { mode: 0o600 }); }
   catch (e) { console.error("audit write failed:", e.message); }
   recentAudit.unshift(entry);
   if (recentAudit.length > 20) recentAudit.length = 20;
