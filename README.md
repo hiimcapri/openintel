@@ -1,42 +1,106 @@
 # OpenIntel
 
-Players running the mod relay what they see (themselves + every player in their
-render distance) to a small relay server. Everyone approved on that relay sees
-shared markers rendered on their HUD:
+OpenIntel is a Fabric intelligence client for Minecraft 1.21.11. Approved
+players continuously share themselves and everyone in their render distance
+through a small relay server. The client turns that shared state into a modern,
+configurable HUD without adding a minimap, waypoint database, or navigation
+system.
 
-- **Bright purple ◆** — focus target (marked by a Captain via `/oi focus`)
-- **Green** — friends (other approved users of the mod)
-- **Soft purple** — allies
-- **Red** — enemies
-- **Grey** — neutral / unknown
+## Features
 
-Targets on screen get a chevron + name pinned at their exact screen position.
-Targets off screen are stacked by name on the left or right screen edge,
-whichever side they fall off on, nearest first. Vanilla nameplates of players
-in render distance are also tinted to match (mixin).
+### Shared player intelligence
+
+- **Live player markers** use dynamic-FOV-safe projection and hand off to the
+  real entity position when a player enters render distance.
+- **Four-way edge stacks** place off-screen targets on the top, bottom, left,
+  or right edge, sorted by distance. Each edge has an independent draggable
+  anchor.
+- **Allegiance colors** are consistent across markers, nameplates, radar, and
+  the relay roster: green friends, soft-purple allies, red enemies, grey
+  neutral players, and a bright-purple diamond for focus targets.
+- **Tinted nameplates**, configurable relay opacity, optional visible-player
+  markers, unlimited or capped marker range, and stale-intel fading.
+- **Focus targets** can be managed in-game by Captains or through the Discord
+  terminal and update live for every connected client.
+
+### Snitch intelligence
+
+- In-game and Discord JukeAlert messages enter the same marker pipeline.
+- Normal events (`entered snitch`, login/logout) and interactions (container,
+  block, sanctuary, and other coordinate-bearing actions) are parsed
+  separately and refresh the correct player's location.
+- One active marker is kept per player, so movement through several snitches
+  updates the marker instead of leaving a ghost trail.
+- Markers are dimension-aware, show snitch name, player, age, and distance,
+  and have configurable color, lifetime, range, and fade.
+- Semantically identical alerts are deduplicated across in-game and Discord
+  sources. Approved relay users do not receive redundant snitch markers when
+  their live position is already available.
+
+### Radar and shared pings
+
+- Anti-aliased circular radar with player heads, allegiance colors, distance
+  labels, compass points, configurable range rings, rotating or north-up
+  orientation, and optional logarithmic distance compression.
+- Optional dropped-item, boat, and minecart icons.
+- Relay players outside render distance and shared pings pin to the radar rim,
+  preserving their bearing at any distance.
+- Hold the configurable ping key to open a radial wheel and broadcast a
+  temporary, dimension-aware location marker.
+
+### Movable HUD
+
+- `/oi hud` opens a visual editor: click and drag the radar, relay roster,
+  event feed, armor HUD, potion HUD, and all four marker anchors.
+- Elements snap to screen edges and center guides; positions persist in
+  `config/openintel.json` and can be reset from the editor.
+- **Relay roster** shows connected/tracked players, allegiance, dimension,
+  distance, and freshness.
+- **Event feed** reports relay presence, teammate deaths, enemy sightings,
+  pings, and snitch activity without blocking chat.
+- **Armor HUD** shows equipped pieces with remaining durability percentages.
+- **Potion HUD** shows active effect names, amplifier levels, and timers.
+
+### Macros and configuration
+
+- Attack, hold-attack, hold-use, and ice-road macros with safe disengagement
+  when screens open, the mouse unlocks, or the selected hotbar slot changes.
+- Ice-road automation supports 45-degree yaw/pitch snapping, sprint/jump
+  movement, auto-eating, and optional low-hunger parking.
+- `/oi settings` provides one unified screen for relay credentials, rendering,
+  HUD toggles, marker/snitch behavior, presence, pings, colors, keybinds, radar,
+  and macro configuration.
 
 ## Screenshots
 
-An enemy marker pinned on screen, with a friend stacked on the left edge
-(off-FOV, 326m away on that side):
+![OpenIntel gameplay overview with radar, markers, roster and status HUDs](docs/openintel-overview.png)
 
-![Enemy marker with off-screen friend on the left edge](docs/marker-enemy.png)
+<table>
+  <tr>
+    <td align="center"><img src="docs/radar-modern.png" alt="Circular player radar"/><br/><strong>Radar</strong></td>
+    <td align="center"><img src="docs/presence-panel.png" alt="Relay presence panel"/><br/><strong>Relay roster</strong></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/relay-marker.png" alt="Live relay player marker"/><br/><strong>Live player marker</strong></td>
+    <td align="center"><img src="docs/snitch-marker.png" alt="Snitch hit marker with age and distance"/><br/><strong>Snitch intel</strong></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/armor-hud.png" alt="Armor durability HUD"/><br/><strong>Armor HUD</strong></td>
+    <td align="center"><img src="docs/potion-hud.png" alt="Potion effect HUD"/><br/><strong>Potion HUD</strong></td>
+  </tr>
+</table>
 
-Off-screen players stack on whichever edge they fall off, nearest first:
+Off-screen contacts remain readable on independently positioned edge stacks:
 
-![Right-edge stack of off-screen players](docs/edge-stack.png)
+![Modern edge marker](docs/edge-marker-modern.png)
 
-A focus target (`/oi focus` / `!focus`) renders bright purple with a ◆ for
-everyone on the relay:
+Focus and enemy-alert behavior is shared across the relay:
 
 ![Focus target marker in purple next to a friend marker](docs/focus-target.png)
 
-First sighting of an enemy raises a local chat + sound alert (and one
-deduplicated Discord ping via the relay):
-
 ![Enemy spotted chat alert](docs/enemy-alert-chat.png)
 
-### Roles & focus targets
+## Relay roles and focus targets
 
 Users in `users.json` can have `"role": "member"` (default), `"captain"`, or
 `"admin"`. Captains and admins can mark priority targets in-game:
@@ -49,6 +113,8 @@ Users in `users.json` can have `"role": "member"` (default), `"captain"`, or
 
 Focus state lives in `allegiances.json`, is pushed live to every client, and
 each change is announced in both the alerts and admin Discord channels.
+
+## How it works
 
 ```
 ┌────────────┐   WebSocket    ┌───────────────┐   Webhook POST   ┌──────────────────┐
@@ -69,7 +135,7 @@ each change is announced in both the alerts and admin Discord channels.
 
 ## Repo layout
 
-- `mod/` — Fabric client mod (Java 21, Minecraft 1.21.1, Fabric API)
+- `mod/` — Fabric client mod (Java 21, Minecraft 1.21.11, Fabric API)
 - `relay/` — Node.js relay server + webhook integration
 
 ## Quick start
@@ -172,31 +238,32 @@ The relay exposes a small authenticated REST API (header `x-admin-token`):
 Every admin change and every connect/auth-failure is logged to the admin
 webhook, so the admin Discord channel doubles as an audit trail.
 
-## Radar & macros
+## Client commands and controls
 
-The mod also carries a radar dial and the CivModern-style input macros.
-
-**Radar** — circular HUD dial. In-render players get face icons with
-`name (distance)` colored by allegiance; boats/minecarts draw as item icons;
-dropped items are optional. Relay-reported players outside your render
-distance pin to the rim as allegiance-colored dots, so the dial answers
-"which way" even at 400m out.
-
-- `R` — toggle radar (default, rebindable under the OpenIntel category)
-- `/oi radar` — options screen with a live preview (size, range, rings,
-  position, north-up/rotate, log scale, item/vehicle/relay toggles, alpha)
-
-**Macros** — toggle-on-keypress; any of: screen opening, mouse unlocking,
-hotbar slot change (scroll/number keys), or a held hotbar key disengages.
-
-| Key (default) | Macro |
+| Command | Purpose |
 |---|---|
-| `0` | Attack macro — discrete attack presses every `attackMacroIntervalMs` (200ms ≈ 5 CPS) |
-| `-` | Hold attack |
-| `=` | Hold use |
-| `Backspace` | Ice road — snaps yaw to 45°, holds sprint+forward, alternates jump, auto-eats from main hand, optional park-at-low-hunger |
+| `/oi settings` | Unified relay, rendering, HUD, ping, event, color, and keybind settings |
+| `/oi hud` | Visual drag-and-drop HUD editor |
+| `/oi radar` | Radar size, range, orientation, entity, icon, text, and color settings |
+| `/oi macros` | Attack and ice-road macro settings |
+| `/oi ping` | Open the shared ping wheel without holding its keybind |
+| `/oi status` | Show relay connection status |
+| `/oi reconnect` | Reconnect after changing relay credentials |
+| `/oi url <url>` | Set the relay WebSocket URL |
+| `/oi token <token>` | Set the personal relay token |
+| `/oi focus <player>` | Captain-only priority target |
+| `/oi unfocus <player>` | Remove a priority target |
 
-Macro + ice road settings live in `config/openintel.json`.
+All controls are rebindable under the OpenIntel keybind category.
+
+| Default key | Action |
+|---|---|
+| `R` | Toggle radar |
+| `G` | Hold for the shared ping wheel |
+| `0` | Toggle timed attack presses |
+| `-` | Toggle hold attack |
+| `=` | Toggle hold use |
+| `Backspace` | Toggle ice-road movement |
 
 ## Fair-play notes
 
