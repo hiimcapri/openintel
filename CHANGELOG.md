@@ -49,6 +49,9 @@ features on top of the original position/allegiance/focus core.
 - Ping-wheel-style shared pings (`/oi ping`), enable toggle + keybind.
 
 ### Event feed
+- One Discord bot can ingest multiple terminal and snitch channels across
+  multiple Discord servers, with global semantic deduplication across all
+  Discord and in-game sources.
 - Snitch parsing distinguishes normal presence events from interactions and
   refreshes player markers for container, block, sanctuary, and similar events.
 - Incomplete snitch messages remain feed-only instead of creating `?` markers.
