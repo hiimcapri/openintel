@@ -4,8 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.openintel.OpenIntelClient;
-import dev.openintel.allegiance.AllegianceManager;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
+import dev.openintel.ping.PingManager;
+import dev.openintel.render.EventFeed;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.sound.SoundEvents;
@@ -41,12 +42,42 @@ public class Tracker {
         RemotePlayer(String name) { this.name = name; }
     }
 
+    /** A snitch hit: which snitch, who tripped it, where, when. */
+    public static final class SnitchHit {
+        public final String snitch, player, reporter, dimension;
+        public final double x, y, z;
+        public final long t;
+
+        SnitchHit(String snitch, String player, String reporter,
+                  double x, double y, double z, String dimension, long t) {
+            this.snitch = snitch;
+            this.player = player;
+            this.reporter = reporter;
+            this.x = x; this.y = y; this.z = z;
+            this.dimension = dimension;
+            this.t = t;
+        }
+    }
+
     private final Map<String, RemotePlayer> players = new ConcurrentHashMap<>();
+    private final Map<String, SnitchHit> snitchHits = new ConcurrentHashMap<>();
+    private java.util.Set<String> knownUsers = java.util.Set.of();
     private long lastReport = 0;
     private long lastAlertSweep = 0;
 
     public Iterable<RemotePlayer> all() {
         return players.values();
+    }
+
+    public Iterable<SnitchHit> snitchHits() {
+        return snitchHits.values();
+    }
+
+    /** Drop all intel (called on disconnect). */
+    public void clear() {
+        players.clear();
+        snitchHits.clear();
+        knownUsers = java.util.Set.of();
     }
 
     // ------------------------------------------------------------------ //
@@ -57,8 +88,17 @@ public class Tracker {
         var cfg = OpenIntelClient.config();
         long now = System.currentTimeMillis();
 
-        // Expire stale markers.
-        players.values().removeIf(p -> now - p.lastSeen > cfg.staleAfterMs);
+        // Expire stale markers — a friendly going dark is feed-worthy.
+        players.values().removeIf(p -> {
+            if (now - p.lastSeen <= cfg.staleAfterMs) return false;
+            if (p.allegiance == Allegiance.FRIEND || p.allegiance == Allegiance.ALLY
+                    || p.allegiance == Allegiance.FOCUS) {
+                EventFeed.add(p.name + " went dark", 0xFFAAAAAA);
+            }
+            return true;
+        });
+        // Snitch-hit markers live on their own 2-minute clock.
+        snitchHits.values().removeIf(h -> now - h.t > cfg.snitchMarkerSeconds * 1000L);
 
         if (client.player == null || client.world == null) return;
         if (!OpenIntelClient.relay().isConnected()) return;
@@ -103,6 +143,8 @@ public class Tracker {
         switch (type) {
             case "welcome", "allegiances" -> applyAllegiances(msg);
             case "state" -> applyState(msg, client);
+            case "ping" -> PingManager.receive(msg);
+            case "snitch" -> applySnitch(msg);
             case "notice" -> OpenIntelClient.status(msg.has("msg") ? msg.get("msg").getAsString() : "");
             case "deny" -> OpenIntelClient.status("relay rejected token — ask an admin to approve you");
             default -> { }
@@ -110,13 +152,154 @@ public class Tracker {
     }
 
     private void applyAllegiances(JsonObject msg) {
+        java.util.List<String> users = names(msg.getAsJsonArray("users"));
+
+        // Relay roster diff → join/leave feed lines.
+        java.util.Set<String> now = new java.util.HashSet<>(users);
+        if (!knownUsers.isEmpty()) {
+            for (String n : now) {
+                if (!knownUsers.contains(n)) {
+                    EventFeed.add(n + " joined the relay", 0xFF55FF55);
+                }
+            }
+            for (String n : knownUsers) {
+                if (!now.contains(n)) {
+                    EventFeed.add(n + " left the relay", 0xFFFFAA00);
+                }
+            }
+        }
+        knownUsers = now;
+
         OpenIntelClient.allegiances().replaceAll(
-                names(msg.getAsJsonArray("users")),
+                users,
                 names(msg.getAsJsonArray("allies")),
                 names(msg.getAsJsonArray("enemies")),
                 names(msg.getAsJsonArray("focus")));
         // Recolor existing markers immediately.
         players.values().forEach(p -> p.allegiance = OpenIntelClient.allegiances().of(p.name));
+    }
+
+    /**
+     * A teammate's snitch alert: feed line plus a temporary marker at the
+     * hit position so it shows on markers + radar without waiting for a
+     * real position report.
+     */
+    private void applySnitch(JsonObject msg) {
+        String who = msg.has("player") ? msg.get("player").getAsString() : "?";
+        String from = msg.has("from") ? msg.get("from").getAsString()
+                : msg.has("reporter") ? msg.get("reporter").getAsString() : "?";
+
+        // Our own forward echoes back through the relay — we already fed it
+        // locally in SnitchRelay, so skip the noise but keep the marker.
+        MinecraftClient mc = MinecraftClient.getInstance();
+        boolean self = mc.player != null && mc.player.getGameProfile().name()
+                .equalsIgnoreCase(from);
+        if (!self) {
+            String text = "📡 " + who + " tripped a snitch";
+            if (msg.has("x")) {
+                text += " at " + msg.get("x").getAsInt() + ", " + msg.get("z").getAsInt();
+            }
+            text += " (" + from + ")";
+            EventFeed.add(text, 0xFFFFAA00);
+        }
+
+        if (msg.has("x") && msg.has("y") && msg.has("z")) {
+            String snitch = msg.has("snitch") ? msg.get("snitch").getAsString() : "snitch";
+            long t = msg.has("t") ? msg.get("t").getAsLong() : System.currentTimeMillis();
+
+            // A named world pins the marker to that dimension — only shown to
+            // players actually in it. No world name → guess from the snitch
+            // name ("EndSpawn" → the End), then the tripper's last-seen dim
+            // (they're AT the snitch), then the reporter's, then ours.
+            String dim = bindDim(msg.has("world") ? msg.get("world").getAsString() : null);
+            if (dim == null) dim = inferDimFromName(snitch);
+            if (dim == null) {
+                RemotePlayer tripper = players.get(who);
+                if (tripper != null) dim = tripper.dimension;
+            }
+            if (dim == null) {
+                RemotePlayer rep = players.get(from);
+                dim = rep != null ? rep.dimension : null;
+            }
+            if (dim == null && mc.world != null) {
+                dim = mc.world.getRegistryKey().getValue().toString();
+            }
+
+            // Approved relay users already stream live positions — a snitch
+            // marker on them is redundant noise.
+            if (OpenIntelClient.allegiances().of(who) == Allegiance.FRIEND) return;
+
+            // One marker per tripper — a new hit updates their location, no
+            // ghost trail through a snitch field. Unknown trippers key on the
+            // hit itself so they don't collapse onto each other.
+            snitchHits.put(who.equals("?") ? snitch + "@" + msg.get("x").getAsInt()
+                            + "," + msg.get("z").getAsInt() : who,
+                    new SnitchHit(snitch, who, from,
+                            msg.get("x").getAsDouble(), msg.get("y").getAsDouble(),
+                            msg.get("z").getAsDouble(), dim, t));
+        }
+    }
+
+    /**
+     * A snitch hit seen locally — SnitchRelay calls this directly so the
+     * marker appears instantly (and still works with the relay down). The
+     * relay echo refreshes the same map key, so no duplication.
+     */
+    public void addSnitchHit(String snitch, String player, String reporter,
+                             double x, double y, double z, String world, long t) {
+        String dim = bindDim(world);
+        if (dim == null) dim = inferDimFromName(snitch);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (dim == null && mc.world != null) {
+            dim = mc.world.getRegistryKey().getValue().toString();
+        }
+        if (OpenIntelClient.allegiances().of(player) == Allegiance.FRIEND) return;
+        snitchHits.put(player.equals("?") ? snitch + "@" + (int) x + "," + (int) z : player,
+                new SnitchHit(snitch, player, reporter, x, y, z, dim, t));
+    }
+
+    /**
+     * Dimension binding for a snitch hit. A world name pins the marker to
+     * that dimension: parseable → registry id; unparseable → the raw name
+     * (which won't equal any real dim id, so it's simply never shown).
+     * No world name → null, caller picks a fallback.
+     */
+    private static String bindDim(String world) {
+        if (world == null || world.isEmpty()) return null;
+        String n = normalizeDim(world);
+        if (n != null) return n;
+        return world.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_:]", "");
+    }
+
+    /**
+     * Guess a hit's dimension from the snitch name — "EndSpawn", "NetherHub",
+     * "Lands-End". Deliberately tight (camelCase / separators only) so names
+     * like "Endurance" or "Defend Point" don't false-positive.
+     */
+    private static String inferDimFromName(String snitch) {
+        if (snitch == null) return null;
+        if (snitch.matches("(?i)^end([_\\-\\s]|[A-Z]|$).*")
+                || snitch.matches("(?i).*[_\\-\\s]end([_\\-\\s]|$).*")) {
+            return "minecraft:the_end";
+        }
+        if (snitch.matches("(?i)^nether([_\\-\\s]|[A-Z]|$).*")
+                || snitch.matches("(?i).*[_\\-\\s]nether([_\\-\\s]|$).*")) {
+            return "minecraft:the_nether";
+        }
+        return null;
+    }
+
+    /** Bukkit world name → registry id; null if we can't map it. */
+    private static String normalizeDim(String world) {
+        if (world == null || world.isEmpty()) return null;
+        String w = world.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_:]", "");
+        if (w.contains(":")) return w;
+        return switch (w) {
+            case "world", "overworld" -> "minecraft:overworld";
+            case "world_nether", "nether", "the_nether" -> "minecraft:the_nether";
+            case "world_the_end", "end", "the_end" -> "minecraft:the_end";
+            default -> null;
+        };
     }
 
     private static java.util.List<String> names(JsonArray arr) {
