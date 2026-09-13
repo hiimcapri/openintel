@@ -425,7 +425,7 @@ if (DISCORD.botToken) {
     }
   });
 
-  bot.once("ready", () => console.log(
+  bot.once("clientReady", () => console.log(
     `Discord bridge ready as ${bot.user.tag} across ${bot.guilds.cache.size} guild(s), ` +
     `${TERMINAL_CHANNELS.size} terminal channel(s), ${SNITCH_CHANNELS.size} snitch channel(s)`
   ));
