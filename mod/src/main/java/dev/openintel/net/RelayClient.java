@@ -153,8 +153,15 @@ public class RelayClient implements WebSocket.Listener {
     @Override
     public CompletionStage<?> onClose(WebSocket ws, int statusCode, String reason) {
         partials.remove(ws);
+        boolean terminal = statusCode == 4001 || statusCode == 4003;
+        if (terminal) {
+            wantConnected = false;
+            generation.incrementAndGet();
+        }
         if (socket.compareAndSet(ws, null)) {
-            onStatus.accept("relay disconnected (" + statusCode + ") " + reason);
+            onStatus.accept(terminal
+                    ? "relay connection stopped (" + statusCode + ") " + reason
+                    : "relay disconnected (" + statusCode + ") " + reason);
         }
         return null;
     }

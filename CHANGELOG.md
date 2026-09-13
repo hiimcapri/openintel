@@ -97,6 +97,8 @@ features on top of the original position/allegiance/focus core.
   legacy client has duplicate sockets.
 - Client reconnects use generation guards so overlapping connection attempts
   and stale close callbacks cannot create or clear the wrong socket.
+- Terminal authentication failures stop client reconnect loops, while repeated
+  legacy-client rejection logs are rate-limited to prevent Discord spam.
 - Token-specific builds bake `openintel_token.txt` inside the jar — no
   recompile per user.
 - Relay server: snitch dedupe, Discord snitch-channel watch, granular Discord

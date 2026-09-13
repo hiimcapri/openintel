@@ -31,6 +31,16 @@ function pageText(label, entries, requestedPage = 1, pageSize = 20) {
   const rows = entries.slice((page - 1) * pageSize, page * pageSize);
   return `${label} — page ${page}/${pages} (${entries.length})\n${rows.length ? rows.join("\n") : "(none)"}`;
 }
+function consumeRateLimit(entries, key, now, cooldown) {
+  const previous = entries.get(key);
+  if (previous && now - previous.last < cooldown) {
+    previous.suppressed++;
+    return { allowed: false, suppressed: previous.suppressed };
+  }
+  const suppressed = previous?.suppressed ?? 0;
+  entries.set(key, { last: now, suppressed: 0 });
+  return { allowed: true, suppressed };
+}
 function runSelfTest() {
   const assert = require("assert");
   assert.equal(normalizeMinecraftServer("PLAY.CIV.PLUS:25565"), "play.civ.plus");
@@ -43,6 +53,10 @@ function runSelfTest() {
   assert(hasTier("admin", "captain"));
   assert(!hasTier("operator", "captain"));
   assert.equal(pageText("users", ["a", "b", "c"], 2, 2), "users — page 2/2 (3)\nc");
+  const limits = new Map();
+  assert(consumeRateLimit(limits, "user", 1000, 5000).allowed);
+  assert(!consumeRateLimit(limits, "user", 2000, 5000).allowed);
+  assert.equal(consumeRateLimit(limits, "user", 7000, 5000).suppressed, 1);
   const safe = safeAuditValue({ token: "test-token", nested: { botToken: "bot" } });
   assert.equal(safe.token, `sha256:${tokenFingerprint("test-token")}`);
   assert(!JSON.stringify(safe).includes("test-token"));
@@ -128,6 +142,21 @@ function audit({ actor, tier, action, target = null, source = {}, before = null,
   const outcome = entry.success ? "succeeded" : `failed${entry.reason ? `: ${entry.reason}` : ""}`;
   adminLog(`**${entry.actor}** (${entry.tier}) — \`${entry.action}\`${entry.target ? ` on **${entry.target}**` : ""} ${outcome}`);
   return entry;
+}
+
+const authRejectionLogs = new Map();
+function logAuthRejection(key, message) {
+  const decision = consumeRateLimit(authRejectionLogs, key, Date.now(),
+    CONFIG.authRejectionLogCooldownMs ?? 300_000);
+  if (!decision.allowed) return;
+  const suffix = decision.suppressed ? ` (${decision.suppressed} repeat(s) suppressed)` : "";
+  adminLog(message + suffix);
+  if (authRejectionLogs.size > 500) {
+    const cutoff = Date.now() - (CONFIG.authRejectionLogCooldownMs ?? 300_000) * 2;
+    for (const [entryKey, value] of authRejectionLogs) {
+      if (value.last < cutoff) authRejectionLogs.delete(entryKey);
+    }
+  }
 }
 
 const alertCooldowns = new Map(); // enemyName -> last ping ms
@@ -282,14 +311,15 @@ wss.on("connection", (ws, req) => {
       const user = userByToken(msg.token);
       if (!user) {
         ws.send(JSON.stringify({ type: "deny", reason: "bad_token" }));
-        adminLog(`❌ Auth failure from \`${ip}\``);
-        ws.close();
+        logAuthRejection(`token:${ip}`, `❌ Auth failure from \`${ip}\``);
+        ws.close(4001, "bad token");
         return;
       }
       const minecraftServer = normalizeMinecraftServer(msg.minecraftServer);
       if (minecraftServer !== MINECRAFT_SERVER) {
         ws.send(JSON.stringify({ type: "deny", reason: "wrong_server", expectedServer: MINECRAFT_SERVER }));
-        adminLog(`❌ **${user.name}** rejected from Minecraft server \`${minecraftServer || "missing"}\``);
+        logAuthRejection(`server:${lower(user.name)}:${minecraftServer || "missing"}`,
+          `❌ **${user.name}** rejected from Minecraft server \`${minecraftServer || "missing"}\``);
         ws.close(4003, "wrong Minecraft server");
         return;
       }
