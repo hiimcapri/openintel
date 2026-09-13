@@ -5,6 +5,7 @@
   "broadcastIntervalMs": 250,
   "staleMs": 10000,
   "alertCooldownMs": 300000,
+  "authRejectionLogCooldownMs": 300000,
   "discord": {
     "botToken": "",
     "terminalChannelIds": [],
