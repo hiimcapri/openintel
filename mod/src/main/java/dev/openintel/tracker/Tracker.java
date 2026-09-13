@@ -195,7 +195,8 @@ public class Tracker {
         boolean self = mc.player != null && mc.player.getGameProfile().name()
                 .equalsIgnoreCase(from);
         if (!self) {
-            String text = "📡 " + who + " tripped a snitch";
+            String action = msg.has("action") ? msg.get("action").getAsString() : "tripped a snitch";
+            String text = "📡 " + who + " " + action;
             if (msg.has("x")) {
                 text += " at " + msg.get("x").getAsInt() + ", " + msg.get("z").getAsInt();
             }
@@ -203,8 +204,10 @@ public class Tracker {
             EventFeed.add(text, 0xFFFFAA00);
         }
 
-        if (msg.has("x") && msg.has("y") && msg.has("z")) {
-            String snitch = msg.has("snitch") ? msg.get("snitch").getAsString() : "snitch";
+        if (msg.has("x") && msg.has("y") && msg.has("z")
+                && msg.has("player") && msg.has("snitch")) {
+            String snitch = msg.get("snitch").getAsString();
+            if (who.isBlank() || who.equals("?") || snitch.isBlank()) return;
             long t = msg.has("t") ? msg.get("t").getAsLong() : System.currentTimeMillis();
 
             // A named world pins the marker to that dimension — only shown to
