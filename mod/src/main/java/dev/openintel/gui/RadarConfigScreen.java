@@ -51,14 +51,8 @@ public class RadarConfigScreen extends GameOptionsScreen {
                         "%", v -> cfg.radarTextSize = v / 100f)
         );
 
-        body.addHeader(Text.literal("Position & colors"));
+        body.addHeader(Text.literal("Colors"));
         body.addAll(
-                slider("options.openintel.radar.x", 0,
-                        Math.max(0, client.getWindow().getScaledWidth() - cfg.radarSize * 2),
-                        cfg.radarX, " px", v -> cfg.radarX = v),
-                slider("options.openintel.radar.y", 0,
-                        Math.max(0, client.getWindow().getScaledHeight() - cfg.radarSize * 2),
-                        cfg.radarY, " px", v -> cfg.radarY = v),
                 alphaSlider("options.openintel.radar.bg_alpha", cfg.radarBgColor,
                         v -> cfg.radarBgColor = v),
                 alphaSlider("options.openintel.radar.fg_alpha", cfg.radarFgColor,
