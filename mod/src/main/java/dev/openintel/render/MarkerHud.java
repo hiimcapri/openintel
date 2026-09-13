@@ -89,8 +89,9 @@ public final class MarkerHud {
                 alpha = opacity * staleFade(cfg, now, p.lastSeen);
             }
             if (alpha < 0.03f) continue;
-            int color = scaleAlpha(p.allegiance.argb, alpha);
-            targets.add(new Target(p.name, color, p.allegiance == Allegiance.FOCUS ? 1 : 0,
+            Allegiance allegiance = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
+            int color = scaleAlpha(allegiance.argb, alpha);
+            targets.add(new Target(p.name, color, allegiance == Allegiance.FOCUS ? 1 : 0,
                     tx, ty, tz));
         }
         for (PingManager.Ping ping : PingManager.active()) {

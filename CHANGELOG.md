@@ -21,6 +21,8 @@ features on top of the original position/allegiance/focus core.
   lerped position; relay coords are only a fallback.
 - Nearby projected name labels use collision-aware vertical stacking while
   their marker chevrons remain anchored to the players' exact positions.
+- Relay player snapshots are published atomically, preventing render crashes
+  when a newly tracked player arrives during a HUD frame.
 - Dynamic-FOV-safe projection via `GameRenderer.project()` — sprint/zoom no
   longer shifts markers.
 - Allegiance-tinted vanilla nameplates; relay nameplate + chevron overlay can
