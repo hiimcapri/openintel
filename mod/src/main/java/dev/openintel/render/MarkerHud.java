@@ -133,6 +133,7 @@ public final class MarkerHud {
         List<Shape> shapes = new ArrayList<>();
         List<Arrow> arrows = new ArrayList<>();
         List<Glyph> glyphs = new ArrayList<>();
+        List<Label> projectedLabels = new ArrayList<>();
         List<Label> labels = new ArrayList<>();
         List<EdgeEntry> left = new ArrayList<>(), right = new ArrayList<>();
         List<EdgeEntry> top = new ArrayList<>(), bottom = new ArrayList<>();
@@ -168,10 +169,10 @@ public final class MarkerHud {
                 if (t.kind == 2) {
                     // Snitch: ⚠ glyph floats above the name line.
                     glyphs.add(new Glyph(sx, sy - 4f, "⚠", t.color));
-                    labels.add(new Label(sx, sy + 5f, text, t.color));
+                    projectedLabels.add(new Label(sx, sy + 5f, text, t.color));
                 } else {
                     shapes.add(new Shape(sx, sy, t.color, t.kind));
-                    labels.add(new Label(sx, sy - 20, text, t.color));
+                    projectedLabels.add(new Label(sx, sy - 20, text, t.color));
                 }
                 continue;
             }
@@ -196,6 +197,8 @@ public final class MarkerHud {
                 }
             }
         }
+
+        labels.addAll(stackProjectedLabels(client, projectedLabels, h));
 
         // ---- edge stacks ----------------------------------------------------
         // Anchors are configurable so the lists can be parked clear of other
@@ -239,6 +242,47 @@ public final class MarkerHud {
     }
 
     // ------------------------------------------------------ collection ----
+
+    private static List<Label> stackProjectedLabels(MinecraftClient client,
+                                                    List<Label> source, int screenHeight) {
+        source.sort(Comparator.comparing((Label l) -> l.text)
+                .thenComparingDouble(l -> l.x));
+        List<Label> placed = new ArrayList<>();
+        int lineH = client.textRenderer.fontHeight + 2;
+        float maxY = screenHeight - client.textRenderer.fontHeight - 2;
+
+        for (Label label : source) {
+            Label chosen = null;
+            for (int step = 0; step <= source.size() * 2; step++) {
+                int level = step == 0 ? 0 : (step + 1) / 2;
+                if (step > 0 && step % 2 == 0) level = -level;
+                float y = label.y + level * lineH;
+                if (y < 2 || y > maxY) continue;
+                Label candidate = new Label(label.x, y, label.text, label.color);
+                if (!overlaps(client, candidate, placed, lineH)) {
+                    chosen = candidate;
+                    break;
+                }
+            }
+            placed.add(chosen != null ? chosen : label);
+        }
+        return placed;
+    }
+
+    private static boolean overlaps(MinecraftClient client, Label candidate,
+                                    List<Label> placed, int lineH) {
+        float half = client.textRenderer.getWidth(candidate.text) / 2f;
+        float left = candidate.x - half - 2;
+        float right = candidate.x + half + 2;
+        for (Label other : placed) {
+            float otherHalf = client.textRenderer.getWidth(other.text) / 2f;
+            if (left < other.x + otherHalf + 2 && right > other.x - otherHalf - 2
+                    && candidate.y < other.y + lineH && candidate.y + lineH > other.y) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static float staleFade(OIConfig cfg, long now, long lastSeen) {
         if (!cfg.staleDecay) return 1f;
