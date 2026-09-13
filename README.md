@@ -90,6 +90,11 @@ system.
   </tr>
 </table>
 
+<p align="center">
+  <img src="docs/event-feed.png" alt="OpenIntel event feed showing relayed snitch interactions"/><br/>
+  <strong>Event feed</strong> — relayed presence, alerts, and snitch interactions without chat spam
+</p>
+
 Off-screen contacts remain readable on independently positioned edge stacks:
 
 ![Modern edge marker](docs/edge-marker-modern.png)
