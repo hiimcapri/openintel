@@ -89,27 +89,31 @@ public class OpenIntelConfigScreen extends GameOptionsScreen {
                         new SimpleOption.ValidatingIntSliderCallbacks(0, 20000, true),
                         (int) Math.min(20000, Math.max(0, cfg.maxMarkerDistance)),
                         v -> cfg.maxMarkerDistance = v),
-                slider("options.openintel.edge.row_x", 0, 100, cfg.edgeRowXPct,
-                        "%", v -> cfg.edgeRowXPct = v),
-                slider("options.openintel.edge.row_inset", 0, 60, cfg.edgeRowInset,
-                        " px", v -> cfg.edgeRowInset = v),
-                slider("options.openintel.edge.col_y", 0, 100, cfg.edgeColumnYPct,
-                        "%", v -> cfg.edgeColumnYPct = v),
-                slider("options.openintel.edge.col_inset", 0, 60, cfg.edgeColumnInset,
-                        " px", v -> cfg.edgeColumnInset = v)
+                slider("options.openintel.edge.top_x", 0, 100, cfg.edgeTopXPct,
+                        "%", v -> cfg.edgeTopXPct = v),
+                slider("options.openintel.edge.bottom_x", 0, 100, cfg.edgeBottomXPct,
+                        "%", v -> cfg.edgeBottomXPct = v),
+                slider("options.openintel.edge.left_y", 0, 100, cfg.edgeLeftYPct,
+                        "%", v -> cfg.edgeLeftYPct = v),
+                slider("options.openintel.edge.right_y", 0, 100, cfg.edgeRightYPct,
+                        "%", v -> cfg.edgeRightYPct = v)
         );
 
         // ------------------------------------------------------ presence
         body.addHeader(Text.literal("Presence panel"));
+        body.addWidgetEntry(ButtonWidget.builder(Text.literal("Edit HUD layout…"), b ->
+                client.setScreen(new HudEditorScreen(this))).build(), null);
         body.addAll(
                 bool("options.openintel.presence.enabled", cfg.presenceEnabled,
                         v -> cfg.presenceEnabled = v),
                 bool("options.openintel.presence.all_dims", cfg.presenceShowAllDims,
                         v -> cfg.presenceShowAllDims = v),
-                slider("options.openintel.presence.y", 0, 400, cfg.presenceY,
-                        " px", v -> cfg.presenceY = v),
                 slider("options.openintel.presence.rows", 4, 24, cfg.presenceMaxRows,
-                        "", v -> cfg.presenceMaxRows = v)
+                        "", v -> cfg.presenceMaxRows = v),
+                bool("options.openintel.armor.enabled", cfg.armorHudEnabled,
+                        v -> cfg.armorHudEnabled = v),
+                bool("options.openintel.potions.enabled", cfg.potionHudEnabled,
+                        v -> cfg.potionHudEnabled = v)
         );
 
         // ------------------------------------------------------ pings
