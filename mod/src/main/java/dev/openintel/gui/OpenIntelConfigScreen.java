@@ -53,6 +53,14 @@ public class OpenIntelConfigScreen extends GameOptionsScreen {
         url.setChangedListener(s -> cfg.relayUrl = s.trim());
         body.addWidgetEntry(url, null);
 
+        TextFieldWidget server = new TextFieldWidget(client.textRenderer, 0, 0, 300, 20,
+                Text.literal("Minecraft server IP"));
+        server.setMaxLength(255);
+        server.setText(cfg.minecraftServer);
+        server.setPlaceholder(Text.literal("play.example.net"));
+        server.setChangedListener(s -> cfg.minecraftServer = s.trim());
+        body.addWidgetEntry(server, null);
+
         TextFieldWidget token = new TextFieldWidget(client.textRenderer, 0, 0, 300, 20,
                 Text.literal("Token"));
         token.setMaxLength(256);
@@ -63,9 +71,7 @@ public class OpenIntelConfigScreen extends GameOptionsScreen {
 
         body.addWidgetEntry(ButtonWidget.builder(Text.literal("Reconnect"), b -> {
                     OpenIntelClient.config().save();
-                    OpenIntelClient.relay().disconnect();
-                    OpenIntelClient.relay().connect(cfg.relayUrl, cfg.token);
-                    OpenIntelClient.status("reconnecting…");
+                    OpenIntelClient.reconnectRelay();
                 }).build(), null);
 
         // ------------------------------------------------------ relay rendering

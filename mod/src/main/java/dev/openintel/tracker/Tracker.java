@@ -153,7 +153,15 @@ public class Tracker {
                 OpenIntelClient.status(text);
                 if (text.startsWith("[Broadcast]")) EventFeed.add(text, 0xFFFFAA00);
             }
-            case "deny" -> OpenIntelClient.status("relay rejected token — ask an admin to approve you");
+            case "deny" -> {
+                String reason = msg.has("reason") ? msg.get("reason").getAsString() : "bad_token";
+                if (reason.equals("wrong_server")) {
+                    String expected = msg.has("expectedServer") ? msg.get("expectedServer").getAsString() : "configured server";
+                    OpenIntelClient.status("relay rejected this Minecraft server — expected " + expected);
+                } else {
+                    OpenIntelClient.status("relay rejected token — ask an admin to approve you");
+                }
+            }
             default -> { }
         }
     }

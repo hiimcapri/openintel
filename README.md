@@ -145,6 +145,9 @@ each change is announced in both the alerts and admin Discord channels.
 - **Cooldowns** — an enemy standing on your snitch line doesn't spam the channel.
 - **Central auth** — approved-user list lives in one place (`users.json`),
   not baked into the mod, so admins control access without rebuilding.
+- **Server binding** — clients only connect while playing the selected
+  multiplayer server, and the relay independently rejects mismatched or
+  missing Minecraft-server identities during authentication.
 
 
 ## Repo layout
@@ -170,9 +173,10 @@ cd mod
 ./gradlew build       # jar lands in build/libs/
 ```
 Drop the jar in `.minecraft/mods` alongside Fabric API. On first launch the
-mod writes `config/openintel.json` — set `relayUrl` (e.g.
-`ws://your.server:8765`) and your personal `token`, then `/oi reconnect`
-or relaunch.
+mod writes `config/openintel.json` — set `relayUrl` (for example,
+`ws://your.server:8765`), `minecraftServer` (the allowed multiplayer address),
+and your personal `token`, then join that Minecraft server. These fields are
+also available under `/oi settings`.
 
 ### Discord setup
 1. Create two webhooks (Server Settings → Integrations → Webhooks):
