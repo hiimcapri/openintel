@@ -8,7 +8,9 @@
     "botToken": "",
     "terminalChannelIds": [],
     "snitchChannelIds": [],
-    "captainRoleIds": []
+    "operatorRoleIds": [],
+    "captainRoleIds": [],
+    "adminRoleIds": []
   },
   "webhooks": {
     "admin": "",

@@ -1,6 +1,7 @@
 {
   "users": [
-    { "name": "SomeCaptain", "token": "GENERATE_LONG_RANDOM_TOKEN", "role": "captain" },
-    { "name": "SomeMember", "token": "GENERATE_ANOTHER_TOKEN", "role": "member" }
+    { "name": "SomeAdmin", "token": "GENERATE_LONG_RANDOM_TOKEN", "role": "admin" },
+    { "name": "SomeOperator", "token": "GENERATE_ANOTHER_TOKEN", "role": "operator", "quarantined": false },
+    { "name": "SomeMember", "token": "GENERATE_ANOTHER_TOKEN", "role": "member", "disabled": false }
   ]
 }

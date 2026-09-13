@@ -2,6 +2,7 @@
 relay/config.json
 relay/users.json
 relay/allegiances.json
+relay/audit.jsonl
 
 # --- node ---
 relay/node_modules/
