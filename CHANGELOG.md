@@ -19,6 +19,8 @@ features on top of the original position/allegiance/focus core.
 ### Relay markers & nameplates
 - Live handoff: tracked players within render distance anchor to the entity's
   lerped position; relay coords are only a fallback.
+- Nearby projected name labels use collision-aware vertical stacking while
+  their marker chevrons remain anchored to the players' exact positions.
 - Dynamic-FOV-safe projection via `GameRenderer.project()` — sprint/zoom no
   longer shifts markers.
 - Allegiance-tinted vanilla nameplates; relay nameplate + chevron overlay can
