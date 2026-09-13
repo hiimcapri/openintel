@@ -200,15 +200,17 @@ public final class MarkerHud {
         // ---- edge stacks ----------------------------------------------------
         // Anchors are configurable so the lists can be parked clear of other
         // HUD elements (edgeRowX/edgeColumnY in %, insets in px).
-        float rowAnchorX = w * cfg.edgeRowXPct / 100f;
-        float colAnchorY = h * cfg.edgeColumnYPct / 100f;
+        float topAnchorX = w * cfg.edgeTopXPct / 100f;
+        float bottomAnchorX = w * cfg.edgeBottomXPct / 100f;
+        float leftAnchorY = h * cfg.edgeLeftYPct / 100f;
+        float rightAnchorY = h * cfg.edgeRightYPct / 100f;
 
-        queueVerticalEdge(client, left, false, cfg.edgeColumnInset, colAnchorY, arrows, labels);
-        queueVerticalEdge(client, right, true, w - cfg.edgeColumnInset, colAnchorY, arrows, labels);
+        queueVerticalEdge(client, left, false, cfg.edgeColumnInset, leftAnchorY, arrows, labels);
+        queueVerticalEdge(client, right, true, w - cfg.edgeColumnInset, rightAnchorY, arrows, labels);
         // Top/bottom: one direction chevron at the screen edge, entries
         // stacked vertically inward — like the left/right columns.
-        queueColumnEdge(client, top, 2, rowAnchorX, cfg.edgeRowInset, true, arrows, labels);
-        queueColumnEdge(client, bottom, 3, rowAnchorX, h - cfg.edgeRowInset, false, arrows, labels);
+        queueColumnEdge(client, top, 2, topAnchorX, cfg.edgeRowInset, true, arrows, labels);
+        queueColumnEdge(client, bottom, 3, bottomAnchorX, h - cfg.edgeRowInset, false, arrows, labels);
 
         // ---- one geometry pass, then text on top ----------------------------
         if (!shapes.isEmpty() || !arrows.isEmpty()) {

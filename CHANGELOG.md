@@ -34,6 +34,13 @@ features on top of the original position/allegiance/focus core.
 - Side panel listing relay members: name, allegiance, dimension, distance.
 - Stale-intel decay on blips and markers.
 
+### HUD editor
+- `/oi hud` visual editor with click-and-drag placement, center/edge snapping,
+  persistent positions, and a reset layout action.
+- Independently movable top, bottom, left, and right marker-stack anchors.
+- Movable relay roster, radar, event feed, armor HUD, and potion-effect HUD.
+- Armor durability percentages and compact potion names, levels, and timers.
+
 ### Ping wheel
 - Ping-wheel-style shared pings (`/oi ping`), enable toggle + keybind.
 

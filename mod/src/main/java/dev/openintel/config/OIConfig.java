@@ -55,12 +55,16 @@ public class OIConfig {
 
     /** Top/bottom edge list: horizontal anchor, % of screen width. */
     public int edgeRowXPct = 50;
+    public int edgeTopXPct = 50;
+    public int edgeBottomXPct = 50;
 
     /** Top/bottom edge list: arrow row inset from the screen edge, px. */
     public int edgeRowInset = 5;
 
     /** Left/right edge stack: vertical anchor, % of screen height. */
     public int edgeColumnYPct = 50;
+    public int edgeLeftYPct = 50;
+    public int edgeRightYPct = 50;
 
     /** Left/right edge stack: arrow column inset from the screen edge, px. */
     public int edgeColumnInset = 5;
@@ -109,6 +113,16 @@ public class OIConfig {
 
     /** Seconds an event feed line stays fully visible before fading. */
     public int eventFeedSeconds = 8;
+    public int eventFeedX = -1;
+    public int eventFeedY = 4;
+
+    public boolean armorHudEnabled = true;
+    public int armorHudX = 8;
+    public int armorHudY = 116;
+
+    public boolean potionHudEnabled = true;
+    public int potionHudX = -1;
+    public int potionHudY = 40;
 
     /** Forward snitch-alert chat messages to the relay for the whole team. */
     public boolean snitchRelay = true;

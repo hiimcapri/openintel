@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.openintel.allegiance.AllegianceManager;
 import dev.openintel.config.OIConfig;
+import dev.openintel.gui.HudEditorScreen;
 import dev.openintel.gui.MacroConfigScreen;
 import dev.openintel.gui.OpenIntelConfigScreen;
 import dev.openintel.gui.RadarConfigScreen;
@@ -14,8 +15,10 @@ import dev.openintel.net.RelayClient;
 import dev.openintel.ping.PingManager;
 import dev.openintel.ping.PingWheelScreen;
 import dev.openintel.radar.RadarHud;
+import dev.openintel.render.ArmorHud;
 import dev.openintel.render.EventFeed;
 import dev.openintel.render.MarkerHud;
+import dev.openintel.render.PotionHud;
 import dev.openintel.render.PresenceHud;
 import dev.openintel.tracker.Tracker;
 import net.fabricmc.api.ClientModInitializer;
@@ -111,6 +114,10 @@ public class OpenIntelClient implements ClientModInitializer {
                 (ctx, tickCounter) -> PresenceHud.render(ctx));
         HudElementRegistry.addLast(Identifier.of("openintel", "eventfeed"),
                 (ctx, tickCounter) -> EventFeed.render(ctx));
+        HudElementRegistry.addLast(Identifier.of("openintel", "armor"),
+                (ctx, tickCounter) -> ArmorHud.render(ctx));
+        HudElementRegistry.addLast(Identifier.of("openintel", "potions"),
+                (ctx, tickCounter) -> PotionHud.render(ctx));
 
         ClientEntityEvents.ENTITY_LOAD.register(EventFeed::onEntityLoad);
         ClientEntityEvents.ENTITY_UNLOAD.register(EventFeed::onEntityUnload);
@@ -178,6 +185,11 @@ public class OpenIntelClient implements ClientModInitializer {
                         .then(ClientCommandManager.literal("settings").executes(c -> {
                             MinecraftClient.getInstance().execute(() ->
                                     MinecraftClient.getInstance().setScreen(new OpenIntelConfigScreen(null)));
+                            return 1;
+                        }))
+                        .then(ClientCommandManager.literal("hud").executes(c -> {
+                            MinecraftClient.getInstance().execute(() ->
+                                    MinecraftClient.getInstance().setScreen(new HudEditorScreen(null)));
                             return 1;
                         }))
                         .then(ClientCommandManager.literal("ping").executes(c -> {

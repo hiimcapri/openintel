@@ -8,10 +8,10 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.entity.Entity;
 
-import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * Compact intel feed in the top-right corner: deaths, disconnects,
@@ -29,7 +29,7 @@ public final class EventFeed {
 
     private record Entry(String text, int color, long createdAt) { }
 
-    private static final Deque<Entry> entries = new ArrayDeque<>();
+    private static final Deque<Entry> entries = new ConcurrentLinkedDeque<>();
 
     /** Players currently in render distance, so ENTITY_LOAD doesn't re-fire on chunk refresh. */
     private static final Set<String> inRender = new HashSet<>();
@@ -109,13 +109,14 @@ public final class EventFeed {
         if (entries.isEmpty()) return;
 
         int w = ctx.getScaledWindowWidth();
-        int y = 4;
+        int y = cfg.eventFeedY;
         for (Entry e : entries) {
             long age = now - e.createdAt;
             float fade = age <= holdMs ? 1f : 1f - (age - holdMs) / (float) FADE_MS;
             int color = scaleAlpha(e.color, fade);
 
-            int x = w - 4 - client.textRenderer.getWidth(e.text);
+            int x = cfg.eventFeedX >= 0 ? cfg.eventFeedX
+                    : w + cfg.eventFeedX - client.textRenderer.getWidth(e.text) - 3;
             ctx.drawText(client.textRenderer, e.text, x, y, color, true);
             y += client.textRenderer.fontHeight + 2;
         }
