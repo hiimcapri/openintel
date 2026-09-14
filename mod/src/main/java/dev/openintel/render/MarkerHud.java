@@ -111,10 +111,7 @@ public final class MarkerHud {
             if (fade <= 0.03f) continue;
             Allegiance a = OpenIntelClient.allegiances().of(hit.player);
             if (a == Allegiance.NEUTRAL) a = Allegiance.ENEMY;   // tripped our snitch
-            // Sentinel -1 (or 0) = allegiance-colored. Opaque picks are
-            // negative ints — never use >= 0 here.
-            int argb = (cfg.snitchMarkerColor == -1 || cfg.snitchMarkerColor == 0)
-                    ? a.argb : cfg.snitchMarkerColor;
+            int argb = cfg.snitchMarkerColorAuto ? a.argb : cfg.snitchMarkerColor;
             targets.add(new Target(
                     hit.snitch + " | " + hit.player + " | " + ago(age),
                     scaleAlpha(argb, opacity * fade), 2,

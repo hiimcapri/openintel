@@ -2,6 +2,7 @@ package dev.openintel.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -142,8 +143,11 @@ public class OIConfig {
     /** Max distance (blocks) for snitch-hit markers; <= 0 = unlimited. */
     public int snitchMarkerRange = 0;
 
-    /** Snitch marker icon + label color (ARGB); -1 = allegiance-colored. */
-    public int snitchMarkerColor = -1;
+    /** Snitch marker icon + label color (ARGB). */
+    public int snitchMarkerColor = 0xFFAAAAAA;
+
+    /** Use the tripper's allegiance color instead of the configured snitch color. */
+    public boolean snitchMarkerColorAuto = false;
 
     // -------------------------------------------------------------- radar ----
 
@@ -210,11 +214,21 @@ public class OIConfig {
     public static OIConfig load() {
         try {
             if (Files.exists(PATH)) {
-                OIConfig c = GSON.fromJson(Files.readString(PATH), OIConfig.class);
+                String json = Files.readString(PATH);
+                OIConfig c = GSON.fromJson(json, OIConfig.class);
+                JsonObject raw = GSON.fromJson(json, JsonObject.class);
                 // The old default (4096) silently hid teammates across the map.
                 // Migrate it to unlimited; explicit non-default caps survive.
                 if (c.maxMarkerDistance == 4096) c.maxMarkerDistance = 0;
                 if (OLD_SNITCH_PATTERN.equals(c.snitchPattern)) c.snitchPattern = DEFAULT_SNITCH_PATTERN;
+                // Before the explicit auto-color flag existed, -1 was the default.
+                // Convert that legacy default to neutral grey; future auto-color
+                // selections are preserved through the explicit flag.
+                if (!raw.has("snitchMarkerColorAuto")) {
+                    c.snitchMarkerColorAuto = false;
+                    if (c.snitchMarkerColor == -1) c.snitchMarkerColor = 0xFFAAAAAA;
+                    c.save();
+                }
                 return c;
             }
         } catch (Exception ignored) {

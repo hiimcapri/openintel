@@ -76,6 +76,8 @@ features on top of the original position/allegiance/focus core.
 - `/oi snitchtest` places a fake hit for local verification.
 
 ### Settings
+- Snitch markers default to neutral grey, with an explicit allegiance-color
+  option for users who want dynamic tripper colors.
 - Relay sessions are bound to a configured Minecraft server address on both
   client and relay; other servers cannot publish or receive shared intel.
 - Unified `/oi settings` screen: relay URL, Minecraft server, and token fields, reconnect button,
