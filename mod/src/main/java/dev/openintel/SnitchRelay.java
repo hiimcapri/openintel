@@ -3,11 +3,17 @@ package dev.openintel;
 import com.google.gson.JsonObject;
 import dev.openintel.render.EventFeed;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,6 +51,9 @@ public final class SnitchRelay {
     private static final Pattern COORDS_PAREN = Pattern.compile(
             "\\(\\s*(?<x>-?\\d+)[,\\s]+(?<y>-?\\d+)[,\\s]+(?<z>-?\\d+)\\s*\\)");
 
+    private static final Pattern HOVER_DIMENSION = Pattern.compile(
+            "(?<![a-z0-9_:])minecraft:(?:overworld|the_nether|the_end)(?![a-z0-9_/])",
+            Pattern.CASE_INSENSITIVE);
     private static final long DEDUPE_MS = 10_000;
     private static final Map<String, Long> recent = new HashMap<>();
 
@@ -67,7 +76,8 @@ public final class SnitchRelay {
             return; // bad user regex — fail closed, don't forward everything
         }
         if (!detection.matcher(text).find()) return;
-        if (!dedupe(text)) return;
+        String hoverWorld = hoverWorld(message);
+        if (!dedupe(text + "|" + hoverWorld)) return;
 
         JsonObject msg = new JsonObject();
         msg.addProperty("type", "snitch");
@@ -145,6 +155,10 @@ public final class SnitchRelay {
             }
         }
 
+        if (hoverWorld != null) world = hoverWorld;
+        if (world == null) world = "openintel:unknown";
+        msg.addProperty("world", world);
+
         // Local marker now — the relay echo refreshes the same hit later, and
         // this still works if the relay is unreachable.
         if (hasCoords && snitchName != null && player != null) {
@@ -155,6 +169,18 @@ public final class SnitchRelay {
 
         OpenIntelClient.relay().send(msg);
         EventFeed.add("📡 Snitch: " + compact(text), 0xFFFFAA00);
+    }
+
+    static String hoverWorld(Text message) {
+        Set<String> worlds = new HashSet<>();
+        message.visit((style, content) -> {
+            if (style.getHoverEvent() instanceof HoverEvent.ShowText hover) {
+                Matcher match = HOVER_DIMENSION.matcher(hover.value().getString());
+                while (match.find()) worlds.add(match.group().toLowerCase(Locale.ROOT));
+            }
+            return Optional.empty();
+        }, Style.EMPTY);
+        return worlds.isEmpty() ? null : worlds.size() == 1 ? worlds.iterator().next() : "openintel:unknown";
     }
 
     private static boolean dedupe(String text) {
