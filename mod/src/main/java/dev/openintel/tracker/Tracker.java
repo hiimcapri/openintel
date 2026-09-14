@@ -229,19 +229,9 @@ public class Tracker {
             // players actually in it. No world name → guess from the snitch
             // name ("EndSpawn" → the End), then the tripper's last-seen dim
             // (they're AT the snitch), then the reporter's, then ours.
-            String dim = bindDim(msg.has("world") ? msg.get("world").getAsString() : null);
-            if (dim == null) dim = inferDimFromName(snitch);
-            if (dim == null) {
-                RemotePlayer tripper = players.get(who);
-                if (tripper != null) dim = tripper.dimension;
-            }
-            if (dim == null) {
-                RemotePlayer rep = players.get(from);
-                dim = rep != null ? rep.dimension : null;
-            }
-            if (dim == null && mc.world != null) {
-                dim = mc.world.getRegistryKey().getValue().toString();
-            }
+            String dim = bindDim(msg.has("world") && !msg.get("world").isJsonNull()
+                    ? msg.get("world").getAsString() : null);
+            if (dim == null || dim.equals("openintel:unknown")) return;
 
             // Approved relay users already stream live positions — a snitch
             // marker on them is redundant noise.
@@ -266,11 +256,7 @@ public class Tracker {
     public void addSnitchHit(String snitch, String player, String reporter,
                              double x, double y, double z, String world, long t) {
         String dim = bindDim(world);
-        if (dim == null) dim = inferDimFromName(snitch);
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (dim == null && mc.world != null) {
-            dim = mc.world.getRegistryKey().getValue().toString();
-        }
+        if (dim == null || dim.equals("openintel:unknown")) return;
         if (OpenIntelClient.allegiances().of(player) == Allegiance.FRIEND) return;
         snitchHits.put(player.equals("?") ? snitch + "@" + (int) x + "," + (int) z : player,
                 new SnitchHit(snitch, player, reporter, x, y, z, dim, t));
@@ -283,10 +269,10 @@ public class Tracker {
      * No world name → null, caller picks a fallback.
      */
     private static String bindDim(String world) {
-        if (world == null || world.isEmpty()) return null;
+        if (world == null || world.isBlank()) return null;
         String n = normalizeDim(world);
         if (n != null) return n;
-        return world.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_:]", "");
+        return "openintel:unknown";
     }
 
     /**
@@ -310,8 +296,8 @@ public class Tracker {
     /** Bukkit world name → registry id; null if we can't map it. */
     private static String normalizeDim(String world) {
         if (world == null || world.isEmpty()) return null;
-        String w = world.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_:]", "");
-        if (w.contains(":")) return w;
+        String w = world.trim().toLowerCase(Locale.ROOT);
+        if (w.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) return w;
         return switch (w) {
             case "world", "overworld" -> "minecraft:overworld";
             case "world_nether", "nether", "the_nether" -> "minecraft:the_nether";

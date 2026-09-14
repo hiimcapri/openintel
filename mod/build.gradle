@@ -26,3 +26,15 @@ java {
     toolchain.languageVersion = JavaLanguageVersion.of(21)
     withSourcesJar()
 }
+
+tasks.register('snitchDimensionTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.SnitchDimensionTest'
+}
+
+test {
+    failOnNoDiscoveredTests = false
+}
+
+check.dependsOn snitchDimensionTest
