@@ -1,6 +1,7 @@
 package dev.openintel.render;
 
 import dev.openintel.OpenIntelClient;
+import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.config.OIConfig;
 import net.minecraft.client.MinecraftClient;
@@ -37,6 +38,13 @@ public final class EventFeed {
     private static final Set<String> deadNotified = new HashSet<>();
 
     public static void add(String text, int argb) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            var world = client.world;
+            client.execute(() -> { if (client.world == world) add(text, argb); });
+            return;
+        }
+        ApiBridge.notification(text, argb, "feed");
         OIConfig cfg = OpenIntelClient.config();
         if (cfg == null || !cfg.eventFeedEnabled) return;
         while (entries.size() >= MAX_ENTRIES) entries.pollFirst();
@@ -44,9 +52,15 @@ public final class EventFeed {
     }
 
     public static void clear() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            client.execute(EventFeed::clear);
+            return;
+        }
         entries.clear();
         inRender.clear();
         deadNotified.clear();
+        ApiBridge.notificationsCleared();
     }
 
     // ------------------------------------------------------------ hooks ----

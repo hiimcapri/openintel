@@ -1,8 +1,9 @@
 package dev.openintel;
 
-import com.google.gson.JsonObject;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.openintel.allegiance.AllegianceManager;
+import dev.openintel.api.OpenIntelApi;
+import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.config.OIConfig;
 import dev.openintel.gui.HudEditorScreen;
 import dev.openintel.gui.MacroConfigScreen;
@@ -92,6 +93,7 @@ public class OpenIntelClient implements ClientModInitializer {
             iceRoadMacro.tick(client);
             PingManager.tick();
             EventFeed.tick(client);
+            ApiBridge.settingsChanged();
             while (radarToggleKey.wasPressed()) {
                 config.radarEnabled = !config.radarEnabled;
                 config.save();
@@ -118,6 +120,8 @@ public class OpenIntelClient implements ClientModInitializer {
                 (ctx, tickCounter) -> ArmorHud.render(ctx));
         HudElementRegistry.addLast(Identifier.of("openintel", "potions"),
                 (ctx, tickCounter) -> PotionHud.render(ctx));
+        HudElementRegistry.addLast(Identifier.of("openintel", "integrations"),
+                (ctx, tickCounter) -> OpenIntelApi.hud().renderAll(ctx, tickCounter.getTickProgress(true)));
 
         ClientEntityEvents.ENTITY_LOAD.register(EventFeed::onEntityLoad);
         ClientEntityEvents.ENTITY_UNLOAD.register(EventFeed::onEntityUnload);
@@ -132,14 +136,20 @@ public class OpenIntelClient implements ClientModInitializer {
             EventFeed.clear();
             PingManager.clear();
             tracker.clear();
+            allegiances.replaceAll(java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of());
         });
 
         registerCommands();
+        ApiBridge.initialize();
     }
 
     public static boolean reconnectRelay() {
         MinecraftClient client = MinecraftClient.getInstance();
         relay.disconnect();
+        tracker.clear();
+        PingManager.clear();
+        EventFeed.clear();
+        allegiances.replaceAll(java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of());
         String actual = currentMinecraftServer(client);
         String selected = normalizeMinecraftServer(config.minecraftServer);
         if (actual == null) {
@@ -281,15 +291,12 @@ public class OpenIntelClient implements ClientModInitializer {
     }
 
     private static void sendFocus(String action, String subject) {
-        if (!relay.isConnected()) {
-            status("not connected to relay");
-            return;
-        }
-        JsonObject msg = new JsonObject();
-        msg.addProperty("type", "focus");
-        msg.addProperty("action", action);
-        if (subject != null) msg.addProperty("subject", subject);
-        relay.send(msg);
+        var result = switch (action) {
+            case "clear" -> OpenIntelApi.allegiances().requestClearFocus();
+            case "remove" -> OpenIntelApi.allegiances().requestUnfocus(subject);
+            default -> OpenIntelApi.allegiances().requestFocus(subject);
+        };
+        result.thenAccept(value -> { if (!value.accepted()) status(value.message()); });
     }
 
     public static void status(String message) {

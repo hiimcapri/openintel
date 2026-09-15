@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.3.0 — public integration API
+
+- Added versioned `dev.openintel.api` modules for immutable player, snitch,
+  ping, allegiance, connection, and non-secret settings snapshots.
+- Added typed client-thread events, closeable subscriptions, listener failure
+  isolation, and bounded recursive dispatch.
+- Added future-based validated ping/focus requests, local notifications, and
+  settings/editor access. Submission does not bypass relay permissions.
+- Added namespaced third-party HUD registration with optional previews,
+  persistent position/visibility, drag editing, and isolated rendering.
+- Added optional `openintel:integration` entrypoint and local Maven publication.
+- Marshaled relay updates onto the client thread, guarded stale queued work
+  across reconnects, and distinguished authentication from socket connection.
+- Added API contract checks and a compiling example integration.
+- Client-captured snitches read dimension hover metadata; unknown-world
+  local/received alerts stay feed-only instead of guessing the current world.
+
 ## 1.2.1 — modernized client (unreleased)
 
 A full modernization pass on the relay client: own code, own UI, shared-intel

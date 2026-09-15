@@ -1,6 +1,7 @@
 plugins {
     id 'fabric-loom' version '1.17.7'
     id 'java'
+    id 'maven-publish'
 }
 
 version = project.mod_version
@@ -37,4 +38,19 @@ test {
     failOnNoDiscoveredTests = false
 }
 
-check.dependsOn snitchDimensionTest
+tasks.register('apiContractTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.ApiContractTest'
+}
+
+check.dependsOn snitchDimensionTest, apiContractTest
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = project.archives_base_name
+        }
+    }
+}

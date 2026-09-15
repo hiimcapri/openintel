@@ -8,6 +8,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Client-side configuration, persisted to config/openintel.json.
@@ -211,12 +213,41 @@ public class OIConfig {
     /** Park the ice road macro at <=6 hunger until you can eat again. */
     public boolean iceRoadStopAtHunger = false;
 
+    public Map<String, ExternalHudState> externalHudElements = new LinkedHashMap<>();
+
+    public static final class ExternalHudState {
+        public Integer x;
+        public Integer y;
+        public Boolean enabled = true;
+
+        public ExternalHudState() {
+        }
+
+        public ExternalHudState(int x, int y, boolean enabled) {
+            this.x = x;
+            this.y = y;
+            this.enabled = enabled;
+        }
+    }
+
+    public void repairExternalHudElements() {
+        if (externalHudElements == null) externalHudElements = new LinkedHashMap<>();
+        externalHudElements.entrySet().removeIf(entry -> entry.getKey() == null || entry.getValue() == null);
+        for (ExternalHudState state : externalHudElements.values()) {
+            if (state.x != null && state.x < 0) state.x = null;
+            if (state.y != null && state.y < 0) state.y = null;
+            if (state.enabled == null) state.enabled = true;
+        }
+    }
+
     public static OIConfig load() {
         try {
             if (Files.exists(PATH)) {
                 String json = Files.readString(PATH);
                 OIConfig c = GSON.fromJson(json, OIConfig.class);
                 JsonObject raw = GSON.fromJson(json, JsonObject.class);
+                if (c == null || raw == null) return new OIConfig();
+                c.repairExternalHudElements();
                 // The old default (4096) silently hid teammates across the map.
                 // Migrate it to unlimited; explicit non-default caps survive.
                 if (c.maxMarkerDistance == 4096) c.maxMarkerDistance = 0;
