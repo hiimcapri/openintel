@@ -145,6 +145,7 @@ public final class ApiBridge {
             }
         }
         publish(new ApiEvent.Ready(OpenIntelApi.modVersion()));
+        LOGGER.info("OpenIntel API v{} initialized", OpenIntelApi.API_VERSION);
     }
 
     public static void trackerChanged(ApiEvent.Cause cause) {

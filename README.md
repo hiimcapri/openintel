@@ -376,6 +376,8 @@ class from your ordinary client entrypoint without first checking
 version. `isReady()` indicates initialization, **not** relay authentication.
 Use `relay().snapshot().authenticated()` to distinguish a connected WebSocket
 from a relay session that has actually received its welcome message.
+API initialization and integration entrypoints run on Fabric's `CLIENT_STARTED`
+event, after Minecraft construction, not during the initial mod entrypoint.
 
 ### Read intel and subscribe
 
