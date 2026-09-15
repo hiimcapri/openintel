@@ -308,6 +308,222 @@ All controls are rebindable under the OpenIntel keybind category.
 | `=` | Toggle hold use |
 | `Backspace` | Toggle ice-road movement |
 
+## Fabric mod integration API (v1)
+
+OpenIntel **1.3.0** introduces a public Java API under `dev.openintel.api`.
+Use `OpenIntelApi` as the entry point; do not link against `tracker`, `net`,
+`render`, or `api.internal` implementation classes. This is a client-side
+Fabric API for Minecraft **1.21.11**, not the Discord/admin REST API.
+
+### Add the dependency
+
+Build and publish the token-neutral project to your local Maven repository:
+
+```powershell
+cd mod
+.\gradlew.bat build publishToMavenLocal
+```
+
+In the consuming Fabric Loom project's `build.gradle`:
+
+```groovy
+repositories {
+    mavenLocal()
+}
+
+dependencies {
+    modImplementation "dev.openintel:openintel:1.3.0"
+}
+```
+
+Use matching Minecraft/Yarn versions. OpenIntel is installed separately in
+`mods/`; do not nest a personalized/token-bearing jar in your mod. No public
+Maven repository is provisioned by this project. Alternatively, place the
+neutral remapped jar in your project's `libs/` and use
+`modImplementation files("libs/openintel-1.3.0.jar")`.
+
+For a required integration, add `"openintel": ">=1.3.0"` to your mod's
+`fabric.mod.json` `depends` object. Declare this entrypoint:
+
+```json
+"entrypoints": {
+  "openintel:integration": ["example.ExampleOpenIntelIntegration"]
+}
+```
+
+For an **optional** integration, put the version constraint in `suggests`
+instead. Keep all OpenIntel imports in the integration class: OpenIntel
+invokes this custom entrypoint only when installed. Do not instantiate that
+class from your ordinary client entrypoint without first checking
+`FabricLoader.getInstance().isModLoaded("openintel")`.
+
+### Modules
+
+| Accessor | Contract |
+|---|---|
+| `OpenIntelApi.players()` | Immutable tracked-player list and case-insensitive name lookup |
+| `OpenIntelApi.snitches()` | Immutable active, dimension-bound snitch marker snapshots |
+| `OpenIntelApi.pings()` | Active shared pings, lookup by ID, validated ping submission |
+| `OpenIntelApi.allegiances()` | Immutable allegiance snapshot, lookup, focus/unfocus/clear requests |
+| `OpenIntelApi.relay()` | Connection state, optional Minecraft server and optional reported role; no credentials |
+| `OpenIntelApi.notifications()` | Add a local event-feed notification, respecting user visibility settings |
+| `OpenIntelApi.events()` | Typed subscriptions with explicit unsubscribe handles |
+| `OpenIntelApi.screens()` | Open the settings screen or visual HUD editor |
+| `OpenIntelApi.settings()` | Read-only typed radar, marker, snitch, HUD visibility/layout, and ping settings; no secrets |
+| `OpenIntelApi.hud()` | Register independent, draggable third-party HUD elements |
+
+`OpenIntelApi.API_VERSION` is `1`; `modVersion()` reports the installed mod
+version. `isReady()` indicates initialization, **not** relay authentication.
+Use `relay().snapshot().authenticated()` to distinguish a connected WebSocket
+from a relay session that has actually received its welcome message.
+
+### Read intel and subscribe
+
+```java
+package example;
+
+import dev.openintel.api.ApiEvent;
+import dev.openintel.api.OpenIntelApi;
+import dev.openintel.api.OpenIntelIntegration;
+import dev.openintel.api.Subscription;
+
+public final class ExampleOpenIntelIntegration implements OpenIntelIntegration {
+    private Subscription playerUpdates;
+
+    @Override
+    public void onOpenIntelInitialize() {
+        playerUpdates = OpenIntelApi.events().listen(ApiEvent.PlayersChanged.class, event -> {
+            for (var player : event.current()) {
+                String dimension = player.position().dimension();
+                double x = player.position().x();
+                double z = player.position().z();
+            }
+        });
+    }
+
+    public void stopListening() {
+        if (playerUpdates != null) playerUpdates.close();
+    }
+}
+```
+
+Read at any time with `OpenIntelApi.players().list()` or
+`OpenIntelApi.players().find("PlayerName")`. Snapshots can safely be retained
+or read on worker threads; their coordinates will not change under you.
+Fetch a new snapshot to see newer intel. Before initialization, lists are
+empty and the relay state is disconnected. Positions carry dimension IDs;
+never plot coordinates in a different dimension or interpret unknown-world
+arrivals as Overworld coordinates. Timestamps are epoch milliseconds.
+
+Events include `Ready`, `PlayersChanged`, `SnitchesChanged`, `PingsChanged`,
+`AllegiancesChanged`, `ConnectionChanged`, `SnitchArrived`,
+`NotificationReceived`, `NotificationsCleared`, and `SettingsChanged`. Change events contain
+previous/current immutable lists and an update, expiry, or clear cause.
+`SnitchArrived` includes the action/raw alert and can describe a feed-only
+alert with unknown dimension; it is not a guarantee that a marker exists.
+
+Callbacks run on the Minecraft client thread. Keep them short; offload
+expensive work using snapshots, not game objects. Subscribe before the event
+you need—subscriptions do not replay history. `Subscription.close()` is
+idempotent. A listener that throws a nonfatal exception is logged once and
+automatically unsubscribed; register it again to retry. Other listeners
+continue running. Recursive event chains are capped at 256 events per dispatch
+to prevent an integration from hanging the client.
+
+Module snapshots are independently published views, not a cross-module atomic
+transaction. `SnitchArrived` represents arrivals, not globally unique incidents:
+a locally forwarded message may later appear again as a relay echo. Use marker
+snapshots or deduplicate arrivals if your integration needs incident counts.
+`settings().snapshot()` is empty before initialization and updates by the next
+client tick after a settings change. `Snapshots.Allegiance.argb()` supplies the
+matching default marker color.
+
+### Submit actions
+
+```java
+OpenIntelApi.pings().send("Regroup", 0xFF55FFFF,
+        1200, 64, -500, "minecraft:overworld")
+    .thenAccept(result -> {
+        if (!result.accepted()) {
+            System.out.println(result.status() + ": " + result.message());
+        }
+    });
+
+OpenIntelApi.allegiances().requestFocus("PlayerName");
+OpenIntelApi.allegiances().requestUnfocus("PlayerName");
+OpenIntelApi.allegiances().requestClearFocus();
+OpenIntelApi.notifications().show("Supply check complete", 0xFFAAAAAA);
+OpenIntelApi.screens().openHudEditor();
+```
+
+Actions return `CompletableFuture<ActionResult>` and marshal execution onto
+the client thread. **Do not block the client thread waiting on futures.**
+`SUBMITTED` means sent for relay processing, not server-authorized or
+acknowledged. Server-side roles, quarantine, and server binding remain in
+force. Failure statuses distinguish not-ready, wrong-server, no multiplayer
+session, not-authenticated, invalid arguments, session-changed, and execution
+failures. `SESSION_CHANGED` rejects queued actions if the game world or relay
+session changed before execution. Local notifications and screens only require
+OpenIntel initialization and also work in menus/singleplayer.
+
+The API deliberately does not expose authentication tokens, mutable config,
+raw WebSockets, arbitrary protocol messages, or Discord administrative
+operations. In-process mods are not a security sandbox, but integrations do
+not need private internals to use these supported features. Macro input
+control is not part of API v1.
+
+### Register a draggable HUD element
+
+Call this from your `OpenIntelIntegration.onOpenIntelInitialize()` method:
+
+```java
+var renderer = (dev.openintel.api.hud.HudRenderer) (context, size, tickDelta) -> {
+    var client = net.minecraft.client.MinecraftClient.getInstance();
+    context.fill(0, 0, size.width(), size.height(), 0x990C1420);
+    context.drawTextWithShadow(client.textRenderer,
+            "Contacts: " + OpenIntelApi.players().list().size(), 4, 4, 0xFFFFFFFF);
+};
+
+var handle = OpenIntelApi.hud().register(
+        net.minecraft.util.Identifier.of("examplemod", "contacts"),
+        "Example contacts", new dev.openintel.api.hud.HudSize(120, 20),
+        new dev.openintel.api.hud.HudPosition(12, 180), renderer, renderer);
+```
+
+The sixth argument is an optional **preview renderer**; omit it to show only
+a labeled box in the editor. Callbacks draw at local `(0, 0)`—OpenIntel
+already translates and clips the context to the element bounds. Use
+GUI-scaled pixels, not framebuffer pixels. Do not retain the draw context
+or reset global GUI layers. Balance your own matrix/scissor operations.
+
+The element appears automatically in `/oi hud`: drag to move, right-click
+to toggle visibility, and Reset layout restores registered defaults.
+Position and enabled preference are saved by ID in `config/openintel.json`.
+Resizing clamps the displayed element without destroying its saved position.
+Use your own mod namespace; duplicate IDs and the `openintel` namespace are
+rejected. `handle.close()` unregisters without deleting the saved layout.
+
+`elements()` and `element(id)` return immutable descriptors; `getPosition`,
+`setPosition`, `isEnabled`, `setEnabled`, `reset`, and `saveLayout` provide
+programmatic control. Registration, closing handles, and reads are
+thread-safe. **HUD setters/reset/save require the client thread** (use
+`MinecraftClient.execute`); unlike shared actions they do not return futures.
+Off-thread descriptor reads reflect the most recently synchronized config.
+A failing renderer is logged once and suppressed until reset/re-registration.
+Disabled elements can still provide previews.
+
+### Compatibility and verification
+
+Only documented public interfaces are the API contract. Breaking contract
+changes require a new API version; additive modules can be introduced
+without changing v1. This does not promise binary compatibility across
+Minecraft versions. Build output includes the remapped mod and source jar.
+
+`gradlew build` runs the standalone snitch-dimension and API contract checks
+without adding a test-library dependency. Tests cover immutable payloads,
+pre-initialization reads/actions, subscription cleanup, and listener failure
+isolation. Actual in-game rendering still requires a runtime smoke test.
+
 ## Fair-play notes
 
 This project exists because server admins never requested an open, equal-access

@@ -7,6 +7,9 @@
   "authors": ["OpenIntel contributors"],
   "license": "MIT",
   "environment": "client",
+  "custom": {
+    "openintel:api_version": 1
+  },
   "entrypoints": {
     "client": ["dev.openintel.OpenIntelClient"]
   },

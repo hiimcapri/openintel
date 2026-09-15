@@ -11,6 +11,7 @@ relay/node_modules/
 mod/.gradle/
 mod/build/
 mod/run/
+mod/logs/
 mod/.idea/
 mod/*.iml
 

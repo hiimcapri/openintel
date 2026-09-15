@@ -2,6 +2,8 @@ package dev.openintel.ping;
 
 import com.google.gson.JsonObject;
 import dev.openintel.OpenIntelClient;
+import dev.openintel.api.ApiEvent;
+import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.render.EventFeed;
 import net.minecraft.client.MinecraftClient;
 
@@ -42,17 +44,35 @@ public final class PingManager {
 
     public static Iterable<Ping> active() { return pings.values(); }
 
-    public static void clear() { pings.clear(); }
+    public static void clear() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            client.execute(PingManager::clear);
+            return;
+        }
+        pings.clear();
+        ApiBridge.pingsChanged(ApiEvent.Cause.CLEAR);
+    }
 
     /** Drop expired pings. Called from the client tick. */
     public static void tick() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            client.execute(PingManager::tick);
+            return;
+        }
         long now = System.currentTimeMillis();
-        pings.values().removeIf(p -> now > p.expiresAt);
+        if (pings.values().removeIf(p -> now > p.expiresAt)) ApiBridge.pingsChanged(ApiEvent.Cause.EXPIRED);
     }
 
     /** Local send: register immediately, then push to the relay. */
     public static void send(String label, int color, double x, double y, double z, String dim) {
         MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            var world = client.world;
+            client.execute(() -> { if (client.world == world) send(label, color, x, y, z, dim); });
+            return;
+        }
         String sender = client.player != null ? client.player.getGameProfile().name() : "?";
         String id = sender + "-" + Long.toString(System.currentTimeMillis(), 36)
                 + Integer.toString((int) x ^ (int) z, 36);
@@ -75,8 +95,35 @@ public final class PingManager {
         }
     }
 
+    public static boolean sendShared(String label, int color, double x, double y, double z, String dim) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread() || client.player == null || !OpenIntelClient.relay().isAuthenticated()) return false;
+        String sender = client.player.getGameProfile().name();
+        String id = java.util.UUID.randomUUID().toString();
+        JsonObject msg = new JsonObject();
+        msg.addProperty("type", "ping");
+        msg.addProperty("id", id);
+        msg.addProperty("label", label);
+        msg.addProperty("x", x);
+        msg.addProperty("y", y);
+        msg.addProperty("z", z);
+        msg.addProperty("dim", dim);
+        msg.addProperty("color", color);
+        if (!OpenIntelClient.relay().trySend(msg)) return false;
+        add(id, label, color, sender, x, y, z, dim);
+        EventFeed.add("You pinged \"" + label + "\" at " + (int) x + ", " + (int) z, color);
+        return true;
+    }
+
     /** Inbound ping from the relay (includes our own echo — deduped by id). */
     public static void receive(JsonObject msg) {
+        MinecraftClient executor = MinecraftClient.getInstance();
+        if (!executor.isOnThread()) {
+            JsonObject copy = msg.deepCopy();
+            var world = executor.world;
+            executor.execute(() -> { if (executor.world == world) receive(copy); });
+            return;
+        }
         if (!msg.has("id") || !msg.has("label")
                 || !msg.has("x") || !msg.has("y") || !msg.has("z")) return;
         String id = msg.get("id").getAsString();
@@ -110,6 +157,7 @@ public final class PingManager {
         p.expiresAt = System.currentTimeMillis()
                 + OpenIntelClient.config().pingSeconds * 1000L;
         pings.put(id, p);
+        ApiBridge.pingsChanged(ApiEvent.Cause.UPDATE);
         return p;
     }
 }

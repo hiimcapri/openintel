@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.openintel.OpenIntelClient;
+import dev.openintel.api.ApiEvent;
+import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.ping.PingManager;
 import dev.openintel.render.EventFeed;
@@ -78,9 +80,17 @@ public class Tracker {
 
     /** Drop all intel (called on disconnect). */
     public void clear() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            client.execute(this::clear);
+            return;
+        }
         players.clear();
         snitchHits.clear();
         knownUsers = java.util.Set.of();
+        lastReport = 0;
+        lastAlertSweep = 0;
+        ApiBridge.trackerChanged(ApiEvent.Cause.CLEAR);
     }
 
     // ------------------------------------------------------------------ //
@@ -88,11 +98,15 @@ public class Tracker {
     // ------------------------------------------------------------------ //
 
     public void tick(MinecraftClient client) {
+        if (!client.isOnThread()) {
+            client.execute(() -> tick(client));
+            return;
+        }
         var cfg = OpenIntelClient.config();
         long now = System.currentTimeMillis();
 
         // Expire stale markers — a friendly going dark is feed-worthy.
-        players.values().removeIf(p -> {
+        boolean expiredPlayers = players.values().removeIf(p -> {
             if (now - p.lastSeen <= cfg.staleAfterMs) return false;
             if (p.allegiance == Allegiance.FRIEND || p.allegiance == Allegiance.ALLY
                     || p.allegiance == Allegiance.FOCUS) {
@@ -101,7 +115,8 @@ public class Tracker {
             return true;
         });
         // Snitch-hit markers live on their own 2-minute clock.
-        snitchHits.values().removeIf(h -> now - h.t > cfg.snitchMarkerSeconds * 1000L);
+        boolean expiredSnitches = snitchHits.values().removeIf(h -> now - h.t > cfg.snitchMarkerSeconds * 1000L);
+        if (expiredPlayers || expiredSnitches) ApiBridge.trackerChanged(ApiEvent.Cause.EXPIRED);
 
         if (client.player == null || client.world == null) return;
         if (!OpenIntelClient.relay().isConnected()) return;
@@ -142,6 +157,12 @@ public class Tracker {
     // ------------------------------------------------------------------ //
 
     public void handleMessage(JsonObject msg, MinecraftClient client) {
+        if (!client.isOnThread()) {
+            JsonObject copy = msg.deepCopy();
+            var world = client.world;
+            client.execute(() -> { if (client.world == world) handleMessage(copy, client); });
+            return;
+        }
         String type = msg.has("type") ? msg.get("type").getAsString() : "";
         switch (type) {
             case "welcome", "allegiances" -> applyAllegiances(msg);
@@ -152,6 +173,7 @@ public class Tracker {
                 String text = msg.has("msg") ? msg.get("msg").getAsString() : "";
                 OpenIntelClient.status(text);
                 if (text.startsWith("[Broadcast]")) EventFeed.add(text, 0xFFFFAA00);
+                else ApiBridge.notification(text, 0xFFAAAAAA, "relay");
             }
             case "deny" -> {
                 String reason = msg.has("reason") ? msg.get("reason").getAsString() : "bad_token";
@@ -164,6 +186,8 @@ public class Tracker {
             }
             default -> { }
         }
+        if (type.equals("welcome") || type.equals("allegiances") || type.equals("state") || type.equals("snitch"))
+            ApiBridge.trackerChanged(ApiEvent.Cause.UPDATE);
     }
 
     private void applyAllegiances(JsonObject msg) {
@@ -200,6 +224,7 @@ public class Tracker {
      * real position report.
      */
     private void applySnitch(JsonObject msg) {
+        ApiBridge.relaySnitch(msg);
         String who = msg.has("player") ? msg.get("player").getAsString() : "?";
         String from = msg.has("from") ? msg.get("from").getAsString()
                 : msg.has("reporter") ? msg.get("reporter").getAsString() : "?";
@@ -257,9 +282,18 @@ public class Tracker {
                              double x, double y, double z, String world, long t) {
         String dim = bindDim(world);
         if (dim == null || dim.equals("openintel:unknown")) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            var currentWorld = client.world;
+            client.execute(() -> {
+                if (client.world == currentWorld) addSnitchHit(snitch, player, reporter, x, y, z, world, t);
+            });
+            return;
+        }
         if (OpenIntelClient.allegiances().of(player) == Allegiance.FRIEND) return;
         snitchHits.put(player.equals("?") ? snitch + "@" + (int) x + "," + (int) z : player,
                 new SnitchHit(snitch, player, reporter, x, y, z, dim, t));
+        ApiBridge.trackerChanged(ApiEvent.Cause.UPDATE);
     }
 
     /**
