@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ApiContractTest {
     public static void main(String[] args) throws Exception {
+        verifyStartupHook();
         check(OpenIntelApi.API_VERSION == 1, "API version");
         check(!OpenIntelApi.isReady(), "No client initialized in contract test");
         check(OpenIntelApi.settings().snapshot().isEmpty(), "Safe pre-init settings read");
@@ -116,6 +117,32 @@ public final class ApiContractTest {
         replacement.close();
         check(hud.element(id).isEmpty(), "Unregistered HUD removed");
         System.out.println("OpenIntel API contract tests passed");
+    }
+
+    private static void verifyStartupHook() throws Exception {
+        boolean[] clientStarted = {false};
+        try (var input = OpenIntelClient.class.getResourceAsStream("OpenIntelClient.class")) {
+            new org.objectweb.asm.ClassReader(input).accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                @Override
+                public org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor,
+                                                                   String signature, String[] exceptions) {
+                    if (!name.equals("onInitializeClient")) return null;
+                    return new org.objectweb.asm.MethodVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                        @Override
+                        public void visitMethodInsn(int opcode, String owner, String method, String descriptor, boolean isInterface) {
+                            check(!(owner.equals("dev/openintel/api/internal/ApiBridge") && method.equals("initialize")),
+                                    "API initialization must not run during Minecraft construction");
+                        }
+                        @Override
+                        public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
+                            if (owner.equals("net/fabricmc/fabric/api/client/event/lifecycle/v1/ClientLifecycleEvents")
+                                    && name.equals("CLIENT_STARTED")) clientStarted[0] = true;
+                        }
+                    };
+                }
+            }, org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES);
+        }
+        check(clientStarted[0], "API startup must be registered with CLIENT_STARTED");
     }
 
     private static void check(boolean condition, String reason) {

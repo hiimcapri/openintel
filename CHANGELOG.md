@@ -11,6 +11,8 @@
 - Added namespaced third-party HUD registration with optional previews,
   persistent position/visibility, drag editing, and isolated rendering.
 - Added optional `openintel:integration` entrypoint and local Maven publication.
+- Deferred API initialization to Fabric's client-started lifecycle event,
+  avoiding the startup thread-check failure during Minecraft construction.
 - Marshaled relay updates onto the client thread, guarded stale queued work
   across reconnects, and distinguished authentication from socket connection.
 - Added API contract checks and a compiling example integration.

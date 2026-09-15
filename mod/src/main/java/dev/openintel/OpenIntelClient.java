@@ -26,6 +26,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
@@ -140,7 +141,7 @@ public class OpenIntelClient implements ClientModInitializer {
         });
 
         registerCommands();
-        ApiBridge.initialize();
+        ClientLifecycleEvents.CLIENT_STARTED.register(client -> ApiBridge.initialize());
     }
 
     public static boolean reconnectRelay() {
