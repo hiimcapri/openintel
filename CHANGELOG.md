@@ -2,6 +2,11 @@
 
 ## 1.3.0 — public integration API
 
+- Added admin-only `/oi cut [on|off|status]`: outgoing relay intel can be
+  restricted to admins without changing incoming or admin-to-admin relay.
+- Added per-recipient filtering, per-reporter player state, audience-aware
+  snitch deduplication, and cache resets on visibility changes.
+
 - Added versioned `dev.openintel.api` modules for immutable player, snitch,
   ping, allegiance, connection, and non-secret settings snapshots.
 - Added typed client-thread events, closeable subscriptions, listener failure

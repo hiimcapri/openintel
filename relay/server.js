@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { isAdmin, canReceiveIntel, visiblePositions, visibilityKey } = require("./visibility");
 
 const USER_ROLES = ["member", "operator", "captain", "admin"];
 const MINECRAFT_NAME = /^[A-Za-z0-9_]{3,16}$/;
@@ -169,8 +170,8 @@ function snitchDedupeKey(m) {
     return `${String(m.player ?? "?").toLowerCase()}@${m.x},${m.y},${m.z}`;
   return String(m.message ?? "");
 }
-function dedupeSnitch(m) {
-  const key = snitchDedupeKey(m);
+function dedupeSnitch(m, audience = "public") {
+  const key = audience + ":" + snitchDedupeKey(m);
   if (!key) return true;
   const now = Date.now();
   const last = recentSnitch.get(key) ?? 0;
@@ -208,25 +209,50 @@ app.use(express.json());
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-function allegiancePayload() {
+function allegiancePayload(recipient = null) {
   return {
     type: "allegiances",
     users: userNames(),
     allies: ALLEGIANCES.allies,
     enemies: ALLEGIANCES.enemies,
-    focus: ALLEGIANCES.focus ?? [],
+    focus: [...new Set([...(ALLEGIANCES.focus ?? []), ...(isAdmin(recipient) ? ALLEGIANCES.adminFocus ?? [] : [])])],
   };
 }
 
 function broadcast(obj) {
-  const data = JSON.stringify(obj);
   const delivered = new Set();
+  const snitchDecisions = new Map();
   for (const client of wss.clients) {
     const identity = client.authedAs ? lower(client.authedAs) : null;
-    if (client.readyState !== 1 || !identity || delivered.has(identity)) continue;
-    client.send(data);
+    const recipient = identity ? userByName(identity) : null;
+    if (client.readyState !== 1 || !recipient || recipient.disabled || delivered.has(identity)) continue;
+    const key = visibilityKey(recipient, USERS.users);
+    if (client.visibilityKey !== key) {
+      client.send(JSON.stringify({ type: "intel_reset" }));
+      client.send(JSON.stringify(allegiancePayload(recipient)));
+      client.visibilityKey = key;
+    }
+    let payload = obj;
+    if (obj.type === "state") {
+      payload = { ...obj, replace: true, players: visiblePositions(obj.players, recipient, userByName) };
+    } else if (obj.type === "allegiances") {
+      payload = allegiancePayload(recipient);
+    } else if (obj.type === "snitch" || obj.type === "ping") {
+      if (!canReceiveIntel(recipient, obj.from, obj.type === "snitch" ? obj.player : null, userByName)) continue;
+      if (obj.type === "snitch") {
+        const audience = isAdmin(recipient) ? "admin" : "public";
+        if (!snitchDecisions.has(audience)) snitchDecisions.set(audience, dedupeSnitch(obj, audience));
+        if (!snitchDecisions.get(audience)) continue;
+      }
+    }
+    client.send(JSON.stringify(payload));
     delivered.add(identity);
   }
+  return delivered.size > 0;
+}
+
+function sendVisibleState() {
+  broadcast({ type: "state", players: [...positions.values()] });
 }
 function socketsFor(name) {
   return [...wss.clients].filter((client) => client.authedAs && lower(client.authedAs) === lower(name));
@@ -247,14 +273,15 @@ function currentSocketUser(ws) {
 // Returns a human-readable description of what changed, or null if the
 // action was invalid / a no-op.
 function applyFocus(action, subject, actorLabel, context = {}) {
-  const before = [...(ALLEGIANCES.focus ?? [])];
-  ALLEGIANCES.focus = ALLEGIANCES.focus ?? [];
+  const field = context.adminOnly ? "adminFocus" : "focus";
+  const before = [...(ALLEGIANCES[field] ?? [])];
+  ALLEGIANCES[field] = ALLEGIANCES[field] ?? [];
   if (action === "add" && subject && validName(subject)) {
-    if (!ALLEGIANCES.focus.map(lower).includes(lower(subject))) ALLEGIANCES.focus.push(subject);
+    if (!ALLEGIANCES[field].map(lower).includes(lower(subject))) ALLEGIANCES[field].push(subject);
   } else if (action === "remove" && subject && validName(subject)) {
-    ALLEGIANCES.focus = ALLEGIANCES.focus.filter((n) => lower(n) !== lower(subject));
+    ALLEGIANCES[field] = ALLEGIANCES[field].filter((n) => lower(n) !== lower(subject));
   } else if (action === "clear") {
-    ALLEGIANCES.focus = [];
+    ALLEGIANCES[field] = [];
   } else {
     audit({ ...context, actor: actorLabel, action: `focus.${action}`, target: subject, success: false, reason: "invalid action or player name" });
     return null;
@@ -263,8 +290,8 @@ function applyFocus(action, subject, actorLabel, context = {}) {
   broadcast(allegiancePayload());
   const what = action === "clear" ? "cleared all focus targets"
                                   : `${action === "add" ? "focused" : "unfocused"} **${subject}**`;
-  audit({ ...context, actor: actorLabel, action: `focus.${action}`, target: subject, before, after: ALLEGIANCES.focus });
-  postWebhook(CONFIG.webhooks.alerts, {
+  audit({ ...context, actor: actorLabel, action: `focus.${action}`, target: subject, before, after: ALLEGIANCES[field] });
+  if (!context.adminOnly) postWebhook(CONFIG.webhooks.alerts, {
     username: "OpenIntel",
     content: `🎯 **${actorLabel}** ${what}`,
   });
@@ -326,7 +353,9 @@ wss.on("connection", (ws, req) => {
       ws.minecraftServer = minecraftServer;
       ws.authedAs = user.name;
       ws.role = validRole(user.role) ? lower(user.role) : "member";
-      ws.send(JSON.stringify({ ...allegiancePayload(), type: "welcome", minecraftServer: MINECRAFT_SERVER }));
+      ws.visibilityKey = visibilityKey(user, USERS.users);
+      ws.send(JSON.stringify({ ...allegiancePayload(user), type: "welcome", minecraftServer: MINECRAFT_SERVER,
+        role: ws.role, relayCut: user.relayCut === true }));
       adminLog(`✅ **${user.name}** connected (${ws.role})`);
       return;
     }
@@ -339,6 +368,29 @@ wss.on("connection", (ws, req) => {
     }
     ws.role = validRole(user.role) ? lower(user.role) : "member";
 
+    if (msg.type === "cut") {
+      if (!isAdmin(user)) {
+        ws.send(JSON.stringify({ type: "notice", msg: "/oi cut is admin-only" }));
+        return;
+      }
+      if (msg.action === "status") {
+        ws.send(JSON.stringify({ type: "notice", msg: `Relay cut ${user.relayCut ? "ON: admins only" : "OFF: all ranks"}` }));
+        return;
+      }
+      if (![undefined, "toggle", "on", "off"].includes(msg.action)) return;
+      const before = user.relayCut === true;
+      const cut = msg.action === "on" || ((msg.action === undefined || msg.action === "toggle") && !before);
+      const updated = { ...USERS, users: USERS.users.map(u => u === user ? { ...u, relayCut: cut } : u) };
+      try { saveJson("users.json", updated); }
+      catch { ws.send(JSON.stringify({ type: "notice", msg: "Could not save relay cut; unchanged" })); return; }
+      user.relayCut = cut;
+      sendVisibleState();
+      ws.send(JSON.stringify({ type: "notice", msg: `Relay cut ${cut ? "ON: lower ranks no longer receive your relay" : "OFF: sharing with all ranks"}. Admin-to-admin relay is unchanged.` }));
+      audit({ actor: user.name, tier: "admin", action: "relay.cut", target: user.name,
+        source: { channel: "websocket" }, before: { relayCut: before }, after: { relayCut: cut } });
+      return;
+    }
+
     if (msg.type === "focus") {
       if (user.quarantined) {
         ws.send(JSON.stringify({ type: "notice", msg: "quarantined sessions cannot change focus targets" }));
@@ -349,7 +401,7 @@ wss.on("connection", (ws, req) => {
         return;
       }
       applyFocus(msg.action, msg.subject ? String(msg.subject) : null, ws.authedAs, {
-        tier: ws.role, source: { guild: null, channel: "websocket" },
+        tier: ws.role, adminOnly: user.relayCut === true, source: { guild: null, channel: "websocket" },
       });
       return;
     }
@@ -358,7 +410,6 @@ wss.on("connection", (ws, req) => {
     if (msg.type === "ping" || msg.type === "snitch") {
       if (user.quarantined) return;
       // Several clients can see the same snitch line — don't multiply it.
-      if (msg.type === "snitch" && !dedupeSnitch(msg)) return;
       msg.from = ws.authedAs;
       msg.t = Date.now();
       broadcast(msg);
@@ -371,11 +422,12 @@ wss.on("connection", (ws, req) => {
       for (const r of msg.reports.slice(0, 100)) {
         if (typeof r.subject !== "string" || !validName(r.subject)) continue;
         if (![r.x, r.y, r.z].every(Number.isFinite) || typeof r.dim !== "string") continue;
-        positions.set(lower(r.subject), {
+        positions.set(`${lower(r.subject)}@${lower(ws.authedAs)}`, {
           name: r.subject, x: +r.x, y: +r.y, z: +r.z,
           dim: String(r.dim), t: now, reporter: ws.authedAs,
         });
-        if (isEnemy(r.subject)) enemyAlert(r.subject, r.x, r.z, r.dim, ws.authedAs);
+        if (isEnemy(r.subject) && canReceiveIntel({ role: "member" }, ws.authedAs, r.subject, userByName))
+          enemyAlert(r.subject, r.x, r.z, r.dim, ws.authedAs);
       }
     }
   });
@@ -389,8 +441,7 @@ wss.on("connection", (ws, req) => {
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of positions) if (now - v.t > STALE_MS) positions.delete(k);
-  if (positions.size === 0) return;
-  broadcast({ type: "state", players: [...positions.values()] });
+  sendVisibleState();
 }, CONFIG.broadcastIntervalMs ?? 250);
 
 // ---------------------------------------------------------------- admin REST
@@ -466,11 +517,9 @@ function forwardDiscordSnitch(text) {
     action: m.groups.action.trim(), eventKind, x, y, z,
   };
   if (world) msg.world = world;
-  if (!dedupeSnitch(msg)) return;
   msg.from = "discord";
   msg.t = Date.now();
-  broadcast(msg);
-  adminLog(`📡 Snitch hit via Discord relay: ${snitch ?? "?"} by ${player ?? "?"}`);
+  if (broadcast(msg)) adminLog(`📡 Snitch hit via Discord relay: ${snitch ?? "?"} by ${player ?? "?"}`);
 }
 
 const DISCORD = CONFIG.discord ?? {};
@@ -601,7 +650,8 @@ if (DISCORD.botToken) {
       if (cmd === "where") {
         const name = parts[1];
         if (!name) return void msg.reply("usage: `!where <player>`");
-        const p = positions.get(lower(name));
+        const p = visiblePositions(positions.values(), { role: tier }, userByName)
+          .find(report => lower(report.name) === lower(name));
         if (!p) return void msg.reply(fence(`${name}: no recent report`));
         const age = Math.round((Date.now() - p.t) / 1000);
         return void msg.reply(fence(
