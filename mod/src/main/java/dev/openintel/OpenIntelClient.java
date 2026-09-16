@@ -1,5 +1,6 @@
 package dev.openintel;
 
+import com.google.gson.JsonObject;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.openintel.allegiance.AllegianceManager;
 import dev.openintel.api.OpenIntelApi;
@@ -205,6 +206,21 @@ public class OpenIntelClient implements ClientModInitializer {
                 new KeyBinding(id, InputUtil.Type.KEYSYM, key, OI_CATEGORY));
     }
 
+    private static int setRelayCut(String action) {
+        if (!relay.isAuthenticated()) {
+            status("connect to the relay before using /oi cut");
+            return 0;
+        }
+        JsonObject message = new JsonObject();
+        message.addProperty("type", "cut");
+        message.addProperty("action", action);
+        if (!relay.trySend(message)) {
+            status("could not send cut request");
+            return 0;
+        }
+        return 1;
+    }
+
     private void registerCommands() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
                 dispatcher.register(ClientCommandManager.literal("oi")
@@ -217,6 +233,13 @@ public class OpenIntelClient implements ClientModInitializer {
                                                        : "not connected");
                             return 1;
                         }))
+                        .then(ClientCommandManager.literal("cut")
+                                .requires(source -> OpenIntelApi.relay().snapshot().role()
+                                        .map(role -> role.equalsIgnoreCase("admin")).orElse(false))
+                                .executes(c -> setRelayCut("toggle"))
+                                .then(ClientCommandManager.literal("on").executes(c -> setRelayCut("on")))
+                                .then(ClientCommandManager.literal("off").executes(c -> setRelayCut("off")))
+                                .then(ClientCommandManager.literal("status").executes(c -> setRelayCut("status"))))
                         .then(ClientCommandManager.literal("radar").executes(c -> {
                             // Defer one tick — the chat screen closes itself
                             // after the command dispatches and would wipe it.

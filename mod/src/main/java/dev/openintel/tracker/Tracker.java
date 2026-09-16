@@ -167,6 +167,11 @@ public class Tracker {
         switch (type) {
             case "welcome", "allegiances" -> applyAllegiances(msg);
             case "state" -> applyState(msg, client);
+            case "intel_reset" -> {
+                clear();
+                PingManager.clear();
+                EventFeed.clear();
+            }
             case "ping" -> PingManager.receive(msg);
             case "snitch" -> applySnitch(msg);
             case "notice" -> {
@@ -353,6 +358,11 @@ public class Tracker {
 
         JsonArray arr = msg.getAsJsonArray("players");
         if (arr == null) return;
+        if (msg.has("replace") && msg.get("replace").getAsBoolean()) {
+            java.util.Set<String> visible = new java.util.HashSet<>();
+            for (JsonElement e : arr) visible.add(e.getAsJsonObject().get("name").getAsString());
+            players.keySet().retainAll(visible);
+        }
 
         for (JsonElement e : arr) {
             JsonObject o = e.getAsJsonObject();

@@ -291,11 +291,39 @@ all live relay JSON configuration files are gitignored.
 | `/oi macros` | Attack and ice-road macro settings |
 | `/oi ping` | Open the shared ping wheel without holding its keybind |
 | `/oi status` | Show relay connection status |
+| `/oi cut` | Admin-only: toggle outgoing relay intel to admins-only |
+| `/oi cut on\|off\|status` | Explicitly set or inspect your own relay cut |
 | `/oi reconnect` | Reconnect after changing relay credentials |
 | `/oi url <url>` | Set the relay WebSocket URL |
 | `/oi token <token>` | Set the personal relay token |
 | `/oi focus <player>` | Operator-or-higher priority target |
 | `/oi unfocus <player>` | Remove a priority target |
+
+### Admin relay cut
+
+`/oi cut` is available to authenticated relay **admins only**. It toggles
+sharing of that admin's outgoing player reports, snitch alerts, and pings:
+
+- **OFF (default):** share with all ranks.
+- **ON:** share with admins only; members, operators, and captains are excluded.
+- **Admin-to-admin:** unchanged even when both admins have cut enabled.
+- **Incoming intel:** unchanged. Cut never disconnects the admin.
+
+The relay enforces the restriction using the authenticated account, not a
+client-supplied role or player name. Cut persists across reconnects/restarts.
+Focus commands issued while cut use a separate admins-only focus list.
+Public Discord enemy alerts are not generated from cut reports. `!where`
+respects the caller's Discord tier. Discord admin broadcasts/administration
+remain independent of the in-game account's cut switch.
+
+An admin's cut location is also filtered from relay reports about them.
+Public reports from other sources about unrelated players remain available.
+Updated clients clear cached relay intel when visibility changes and receive
+a fresh permitted snapshot. Previously received chat/logs, other mods' retained
+copies, and locally visible Minecraft entities cannot be made unseen.
+Install the updated jar on all clients for immediate cache clearing; older
+clients still stop receiving restricted updates but can retain old entries
+until expiry. Run `/oi reconnect` after a role promotion to refresh command access.
 
 All controls are rebindable under the OpenIntel keybind category.
 
