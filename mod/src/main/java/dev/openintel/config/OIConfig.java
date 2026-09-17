@@ -172,17 +172,42 @@ public class OIConfig {
     /** true = north always up; false = the dial rotates with your view. */
     public boolean radarNorthUp = false;
 
-    /** Compress distant blips so close contacts stay readable. */
-    public boolean radarLogScale = true;
+    /** Logarithmic distance compression. OFF by default — it makes close
+     *  contacts whip around the dial while far ones barely move. */
+    public boolean radarCompressDistance = false;
+
+    /** Player contacts blip on the radar at all. */
+    public boolean radarShowPlayers = true;
+
+    /** Which players blip on the radar. */
+    public RadarBlipFilter radarPlayerFilter = RadarBlipFilter.EVERYONE;
+
+    /** Shared ping-wheel pings on the radar. */
+    public boolean radarShowPings = true;
 
     /** Dropped items on the radar (noisy on busy servers). */
     public boolean radarShowItems = false;
 
-    /** Boats and minecarts on the radar. */
+    /** Boats and minecarts (incl. TNT/chest/hopper carts) on the radar. */
     public boolean radarShowVehicles = true;
 
     /** Relay-reported players beyond render distance shown as rim dots. */
     public boolean radarShowRelay = true;
+
+    /** Who counts as a radar contact. */
+    public enum RadarBlipFilter {
+        EVERYONE("options.openintel.radar.filter.everyone"),
+        NON_RELAY("options.openintel.radar.filter.non_relay"),
+        ENEMIES("options.openintel.radar.filter.enemies");
+
+        public final String translationKey;
+        RadarBlipFilter(String key) { this.translationKey = key; }
+
+        public static RadarBlipFilter byName(String name) {
+            for (RadarBlipFilter f : values()) if (f.name().equalsIgnoreCase(name)) return f;
+            return EVERYONE;
+        }
+    }
 
     /** Blip icon scale (player heads, item icons). */
     public float radarIconSize = 1.0f;
@@ -248,6 +273,7 @@ public class OIConfig {
                 JsonObject raw = GSON.fromJson(json, JsonObject.class);
                 if (c == null || raw == null) return new OIConfig();
                 c.repairExternalHudElements();
+                if (c.radarPlayerFilter == null) c.radarPlayerFilter = RadarBlipFilter.EVERYONE;
                 // The old default (4096) silently hid teammates across the map.
                 // Migrate it to unlimited; explicit non-default caps survive.
                 if (c.maxMarkerDistance == 4096) c.maxMarkerDistance = 0;

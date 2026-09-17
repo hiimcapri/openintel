@@ -109,7 +109,7 @@ public final class ApiBridge {
         var c = OpenIntelClient.config();
         var value = new SettingsApi.View(
                 new SettingsApi.Radar(c.radarEnabled, c.radarX, c.radarY, c.radarSize, c.radarRange,
-                        c.radarCircles, c.radarNorthUp, c.radarLogScale, c.radarShowItems,
+                        c.radarCircles, c.radarNorthUp, c.radarCompressDistance, c.radarShowItems,
                         c.radarShowVehicles, c.radarShowRelay, c.radarIconSize, c.radarTextSize,
                         c.radarBgColor, c.radarFgColor),
                 new SettingsApi.Markers(c.relayRendering, c.markVisiblePlayers, c.edgeChevrons,

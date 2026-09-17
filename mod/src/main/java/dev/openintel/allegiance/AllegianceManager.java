@@ -51,6 +51,11 @@ public final class AllegianceManager {
         return a == Allegiance.ENEMY || a == Allegiance.FOCUS;
     }
 
+    /** Whether the name belongs to an authenticated relay user. */
+    public boolean isRelayUser(String playerName) {
+        return modUsers.contains(playerName.toLowerCase(Locale.ROOT));
+    }
+
     /** Called when the relay pushes a fresh allegiance/user snapshot. */
     public void replaceAll(Collection<String> users, Collection<String> allyList,
                            Collection<String> enemyList, Collection<String> focusList) {
