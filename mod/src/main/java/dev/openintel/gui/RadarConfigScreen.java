@@ -31,10 +31,18 @@ public class RadarConfigScreen extends GameOptionsScreen {
         body.addAll(
                 bool("options.openintel.radar.enabled", cfg.radarEnabled, v -> cfg.radarEnabled = v),
                 bool("options.openintel.radar.north_up", cfg.radarNorthUp, v -> cfg.radarNorthUp = v),
-                bool("options.openintel.radar.log_scale", cfg.radarLogScale, v -> cfg.radarLogScale = v),
+                bool("options.openintel.radar.compress", cfg.radarCompressDistance, v -> cfg.radarCompressDistance = v),
                 bool("options.openintel.radar.items", cfg.radarShowItems, v -> cfg.radarShowItems = v),
                 bool("options.openintel.radar.vehicles", cfg.radarShowVehicles, v -> cfg.radarShowVehicles = v),
                 bool("options.openintel.radar.relay", cfg.radarShowRelay, v -> cfg.radarShowRelay = v)
+        );
+
+        body.addHeader(Text.literal("Contacts"));
+        body.addAll(
+                bool("options.openintel.radar.players", cfg.radarShowPlayers, v -> cfg.radarShowPlayers = v),
+                cycle("options.openintel.radar.ping_filter", cfg.radarPlayerFilter,
+                        v -> cfg.radarPlayerFilter = v),
+                bool("options.openintel.radar.pings", cfg.radarShowPings, v -> cfg.radarShowPings = v)
         );
 
         body.addHeader(Text.literal("Dial"));
@@ -80,6 +88,19 @@ public class RadarConfigScreen extends GameOptionsScreen {
     private static SimpleOption<Boolean> bool(String key, boolean current,
                                               java.util.function.Consumer<Boolean> apply) {
         return SimpleOption.ofBoolean(key, current, apply);
+    }
+
+    /** Cycles a RadarBlipFilter; the label resolves through the enum's lang key. */
+    private static SimpleOption<OIConfig.RadarBlipFilter> cycle(
+            String key, OIConfig.RadarBlipFilter current,
+            java.util.function.Consumer<OIConfig.RadarBlipFilter> apply) {
+        var values = java.util.List.of(OIConfig.RadarBlipFilter.values());
+        return new SimpleOption<>(key, SimpleOption.emptyTooltip(),
+                (text, v) -> text.copy().append(": ").append(Text.translatable(v.translationKey)),
+                new SimpleOption.PotentialValuesBasedCallbacks<>(values,
+                        com.mojang.serialization.Codec.STRING.xmap(
+                                OIConfig.RadarBlipFilter::byName, Enum::name)),
+                current, apply);
     }
 
     private static SimpleOption<Integer> slider(String key, int min, int max, int current,

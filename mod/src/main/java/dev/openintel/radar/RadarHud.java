@@ -18,7 +18,6 @@ import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.vehicle.AbstractBoatEntity;
 import net.minecraft.entity.vehicle.AbstractMinecartEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix3x2f;
@@ -75,9 +74,13 @@ public final class RadarHud {
 
         Set<String> onRadar = new HashSet<>();
         renderVehiclesAndItems(ctx, mc, cfg, self, scale, yaw, tickDelta);
-        renderPlayers(ctx, mc, cfg, self, scale, yaw, tickDelta, onRadar);
-        if (cfg.radarShowRelay && cfg.relayRendering) {
-            renderRelayBlips(ctx, mc, cfg, self, scale, yaw, r, onRadar);
+        if (cfg.radarShowPlayers) {
+            renderPlayers(ctx, mc, cfg, self, scale, yaw, tickDelta, onRadar);
+            if (cfg.radarShowRelay && cfg.relayRendering) {
+                renderRelayBlips(ctx, mc, cfg, self, scale, yaw, r, onRadar);
+            }
+        }
+        if (cfg.radarShowPings && cfg.relayRendering) {
             renderPings(ctx, mc, cfg, self, scale, yaw);
         }
 
@@ -91,6 +94,7 @@ public final class RadarHud {
                                       Set<String> onRadar) {
         for (AbstractClientPlayerEntity p : mc.world.getPlayers()) {
             if (p == mc.player || !p.isAlive()) continue;
+            if (!contactAllowed(p.getGameProfile().name(), cfg)) continue;
 
             Vec3d pos = p.getLerpedPos(tickDelta);
             double dx = self.x - pos.x, dz = self.z - pos.z;
@@ -156,10 +160,20 @@ public final class RadarHud {
         if (e instanceof AbstractBoatEntity boat) {
             return cfg.radarShowVehicles ? boat.getPickBlockStack() : null;
         }
-        if (e instanceof AbstractMinecartEntity) {
-            return cfg.radarShowVehicles ? new ItemStack(Items.MINECART) : null;
+        if (e instanceof AbstractMinecartEntity cart) {
+            // Pick-stack gives the real cart type (TNT, chest, hopper...).
+            return cfg.radarShowVehicles ? cart.getPickBlockStack() : null;
         }
         return null;
+    }
+
+    /** Ping filter: everyone, strangers only, or enemies only. */
+    private static boolean contactAllowed(String name, OIConfig cfg) {
+        return switch (cfg.radarPlayerFilter) {
+            case EVERYONE -> true;
+            case NON_RELAY -> !OpenIntelClient.allegiances().isRelayUser(name);
+            case ENEMIES -> OpenIntelClient.allegiances().isEnemy(name);
+        };
     }
 
     /**
@@ -176,6 +190,7 @@ public final class RadarHud {
         for (RemotePlayer p : OpenIntelClient.tracker().all()) {
             if (p.dimension == null || !p.dimension.equals(myDim)) continue;
             if (onRadar.contains(p.name.toLowerCase(Locale.ROOT))) continue;
+            if (!contactAllowed(p.name, cfg)) continue;
 
             // Cold intel cools off as it approaches staleAfterMs.
             float fade = cfg.staleDecay
@@ -257,7 +272,7 @@ public final class RadarHud {
      */
     private static void blip(DrawContext ctx, double dx, double dz, double scale,
                              OIConfig cfg, float yaw, Runnable painter) {
-        double logscale = rescale(dx, dz, cfg.radarRange, cfg.radarLogScale);
+        double logscale = rescale(dx, dz, cfg.radarRange, cfg.radarCompressDistance);
 
         Matrix3x2fStack pose = ctx.getMatrices();
         pose.pushMatrix();
