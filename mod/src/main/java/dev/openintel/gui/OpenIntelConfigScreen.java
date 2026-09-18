@@ -145,6 +145,12 @@ public class OpenIntelConfigScreen extends GameOptionsScreen {
                         new SimpleOption.ValidatingIntSliderCallbacks(0, 20000, true),
                         cfg.snitchMarkerRange, v -> cfg.snitchMarkerRange = v)
         );
+        body.addHeader(Text.literal("Integrations"));
+        body.addAll(
+                bool("options.openintel.jm.markers", cfg.jmMarkers,
+                        v -> cfg.jmMarkers = v)
+        );
+
         body.addWidgetEntry(colorButton("Snitch marker color",
                 () -> cfg.snitchMarkerColorAuto ? -1 : cfg.snitchMarkerColor,
                 v -> {
