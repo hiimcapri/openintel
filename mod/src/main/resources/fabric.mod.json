@@ -11,7 +11,8 @@
     "openintel:api_version": 1
   },
   "entrypoints": {
-    "client": ["dev.openintel.OpenIntelClient"]
+    "client": ["dev.openintel.OpenIntelClient"],
+    "journeymap": ["dev.openintel.jm.OpenIntelJmPlugin"]
   },
   "mixins": ["openintel.mixins.json"],
   "depends": {

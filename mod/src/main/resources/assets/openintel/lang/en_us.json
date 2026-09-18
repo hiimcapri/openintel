@@ -27,6 +27,7 @@
   "options.openintel.snitch.enabled": "Forward snitch alerts",
   "options.openintel.snitch.seconds": "Snitch marker duration",
   "options.openintel.snitch.range": "Snitch marker range",
+  "options.openintel.jm.markers": "JourneyMap fullscreen markers",
 
   "options.openintel.radar.enabled": "Radar",
   "options.openintel.radar.north_up": "North up",

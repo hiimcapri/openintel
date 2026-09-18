@@ -53,6 +53,9 @@ public class OpenIntelClient implements ClientModInitializer {
     private static AllegianceManager allegiances;
     private static RelayClient relay;
 
+    /** JourneyMap sync hook — set by the jm entrypoint only when JM is loaded. */
+    public static volatile Runnable jmTick;
+
     private static KeyBinding radarToggleKey;
     private static KeyBinding holdAttackKey;
     private static KeyBinding holdUseKey;
@@ -94,6 +97,8 @@ public class OpenIntelClient implements ClientModInitializer {
             holdUseMacro.tick(client);
             iceRoadMacro.tick(client);
             PingManager.tick();
+            Runnable jm = jmTick;
+            if (jm != null) jm.run();
             EventFeed.tick(client);
             ApiBridge.settingsChanged();
             while (radarToggleKey.wasPressed()) {

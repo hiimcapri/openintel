@@ -151,6 +151,11 @@ public class OIConfig {
     /** Use the tripper's allegiance color instead of the configured snitch color. */
     public boolean snitchMarkerColorAuto = false;
 
+    // ------------------------------------------------------- journeymap ----
+
+    /** Draw snitch hits + shared pings on JourneyMap's fullscreen map (soft dep). */
+    public boolean jmMarkers = true;
+
     // -------------------------------------------------------------- radar ----
 
     /** Circular HUD radar. */
