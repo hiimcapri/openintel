@@ -25,6 +25,11 @@ import java.util.function.Consumer;
 public class RelayClient implements WebSocket.Listener {
     private static final Gson GSON = new Gson();
     private static final Logger LOGGER = LoggerFactory.getLogger("openintel-relay");
+    // One shared client: each HttpClient owns a selector thread + worker pool,
+    // so building one per connection attempt leaks threads on every reconnect.
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(10))
+            .build();
 
     private final AtomicReference<WebSocket> socket = new AtomicReference<>();
     private final ConcurrentHashMap<WebSocket, StringBuilder> partials = new ConcurrentHashMap<>();
@@ -159,9 +164,7 @@ public class RelayClient implements WebSocket.Listener {
             return;
         }
         try {
-            HttpClient.newHttpClient()
-                    .newWebSocketBuilder()
-                    .connectTimeout(java.time.Duration.ofSeconds(10))
+            HTTP.newWebSocketBuilder()
                     .buildAsync(URI.create(attemptUrl), this)
                     .whenComplete((ws, err) -> MinecraftClient.getInstance().execute(() -> {
                         inFlightGeneration.compareAndSet(attemptGeneration, -1);
