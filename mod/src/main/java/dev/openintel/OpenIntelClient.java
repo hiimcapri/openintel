@@ -132,6 +132,7 @@ public class OpenIntelClient implements ClientModInitializer {
         // The 10s text dedupe in SnitchRelay covers any double-fire.
         ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, instant) ->
                 SnitchRelay.onGameMessage(message, false));
+        ClientReceiveMessageEvents.MODIFY_GAME.register(SnitchRelay::restyleForChat);
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> reconnectRelay());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             relay.disconnect();
