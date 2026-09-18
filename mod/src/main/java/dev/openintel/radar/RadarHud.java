@@ -60,7 +60,7 @@ public final class RadarHud {
         int r = cfg.radarSize;
         float yaw = mc.player.getYaw(tickDelta);
         Vec3d self = mc.player.getLerpedPos(tickDelta);
-        double scale = r / cfg.radarRange;
+
         float frameRot = cfg.radarNorthUp ? (float) Math.PI : (float) -Math.toRadians(yaw);
 
         Matrix3x2fStack pose = ctx.getMatrices();
@@ -73,15 +73,15 @@ public final class RadarHud {
         drawFacingChevron(ctx, cfg, yaw);
 
         Set<String> onRadar = new HashSet<>();
-        renderVehiclesAndItems(ctx, mc, cfg, self, scale, yaw, tickDelta);
+        renderVehiclesAndItems(ctx, mc, cfg, self, yaw, tickDelta);
         if (cfg.radarShowPlayers) {
-            renderPlayers(ctx, mc, cfg, self, scale, yaw, tickDelta, onRadar);
+            renderPlayers(ctx, mc, cfg, self, yaw, tickDelta, onRadar);
             if (cfg.radarShowRelay && cfg.relayRendering) {
-                renderRelayBlips(ctx, mc, cfg, self, scale, yaw, r, onRadar);
+                renderRelayBlips(ctx, mc, cfg, self, yaw, r, onRadar);
             }
         }
         if (cfg.radarShowPings && cfg.relayRendering) {
-            renderPings(ctx, mc, cfg, self, scale, yaw);
+            renderPings(ctx, mc, cfg, self, yaw);
         }
 
         pose.popMatrix();
@@ -90,7 +90,7 @@ public final class RadarHud {
     // ------------------------------------------------------------- blips ----
 
     private static void renderPlayers(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
-                                      Vec3d self, double scale, float yaw, float tickDelta,
+                                      Vec3d self, float yaw, float tickDelta,
                                       Set<String> onRadar) {
         for (AbstractClientPlayerEntity p : mc.world.getPlayers()) {
             if (p == mc.player || !p.isAlive()) continue;
@@ -106,7 +106,7 @@ public final class RadarHud {
             int color = OpenIntelClient.allegiances().of(name).argb;
             String label = name + " (" + Math.round(dist) + ")";
 
-            blip(ctx, dx, dz, scale, cfg, yaw, () -> {
+            blip(ctx, dx, dz, cfg, yaw, () -> {
                 Matrix3x2fStack pose = ctx.getMatrices();
                 pose.pushMatrix();
                 pose.scale(cfg.radarIconSize, cfg.radarIconSize);
@@ -130,7 +130,7 @@ public final class RadarHud {
     }
 
     private static void renderVehiclesAndItems(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
-                                               Vec3d self, double scale, float yaw, float tickDelta) {
+                                               Vec3d self, float yaw, float tickDelta) {
         if (!cfg.radarShowItems && !cfg.radarShowVehicles) return;
 
         int drawn = 0;
@@ -142,7 +142,7 @@ public final class RadarHud {
             double dx = self.x - pos.x, dz = self.z - pos.z;
             if (dx * dx + dz * dz > cfg.radarRange * cfg.radarRange) continue;
 
-            blip(ctx, dx, dz, scale, cfg, yaw, () -> {
+            blip(ctx, dx, dz, cfg, yaw, () -> {
                 Matrix3x2fStack pose = ctx.getMatrices();
                 pose.pushMatrix();
                 pose.scale(cfg.radarIconSize * 0.9f, cfg.radarIconSize * 0.9f);
@@ -182,7 +182,7 @@ public final class RadarHud {
      * answers "which way" even at 400m out.
      */
     private static void renderRelayBlips(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
-                                         Vec3d self, double scale, float yaw, int r,
+                                         Vec3d self, float yaw, int r,
                                          Set<String> onRadar) {
         String myDim = mc.world.getRegistryKey().getValue().toString();
         long now = System.currentTimeMillis();
@@ -202,18 +202,11 @@ public final class RadarHud {
             double dist = Math.hypot(dx, dz);
             if (dist < 1) continue;
 
-            // Beyond the sweep? Slide the dot to the rim, same bearing.
-            if (dist > cfg.radarRange) {
-                double f = cfg.radarRange * 0.97 / dist;
-                dx *= f;
-                dz *= f;
-            }
-
             int color = scaleAlpha(
                     p.allegiance != null ? p.allegiance.argb : 0xFFAAAAAA, fade);
             String label = p.name + " (" + Math.round(dist) + ")";
 
-            blip(ctx, dx, dz, scale, cfg, yaw, () -> {
+            blip(ctx, dx, dz, cfg, yaw, () -> {
                 Matrix3x2fStack pose = ctx.getMatrices();
                 pose.pushMatrix();
                 ctx.fill(-2, -2, 2, 2, color);
@@ -230,7 +223,7 @@ public final class RadarHud {
      * when the ping is beyond the sweep. Fades during its last seconds.
      */
     private static void renderPings(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
-                                    Vec3d self, double scale, float yaw) {
+                                    Vec3d self, float yaw) {
         String myDim = mc.world.getRegistryKey().getValue().toString();
         long now = System.currentTimeMillis();
 
@@ -240,17 +233,12 @@ public final class RadarHud {
             double dx = self.x - ping.x, dz = self.z - ping.z;
             double dist = Math.hypot(dx, dz);
             if (dist < 1) continue;
-            if (dist > cfg.radarRange) {
-                double f = cfg.radarRange * 0.97 / dist;
-                dx *= f;
-                dz *= f;
-            }
 
             float life = Math.min(1f, (ping.expiresAt - now) / 4000f);
             int color = scaleAlpha(ping.color, life);
             String label = "⚑ " + ping.label + " (" + Math.round(dist) + ")";
 
-            blip(ctx, dx, dz, scale, cfg, yaw, () -> {
+            blip(ctx, dx, dz, cfg, yaw, () -> {
                 Matrix3x2fStack pose = ctx.getMatrices();
                 pose.pushMatrix();
                 // Diamond, drawn as a small rotated square.
@@ -267,27 +255,35 @@ public final class RadarHud {
     }
 
     /**
-     * Positions a blip in dial space (log-scaled distance, rotated frame),
-     * then counter-rotates so icons and text stay upright.
+     * Positions a blip in dial space: distance is mapped through the
+     * compression blend, the result is clamped just inside the rim, then
+     * counter-rotated so icons and text stay upright.
      */
-    private static void blip(DrawContext ctx, double dx, double dz, double scale,
+    private static void blip(DrawContext ctx, double dx, double dz,
                              OIConfig cfg, float yaw, Runnable painter) {
-        double logscale = rescale(dx, dz, cfg.radarRange, cfg.radarCompressDistance);
+        double dist = Math.hypot(dx, dz);
+        if (dist < 0.1) return;
+        double radius = Math.min(mapDistance(dist, cfg.radarRange, cfg.radarCompression), 0.97) * cfg.radarSize;
+        double unit = radius / dist;
 
         Matrix3x2fStack pose = ctx.getMatrices();
         pose.pushMatrix();
-        pose.translate((float) (dx * scale * logscale), (float) (dz * scale * logscale));
+        pose.translate((float) (dx * unit), (float) (dz * unit));
         pose.rotate(cfg.radarNorthUp ? (float) Math.PI : (float) Math.toRadians(yaw));
         painter.run();
         pose.popMatrix();
     }
 
-    /** Logarithmic distance compression — close contacts stay readable. */
-    private static double rescale(double dx, double dz, double range, boolean log) {
-        if (!log) return 1;
-        double dist = Math.hypot(dx, dz);
-        if (dist < 0.1) return 1;
-        return Math.log1p(dist) / Math.log1p(range) * range / dist;
+    /**
+     * Maps world distance to a fraction of the dial radius.
+     * compression 0 → linear (dist/range); 100 → log (ln(1+d)/ln(1+range));
+     * in between blends the two so close contacts stay readable without
+     * freezing the far field.
+     */
+    private static double mapDistance(double dist, double range, int compression) {
+        double linear = dist / range;
+        double log = Math.log1p(dist) / Math.log1p(range);
+        return linear + (log - linear) * Math.min(100, Math.max(0, compression)) / 100.0;
     }
 
     // -------------------------------------------------------------- dial ----

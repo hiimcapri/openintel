@@ -30,7 +30,7 @@
 
   "options.openintel.radar.enabled": "Radar",
   "options.openintel.radar.north_up": "North up",
-  "options.openintel.radar.compress": "Compress far distance",
+  "options.openintel.radar.compress": "Distance compression",
   "options.openintel.radar.items": "Show dropped items",
   "options.openintel.radar.vehicles": "Show boats & minecarts",
   "options.openintel.radar.relay": "Relay rim dots",

@@ -172,9 +172,10 @@ public class OIConfig {
     /** true = north always up; false = the dial rotates with your view. */
     public boolean radarNorthUp = false;
 
-    /** Logarithmic distance compression. OFF by default — it makes close
-     *  contacts whip around the dial while far ones barely move. */
-    public boolean radarCompressDistance = false;
+    /** Distance compression 0–100: blends linear scale toward a log curve.
+     *  0 = true linear (motion matches world movement exactly);
+     *  100 = full log (close contacts expand, far contacts compress). */
+    public int radarCompression = 50;
 
     /** Player contacts blip on the radar at all. */
     public boolean radarShowPlayers = true;
