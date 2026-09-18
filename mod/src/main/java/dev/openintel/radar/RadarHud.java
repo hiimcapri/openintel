@@ -275,15 +275,19 @@ public final class RadarHud {
     }
 
     /**
-     * Maps world distance to a fraction of the dial radius.
-     * compression 0 → linear (dist/range); 100 → log (ln(1+d)/ln(1+range));
-     * in between blends the two so close contacts stay readable without
-     * freezing the far field.
+     * Maps world distance to a fraction of the dial radius using a
+     * piecewise-linear "knee": the inner zone is a true linear minimap
+     * (motion stays proportional, no acceleration feel), and everything
+     * beyond it compresses linearly into the remaining ring.
+     * compression 0 → single linear map; 100 → inner 25% of range
+     * magnified across 55% of the dial.
      */
     private static double mapDistance(double dist, double range, int compression) {
-        double linear = dist / range;
-        double log = Math.log1p(dist) / Math.log1p(range);
-        return linear + (log - linear) * Math.min(100, Math.max(0, compression)) / 100.0;
+        double c = Math.min(100, Math.max(0, compression)) / 100.0;
+        double kneeDist = (1.0 - 0.75 * c) * range;   // 100% → 25% of range
+        double kneeRadius = 1.0 - 0.45 * c;           // occupies 100% → 55% of dial
+        if (dist <= kneeDist || range <= kneeDist) return dist / kneeDist * kneeRadius;
+        return kneeRadius + (dist - kneeDist) / (range - kneeDist) * (1.0 - kneeRadius);
     }
 
     // -------------------------------------------------------------- dial ----
