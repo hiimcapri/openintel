@@ -4,8 +4,10 @@ import com.google.gson.JsonObject;
 import dev.openintel.render.EventFeed;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.HoverEvent;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -169,6 +171,63 @@ public final class SnitchRelay {
 
         OpenIntelClient.relay().send(msg);
         EventFeed.add("📡 Snitch: " + compact(text), 0xFFFFAA00);
+    }
+
+    /**
+     * Wired to ClientReceiveMessageEvents.MODIFY_GAME — rewrites a snitch
+     * alert line so the reported player's name draws in their allegiance
+     * color (focus/friend/ally/enemy/neutral). Everything else passes
+     * through untouched; click/hover styling on every segment is kept.
+     */
+    public static Text restyleForChat(Text message, boolean overlay) {
+        if (overlay) return message;
+        var cfg = OpenIntelClient.config();
+        if (cfg == null) return message;
+        String text = message.getString();
+        if (text == null || text.isEmpty() || text.startsWith("[OpenIntel]")) return message;
+        Pattern detection;
+        try {
+            detection = Pattern.compile(cfg.snitchPattern);
+        } catch (Exception e) {
+            return message;
+        }
+        if (!detection.matcher(text).find()) return message;
+
+        int[] span = playerSpan(text);
+        if (span == null) return message;
+        int color = OpenIntelClient.allegiances()
+                .of(text.substring(span[0], span[1])).argb & 0xFFFFFF;
+
+        // Rebuild as flat styled segments; visit() yields leaves in order so
+        // the concatenation reproduces the line exactly, minus the recolor.
+        MutableText out = Text.empty();
+        int[] pos = {0};
+        message.visit((style, content) -> {
+            int start = pos[0], end = start + content.length();
+            pos[0] = end;
+            int a = Math.max(0, span[0] - start);
+            int b = Math.min(content.length(), span[1] - start);
+            if (a >= b) {
+                out.append(Text.literal(content).setStyle(style));
+            } else {
+                if (a > 0) out.append(Text.literal(content.substring(0, a)).setStyle(style));
+                out.append(Text.literal(content.substring(a, b))
+                        .setStyle(style.withColor(TextColor.fromRgb(color))));
+                if (b < content.length()) out.append(Text.literal(content.substring(b)).setStyle(style));
+            }
+            return Optional.empty();
+        }, Style.EMPTY);
+        return out;
+    }
+
+    /** Character span of the triggering player name, or null. */
+    private static int[] playerSpan(String text) {
+        Matcher m = NAMED_EVENT.matcher(text);
+        if (!m.find()) m = NAMED_INTERACTION.matcher(text);
+        if (m.find(0)) return new int[]{m.start("player"), m.end("player")};
+        m = PLAYER.matcher(text);
+        if (m.find()) return new int[]{m.start("player"), m.end("player")};
+        return null;
     }
 
     static String hoverWorld(Text message) {
