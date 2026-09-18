@@ -31,7 +31,8 @@ public class RadarConfigScreen extends GameOptionsScreen {
         body.addAll(
                 bool("options.openintel.radar.enabled", cfg.radarEnabled, v -> cfg.radarEnabled = v),
                 bool("options.openintel.radar.north_up", cfg.radarNorthUp, v -> cfg.radarNorthUp = v),
-                bool("options.openintel.radar.compress", cfg.radarCompressDistance, v -> cfg.radarCompressDistance = v),
+                slider("options.openintel.radar.compress", 0, 100, cfg.radarCompression,
+                        "%", v -> cfg.radarCompression = v),
                 bool("options.openintel.radar.items", cfg.radarShowItems, v -> cfg.radarShowItems = v),
                 bool("options.openintel.radar.vehicles", cfg.radarShowVehicles, v -> cfg.radarShowVehicles = v),
                 bool("options.openintel.radar.relay", cfg.radarShowRelay, v -> cfg.radarShowRelay = v)
