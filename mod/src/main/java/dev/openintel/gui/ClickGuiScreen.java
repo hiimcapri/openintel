@@ -242,7 +242,9 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        this.renderBackground(ctx, mouseX, mouseY, delta);
+        // In-world screens must not call renderBackground — its blur pass can
+        // only run once per frame. renderInGameBackground darkens without it.
+        renderInGameBackground(ctx);
 
         // Live dial preview behind the translucent UI.
         if ("radar".equals(categories.get(selected).id())
