@@ -196,7 +196,7 @@ public final class MarkerHud {
             }
         }
 
-        labels.addAll(stackProjectedLabels(client, projectedLabels, h));
+        labels.addAll(stackProjectedLabels(client, projectedLabels));
 
         // ---- edge stacks ----------------------------------------------------
         // Anchors are configurable so the lists can be parked clear of other
@@ -242,20 +242,20 @@ public final class MarkerHud {
     // ------------------------------------------------------ collection ----
 
     private static List<Label> stackProjectedLabels(MinecraftClient client,
-                                                    List<Label> source, int screenHeight) {
+                                                    List<Label> source) {
         source.sort(Comparator.comparing((Label l) -> l.text)
                 .thenComparingDouble(l -> l.x));
         List<Label> placed = new ArrayList<>();
         int lineH = client.textRenderer.fontHeight + 2;
-        float maxY = screenHeight - client.textRenderer.fontHeight - 2;
 
         for (Label label : source) {
             Label chosen = null;
-            for (int step = 0; step <= source.size() * 2; step++) {
-                int level = step == 0 ? 0 : (step + 1) / 2;
-                if (step > 0 && step % 2 == 0) level = -level;
-                float y = label.y + level * lineH;
-                if (y < 2 || y > maxY) continue;
+            // Upward-only stacking: a label never drops below its anchor,
+            // so chevrons stay visible and colliding labels can't flip
+            // above/below each other as projected heights wobble.
+            for (int level = 0; level <= source.size(); level++) {
+                float y = label.y - level * lineH;
+                if (y < 2) break;
                 Label candidate = new Label(label.x, y, label.text, label.color);
                 if (!overlaps(client, candidate, placed, lineH)) {
                     chosen = candidate;
