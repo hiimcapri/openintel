@@ -36,17 +36,34 @@ system.
 - Semantically identical alerts are deduplicated across in-game and Discord
   sources. Approved relay users do not receive redundant snitch markers when
   their live position is already available.
+- Player names in snitch alert chat lines are recolored by allegiance, so a
+  hostile tripper reads red and a neutral one grey at a glance.
 
 ### Radar and shared pings
 
 - Anti-aliased circular radar with player heads, allegiance colors, distance
   labels, compass points, configurable range rings, rotating or north-up
-  orientation, and optional logarithmic distance compression.
-- Optional dropped-item, boat, and minecart icons.
+  orientation, and a distance-compression slider that magnifies the inner
+  field linearly while compressing the outer ring — no warping near the
+  center.
+- Contact filtering (everyone, players not on the relay, or enemies only)
+  plus toggles for dropped-item, boat, and minecart icons, which render as
+  their real item sprites.
 - Relay players outside render distance and shared pings pin to the radar rim,
   preserving their bearing at any distance.
 - Hold the configurable ping key to open a radial wheel and broadcast a
   temporary, dimension-aware location marker.
+
+### JourneyMap integration (optional)
+
+- When JourneyMap is installed, snitch hits and shared pings also appear on
+  its fullscreen map (the `J` key) as allegiance-tinted diamonds — enemy red,
+  focus purple, neutral grey.
+- Each marker shows the tripper and reporter (or ping label and sender) on a
+  shadowed, backed label, and expires alongside its HUD marker.
+- Strictly optional: JourneyMap is never required and nothing changes for
+  clients without it. Toggle under `/oi settings` → Integrations →
+  *JourneyMap fullscreen markers*. OpenIntel's own rendering is untouched.
 
 ### Movable HUD
 
@@ -105,6 +122,13 @@ Focus and enemy-alert behavior is shared across the relay:
 
 ![Enemy spotted chat alert](docs/enemy-alert-chat.png)
 
+Snitch hits and pings can also be mirrored onto JourneyMap's fullscreen map:
+
+<p align="center">
+  <img src="docs/journeymap-bigmap.png" alt="Snitch hits on the JourneyMap fullscreen map"/><br/>
+  <strong>JourneyMap fullscreen map</strong> — allegiance-tinted snitch markers (optional integration)
+</p>
+
 ## Relay roles and focus targets
 
 Users in `users.json` have one of four backward-compatible tiers:
@@ -153,6 +177,7 @@ each change is announced in both the alerts and admin Discord channels.
 ## Repo layout
 
 - `mod/` — Fabric client mod (Java 21, Minecraft 1.21.11, Fabric API)
+- `mod/libs/` — vendored JourneyMap API jar, compile-time only (optional at runtime)
 - `relay/` — Node.js relay server + webhook integration
 
 ## Quick start
@@ -176,7 +201,9 @@ Drop the jar in `.minecraft/mods` alongside Fabric API. On first launch the
 mod writes `config/openintel.json` — set `relayUrl` (for example,
 `ws://your.server:8765`), `minecraftServer` (the allowed multiplayer address),
 and your personal `token`, then join that Minecraft server. These fields are
-also available under `/oi settings`.
+also available under `/oi settings`. If JourneyMap is installed, snitch hits
+and shared pings are additionally drawn on its fullscreen map — toggleable
+under `/oi settings` → Integrations.
 
 ### Discord setup
 1. Create two webhooks (Server Settings → Integrations → Webhooks):
