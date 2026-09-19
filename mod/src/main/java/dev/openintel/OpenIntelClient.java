@@ -6,10 +6,8 @@ import dev.openintel.allegiance.AllegianceManager;
 import dev.openintel.api.OpenIntelApi;
 import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.config.OIConfig;
+import dev.openintel.gui.ClickGuiScreen;
 import dev.openintel.gui.HudEditorScreen;
-import dev.openintel.gui.MacroConfigScreen;
-import dev.openintel.gui.OpenIntelConfigScreen;
-import dev.openintel.gui.RadarConfigScreen;
 import dev.openintel.macro.AttackMacro;
 import dev.openintel.macro.HoldKeyMacro;
 import dev.openintel.macro.IceRoadMacro;
@@ -250,17 +248,17 @@ public class OpenIntelClient implements ClientModInitializer {
                             // Defer one tick — the chat screen closes itself
                             // after the command dispatches and would wipe it.
                             MinecraftClient.getInstance().execute(() ->
-                                    MinecraftClient.getInstance().setScreen(new RadarConfigScreen(null)));
+                                    MinecraftClient.getInstance().setScreen(new ClickGuiScreen(null, "radar")));
                             return 1;
                         }))
                         .then(ClientCommandManager.literal("macros").executes(c -> {
                             MinecraftClient.getInstance().execute(() ->
-                                    MinecraftClient.getInstance().setScreen(new MacroConfigScreen(null)));
+                                    MinecraftClient.getInstance().setScreen(new ClickGuiScreen(null, "macros")));
                             return 1;
                         }))
                         .then(ClientCommandManager.literal("settings").executes(c -> {
                             MinecraftClient.getInstance().execute(() ->
-                                    MinecraftClient.getInstance().setScreen(new OpenIntelConfigScreen(null)));
+                                    MinecraftClient.getInstance().setScreen(new ClickGuiScreen(null)));
                             return 1;
                         }))
                         .then(ClientCommandManager.literal("hud").executes(c -> {

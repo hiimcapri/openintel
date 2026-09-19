@@ -84,9 +84,11 @@ system.
   when screens open, the mouse unlocks, or the selected hotbar slot changes.
 - Ice-road automation supports 45-degree yaw/pitch snapping, sprint/jump
   movement, auto-eating, and optional low-hunger parking.
-- `/oi settings` provides one unified screen for relay credentials, rendering,
-  HUD toggles, marker/snitch behavior, presence, pings, colors, keybinds, radar,
-  and macro configuration.
+- `/oi settings` opens a Sodium-style click GUI — sidebar categories, live
+  search across every option, tooltips, sliders, toggles, and in-place keybind
+  rebinding — covering relay credentials, rendering, markers, radar, HUD,
+  snitch, pings, integrations, macros, and keybinds. `/oi radar` and
+  `/oi macros` open it pre-selected on their categories.
 
 ## Screenshots
 

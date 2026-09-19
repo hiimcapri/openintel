@@ -3,8 +3,8 @@ package dev.openintel.api.internal;
 import com.google.gson.JsonObject;
 import dev.openintel.OpenIntelClient;
 import dev.openintel.api.*;
+import dev.openintel.gui.ClickGuiScreen;
 import dev.openintel.gui.HudEditorScreen;
-import dev.openintel.gui.OpenIntelConfigScreen;
 import dev.openintel.ping.PingManager;
 import dev.openintel.render.EventFeed;
 import net.fabricmc.loader.api.FabricLoader;
@@ -263,7 +263,7 @@ public final class ApiBridge {
     private static CompletableFuture<ActionResult> screen(boolean editor) {
         return action(false, () -> {
             var client = MinecraftClient.getInstance();
-            client.setScreen(editor ? new HudEditorScreen(client.currentScreen) : new OpenIntelConfigScreen(client.currentScreen));
+            client.setScreen(editor ? new HudEditorScreen(client.currentScreen) : new ClickGuiScreen(client.currentScreen));
             return completed("Screen opened");
         });
     }
