@@ -11,6 +11,7 @@ import dev.openintel.gui.HudEditorScreen;
 import dev.openintel.macro.AttackMacro;
 import dev.openintel.macro.HoldKeyMacro;
 import dev.openintel.macro.IceRoadMacro;
+import dev.openintel.macro.IntervalMacro;
 import dev.openintel.net.RelayClient;
 import dev.openintel.ping.PingManager;
 import dev.openintel.ping.PingWheelScreen;
@@ -60,9 +61,11 @@ public class OpenIntelClient implements ClientModInitializer {
     private static KeyBinding holdAttackKey;
     private static KeyBinding holdUseKey;
     private static KeyBinding attackToggleKey;
+    private static KeyBinding useToggleKey;
     private static KeyBinding iceRoadKey;
     private static KeyBinding pingKey;
     private AttackMacro attackMacro;
+    private IntervalMacro useMacro;
     private HoldKeyMacro holdAttackMacro;
     private HoldKeyMacro holdUseMacro;
     private IceRoadMacro iceRoadMacro;
@@ -74,8 +77,8 @@ public class OpenIntelClient implements ClientModInitializer {
 
     /** All mod keybinds, for display in config screens. */
     public static KeyBinding[] allKeys() {
-        return new KeyBinding[]{radarToggleKey, attackToggleKey, holdAttackKey, holdUseKey,
-                iceRoadKey, pingKey};
+        return new KeyBinding[]{radarToggleKey, attackToggleKey, useToggleKey,
+                holdAttackKey, holdUseKey, iceRoadKey, pingKey};
     }
 
     @Override
@@ -93,6 +96,7 @@ public class OpenIntelClient implements ClientModInitializer {
             relay.tick();
             tracker.tick(client);
             attackMacro.tick(client);
+            useMacro.tick(client);
             holdAttackMacro.tick(client);
             holdUseMacro.tick(client);
             iceRoadMacro.tick(client);
@@ -204,10 +208,14 @@ public class OpenIntelClient implements ClientModInitializer {
         holdAttackKey = keybind("key.openintel.hold_attack", GLFW.GLFW_KEY_MINUS);
         holdUseKey = keybind("key.openintel.hold_use", GLFW.GLFW_KEY_EQUAL);
         attackToggleKey = keybind("key.openintel.attack_macro", GLFW.GLFW_KEY_0);
+        useToggleKey = keybind("key.openintel.use_macro", GLFW.GLFW_KEY_RIGHT_BRACKET);
         iceRoadKey = keybind("key.openintel.ice_road", GLFW.GLFW_KEY_BACKSPACE);
         pingKey = keybind("key.openintel.ping", GLFW.GLFW_KEY_G);
 
         attackMacro = new AttackMacro(attackToggleKey);
+        useMacro = new IntervalMacro(useToggleKey,
+                () -> MinecraftClient.getInstance().options.useKey,
+                () -> config.useMacroIntervalMs, "use macro");
         holdAttackMacro = new HoldKeyMacro(holdAttackKey,
                 () -> MinecraftClient.getInstance().options.attackKey, "hold attack");
         holdUseMacro = new HoldKeyMacro(holdUseKey,
