@@ -7,6 +7,7 @@ import journeymap.api.v2.client.IClientAPI;
 import journeymap.api.v2.client.display.Context;
 import journeymap.api.v2.client.display.MarkerOverlay;
 import journeymap.api.v2.client.model.MapImage;
+import journeymap.api.v2.client.model.TextProperties;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -114,6 +115,13 @@ final class JmBridge implements Runnable {
         overlay.setOverlayGroupName("OpenIntel");
         overlay.setActiveUIs(Context.UI.Fullscreen);
         overlay.setActiveMapTypes(Context.MapType.all());
+        overlay.setTextProperties(new TextProperties()
+                .setColor(d.rgb)
+                .setFontShadow(true)
+                .setBackgroundColor(0x101014)
+                .setBackgroundOpacity(0.6f)
+                .setScale(1.0f)
+                .setOffsetY(6));
         try {
             api.show(overlay);
             return overlay;
