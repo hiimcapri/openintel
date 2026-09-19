@@ -168,8 +168,24 @@ public class HudEditorScreen extends Screen {
         int bg = active ? 0xD02B3545 : 0xB018202C;
         ctx.fill(box.x, box.y, box.x + box.w, box.y + box.h, bg);
         ctx.drawStrokedRectangle(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : box.color);
-        ctx.drawCenteredTextWithShadow(textRenderer, box.label,
-                box.x + box.w / 2, box.y + (box.h - textRenderer.fontHeight) / 2, box.color);
+        drawBoxLabel(ctx, box);
+    }
+
+    /** Single line when it fits; one word per line inside narrow boxes. */
+    private void drawBoxLabel(DrawContext ctx, Box box) {
+        int maxW = box.w - 4;
+        if (textRenderer.getWidth(box.label) <= maxW || !box.label.contains(" ")) {
+            ctx.drawCenteredTextWithShadow(textRenderer, box.label,
+                    box.x + box.w / 2, box.y + (box.h - textRenderer.fontHeight) / 2, box.color);
+            return;
+        }
+        String[] words = box.label.split(" ");
+        int blockH = words.length * (textRenderer.fontHeight + 2) - 2;
+        int ty = box.y + (box.h - blockH) / 2;
+        for (String word : words) {
+            ctx.drawCenteredTextWithShadow(textRenderer, word, box.x + box.w / 2, ty, box.color);
+            ty += textRenderer.fontHeight + 2;
+        }
     }
 
     private List<ExternalBox> externalBoxes() {
