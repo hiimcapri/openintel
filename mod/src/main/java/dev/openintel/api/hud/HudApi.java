@@ -156,7 +156,7 @@ public final class HudApi {
     public void renderAll(GuiGraphicsExtractor context, float tickDelta) {
         Minecraft client = requireClientThread();
         Objects.requireNonNull(context, "context");
-        if (rendering || client.screen instanceof HudEditorScreen || client.options.hideGui) return;
+        if (rendering || client.gui.screen() instanceof HudEditorScreen || client.gui.hud.isHidden()) return;
         List<RenderJob> jobs = new ArrayList<>();
         synchronized (this) {
             synchronizeConfigIfClientThread();

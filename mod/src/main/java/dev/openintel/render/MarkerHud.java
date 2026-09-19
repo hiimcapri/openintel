@@ -58,7 +58,7 @@ public final class MarkerHud {
         if (!cfg.relayRendering) return;
 
         Minecraft client = Minecraft.getInstance();
-        if (client.player == null || client.level == null || client.options.hideGui) return;
+        if (client.player == null || client.level == null || client.gui.hud.isHidden()) return;
 
         String myDim = client.level.dimension().identifier().toString();
         long now = System.currentTimeMillis();
@@ -124,7 +124,7 @@ public final class MarkerHud {
         int h = ctx.guiHeight();
         float cx = w / 2f, cy = h / 2f;
 
-        var camera = client.gameRenderer.getMainCamera();
+        var camera = client.gameRenderer.mainCamera();
         Vec3 camPos = camera.position();
         Quaternionf worldToCam = new Quaternionf(camera.rotation()).conjugate();
 

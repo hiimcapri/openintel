@@ -164,7 +164,7 @@ public final class ClickGui {
                 new Group("Layout"),
                 new Option("HUD editor", "Drag every HUD element into place on a live preview.",
                         button("Open HUD editor…", () ->
-                                Minecraft.getInstance().setScreen(new HudEditorScreen(self)))),
+                                Minecraft.getInstance().setScreenAndShow(new HudEditorScreen(self)))),
                 new Group("Elements"),
                 new Option(tr("options.openintel.armor.enabled"), "Equipped armor with durability readouts.",
                         bool("options.openintel.armor.enabled", cfg.armorHudEnabled, v -> cfg.armorHudEnabled = v)),
@@ -284,7 +284,7 @@ public final class ClickGui {
 
     private static AbstractWidget bool(String key, boolean current,
                                         Consumer<Boolean> apply) {
-        return OptionInstance.createBoolean(key, current, apply)
+        return OptionInstance.createBoolean(key, current, apply::accept)
                 .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
@@ -293,7 +293,7 @@ public final class ClickGui {
         return new OptionInstance<>(key, OptionInstance.noTooltip(),
                 (text, v) -> text.copy().append(": " + v + suffix),
                 new OptionInstance.IntRange(min, max, true),
-                current, apply)
+                current, apply::accept)
                 .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
@@ -303,7 +303,7 @@ public final class ClickGui {
         return new OptionInstance<>(key, OptionInstance.noTooltip(),
                 (text, v) -> text.copy().append(": " + (v <= 0 ? "unlimited" : v + "m")),
                 new OptionInstance.IntRange(0, 20000, true),
-                current, apply)
+                current, apply::accept)
                 .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
@@ -333,7 +333,7 @@ public final class ClickGui {
                 (text, v) -> Component.translatable(lang.apply(v)),
                 new OptionInstance.Enum<>(List.of(values),
                         com.mojang.serialization.Codec.STRING.xmap(byName, Enum::name)),
-                current, apply)
+                current, apply::accept)
                 .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
@@ -368,7 +368,7 @@ public final class ClickGui {
             ref[0].setMessage(Component.literal(v == -1 ? "auto" : String.format("#%08X", v)));
         };
         ref[0] = Button.builder(Component.literal(""), b ->
-                Minecraft.getInstance().setScreen(new ColorPickerScreen(self, label,
+                Minecraft.getInstance().setScreenAndShow(new ColorPickerScreen(self, label,
                         get.getAsInt() == -1 ? 0xFFFF5555 : get.getAsInt(),
                         apply, autoLabel, autoAction))).build();
         apply.accept(get.getAsInt());

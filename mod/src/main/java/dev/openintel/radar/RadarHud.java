@@ -55,7 +55,7 @@ public final class RadarHud {
         if (!cfg.radarEnabled) return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.level == null || mc.options.hideGui) return;
+        if (mc.player == null || mc.level == null || mc.gui.hud.isHidden()) return;
 
         int r = cfg.radarSize;
         float yaw = mc.player.getYRot(tickDelta);

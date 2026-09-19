@@ -506,7 +506,7 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.setScreenAndShow(parent);
     }
 
     @Override

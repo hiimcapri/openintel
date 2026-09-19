@@ -138,7 +138,7 @@ public class HudEditorScreen extends Screen {
     public void onClose() {
         finishDrag();
         HudApi.getInstance().saveLayout();
-        minecraft.setScreen(parent);
+        minecraft.setScreenAndShow(parent);
     }
 
     @Override

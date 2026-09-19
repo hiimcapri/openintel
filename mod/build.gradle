@@ -17,9 +17,9 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     // JourneyMap fullscreen-map integration — compile-time only, optional at runtime.
-    compileOnly files('libs/journeymap-api-fabric-2.0.0-26.1.jar')
+    compileOnly files('libs/journeymap-api-fabric-26.2-2.0.0.jar')
     // Xaero World Map overlay bridge — compile-time only, optional at runtime.
-    compileOnly files('libs/xaero-world-map-bridge-0.1.2+26.1.2-fabric.jar')
+    compileOnly files('libs/xaero-world-map-bridge-0.1.2+26.2-fabric.jar')
 }
 
 processResources {

@@ -25,7 +25,7 @@ public final class ArmorHud {
     public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
         Minecraft mc = Minecraft.getInstance();
-        if (!cfg.armorHudEnabled || mc.player == null || mc.options.hideGui) return;
+        if (!cfg.armorHudEnabled || mc.player == null || mc.gui.hud.isHidden()) return;
 
         boolean vertical = cfg.armorHudLayout == OIConfig.ArmorHudLayout.VERTICAL;
         int x = resolveX(cfg.armorHudX, ctx.guiWidth(), boxW(cfg));

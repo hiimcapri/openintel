@@ -111,8 +111,8 @@ public class OpenIntelClient implements ClientModInitializer {
                 status("radar " + (config.radarEnabled ? "on" : "off"));
             }
             if (config.pingWheelEnabled && pingKey.consumeClick() && client.player != null
-                    && client.screen == null) {
-                client.setScreen(new PingWheelScreen(pingKey,
+                    && client.gui.screen() == null) {
+                client.setScreenAndShow(new PingWheelScreen(pingKey,
                         PingWheelScreen.physicallyHeld(pingKey)));
             }
         });
@@ -266,27 +266,27 @@ public class OpenIntelClient implements ClientModInitializer {
                             // Defer one tick — the chat screen closes itself
                             // after the command dispatches and would wipe it.
                             Minecraft.getInstance().execute(() ->
-                                    Minecraft.getInstance().setScreen(new ClickGuiScreen(null, "radar")));
+                                    Minecraft.getInstance().setScreenAndShow(new ClickGuiScreen(null, "radar")));
                             return 1;
                         }))
                         .then(ClientCommands.literal("macros").executes(c -> {
                             Minecraft.getInstance().execute(() ->
-                                    Minecraft.getInstance().setScreen(new ClickGuiScreen(null, "macros")));
+                                    Minecraft.getInstance().setScreenAndShow(new ClickGuiScreen(null, "macros")));
                             return 1;
                         }))
                         .then(ClientCommands.literal("settings").executes(c -> {
                             Minecraft.getInstance().execute(() ->
-                                    Minecraft.getInstance().setScreen(new ClickGuiScreen(null)));
+                                    Minecraft.getInstance().setScreenAndShow(new ClickGuiScreen(null)));
                             return 1;
                         }))
                         .then(ClientCommands.literal("hud").executes(c -> {
                             Minecraft.getInstance().execute(() ->
-                                    Minecraft.getInstance().setScreen(new HudEditorScreen(null)));
+                                    Minecraft.getInstance().setScreenAndShow(new HudEditorScreen(null)));
                             return 1;
                         }))
                         .then(ClientCommands.literal("ping").executes(c -> {
                             Minecraft.getInstance().execute(() ->
-                                    Minecraft.getInstance().setScreen(
+                                    Minecraft.getInstance().setScreenAndShow(
                                             new PingWheelScreen(pingKey, false)));
                             return 1;
                         }))

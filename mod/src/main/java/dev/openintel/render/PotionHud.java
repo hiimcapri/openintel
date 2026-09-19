@@ -16,7 +16,7 @@ public final class PotionHud {
     public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
         Minecraft mc = Minecraft.getInstance();
-        if (!cfg.potionHudEnabled || mc.player == null || mc.options.hideGui) return;
+        if (!cfg.potionHudEnabled || mc.player == null || mc.gui.hud.isHidden()) return;
 
         List<MobEffectInstance> effects = new ArrayList<>(mc.player.getActiveEffects());
         effects.sort(Comparator.comparing(e -> e.getEffect().value().getDisplayName().getString()));

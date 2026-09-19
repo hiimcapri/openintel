@@ -67,7 +67,7 @@ public abstract class InputMacro {
     public boolean isActive() { return active; }
 
     /** Extra gate for engaging (e.g. don't grab use while eating). */
-    protected boolean canEngage(Minecraft mc) { return mc.screen == null; }
+    protected boolean canEngage(Minecraft mc) { return mc.gui.screen() == null; }
 
     /**
      * Whether the macro has lost input custody this tick and should
@@ -77,7 +77,7 @@ public abstract class InputMacro {
      * don't stop it; only the toggle key does).
      */
     protected boolean losesInputCustody(Minecraft mc, int slot) {
-        return mc.screen != null || !mc.mouseHandler.isMouseGrabbed()
+        return mc.gui.screen() != null || !mc.mouseHandler.isMouseGrabbed()
                 || slot != watchedSlot || hotbarKeyDown(mc);
     }
 

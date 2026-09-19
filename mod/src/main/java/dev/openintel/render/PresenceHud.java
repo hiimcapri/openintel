@@ -35,7 +35,7 @@ public final class PresenceHud {
         if (!cfg.presenceEnabled || !cfg.relayRendering) return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.level == null || mc.options.hideGui) return;
+        if (mc.player == null || mc.level == null || mc.gui.hud.isHidden()) return;
 
         String myDim = mc.level.dimension().identifier().toString();
         Vec3 self = mc.player.position();
