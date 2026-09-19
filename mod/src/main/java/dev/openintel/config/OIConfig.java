@@ -149,7 +149,7 @@ public class OIConfig {
     public int snitchMarkerColor = 0xFFAAAAAA;
 
     /** Use the tripper's allegiance color instead of the configured snitch color. */
-    public boolean snitchMarkerColorAuto = false;
+    public boolean snitchMarkerColorAuto = true;
 
     // ------------------------------------------------------- journeymap ----
 
@@ -284,12 +284,13 @@ public class OIConfig {
                 // Migrate it to unlimited; explicit non-default caps survive.
                 if (c.maxMarkerDistance == 4096) c.maxMarkerDistance = 0;
                 if (OLD_SNITCH_PATTERN.equals(c.snitchPattern)) c.snitchPattern = DEFAULT_SNITCH_PATTERN;
-                // Before the explicit auto-color flag existed, -1 was the default.
-                // Convert that legacy default to neutral grey; future auto-color
-                // selections are preserved through the explicit flag.
-                if (!raw.has("snitchMarkerColorAuto")) {
-                    c.snitchMarkerColorAuto = false;
-                    if (c.snitchMarkerColor == -1) c.snitchMarkerColor = 0xFFAAAAAA;
+                // Before the explicit auto-color flag existed, -1 was the
+                // allegiance auto-color sentinel and the default. Preserve it
+                // under the flag; explicit colors keep their static value.
+                // Configs missing both keys keep the field default (auto on).
+                if (!raw.has("snitchMarkerColorAuto") && raw.has("snitchMarkerColor")) {
+                    c.snitchMarkerColorAuto = c.snitchMarkerColor == -1;
+                    if (c.snitchMarkerColorAuto) c.snitchMarkerColor = 0xFFAAAAAA;
                     c.save();
                 }
                 return c;
