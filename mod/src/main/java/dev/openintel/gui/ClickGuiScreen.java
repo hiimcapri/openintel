@@ -53,6 +53,7 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     private static final int GROUP_H = 22;
     private static final int WIDGET_W = 150;
     private static final int WIDGET_H = 20;
+    private static final int WIDGET_COL = 200;  // preferred widget column, px from pane content left
     private static final int AUX_W = 60;
     private static final int AUX_GAP = 6;
     private static final double SCROLL_STEP = 22;
@@ -343,18 +344,21 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
                 ClickableWidget widget = opt.widget();
                 ClickableWidget aux = opt.aux();
 
-                int widgetRight = cR;
-                if (aux != null) {
-                    aux.setX(cR - AUX_W);
-                    aux.setY(wy);
-                    aux.setWidth(AUX_W);
-                    aux.visible = intersects;
-                    widgetRight = cR - AUX_W - AUX_GAP;
-                }
-                widget.setX(widgetRight - WIDGET_W);
+                // Widgets sit in a fixed column near the label rather than
+                // hugging the pane's right edge — clamped so narrow windows
+                // still fit the whole control.
+                int auxW = aux != null ? AUX_W + AUX_GAP : 0;
+                int widgetLeft = Math.min(cL + WIDGET_COL, cR - auxW - WIDGET_W);
+                widget.setX(widgetLeft);
                 widget.setY(wy);
                 widget.setWidth(WIDGET_W);
                 widget.visible = intersects;
+                if (aux != null) {
+                    aux.setX(widgetLeft + WIDGET_W + AUX_GAP);
+                    aux.setY(wy);
+                    aux.setWidth(AUX_W);
+                    aux.visible = intersects;
+                }
 
                 if (intersects) {
                     if (mouseX >= cL && mouseX < cR
