@@ -73,16 +73,16 @@ final class JmBridge implements Runnable {
                 if (p.name.equalsIgnoreCase(myName) || local.contains(p.name.toLowerCase())) continue;
                 Allegiance a = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
                 int rgb = a.argb & 0xFFFFFF;
-                String label = p.reporter != null && !p.reporter.isBlank()
-                        ? p.name + " (via " + p.reporter + ")" : p.name;
+                // No "(via reporter)" — the reporter flaps as nearby clients
+                // hand off coverage, and the flicker reads worse than it helps.
                 want.put("player:" + p.name,
-                        new Desired("player|" + rgb + "|" + label,
+                        new Desired("player|" + rgb,
                                 BlockPos.ofFloored(p.x, p.y, p.z), p.dimension, rgb,
-                                p.name, label));
+                                p.name, p.name));
             }
             for (Tracker.SnitchHit h : tracker.snitchHits()) {
                 int rgb = OpenIntelClient.allegiances().of(h.player).argb & 0xFFFFFF;
-                String label = h.player + " (via " + h.reporter + ")";
+                String label = h.snitch + " | " + h.player;
                 want.put("snitch:" + h.player + "@" + h.snitch,
                         new Desired("snitch|" + rgb + "|" + label,
                                 BlockPos.ofFloored(h.x, h.y, h.z), h.dimension, rgb,
