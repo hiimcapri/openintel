@@ -110,7 +110,6 @@ public final class MarkerHud {
             float fade = 1f - age / (float) snitchLife;
             if (fade <= 0.03f) continue;
             Allegiance a = OpenIntelClient.allegiances().of(hit.player);
-            if (a == Allegiance.NEUTRAL) a = Allegiance.ENEMY;   // tripped our snitch
             int argb = cfg.snitchMarkerColorAuto ? a.argb : cfg.snitchMarkerColor;
             targets.add(new Target(
                     hit.snitch + " | " + hit.player + " | " + ago(age),
