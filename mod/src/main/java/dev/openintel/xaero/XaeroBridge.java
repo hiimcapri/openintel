@@ -53,12 +53,20 @@ public final class XaeroBridge {
         long now = System.currentTimeMillis();
         long snitchLife = cfg.snitchMarkerSeconds * 1000L;
         OverlayCanvas canvas = ctx.canvas();
-        String myName = MinecraftClient.getInstance().getSession().getUsername();
+        var mc = MinecraftClient.getInstance();
+        String myName = mc.getSession().getUsername();
+        // Players in render distance are already on the map natively —
+        // stacking a relay dot + label on them is just noise.
+        java.util.Set<String> local = new java.util.HashSet<>();
+        if (mc.world != null) {
+            for (var e : mc.world.getPlayers()) local.add(e.getGameProfile().name().toLowerCase());
+        }
 
         // Relay positions: small allegiance dot, name underneath — focus
         // targets keep the full diamond so they read like pings/snitches.
         for (var p : tracker.all()) {
-            if (!dim.equals(p.dimension) || p.name.equalsIgnoreCase(myName)) continue;
+            if (!dim.equals(p.dimension) || p.name.equalsIgnoreCase(myName)
+                    || local.contains(p.name.toLowerCase())) continue;
             float alpha = cfg.staleDecay
                     ? Math.max(0f, 1f - (now - p.lastSeen) / (float) cfg.staleAfterMs)
                     : 1f;
