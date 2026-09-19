@@ -100,5 +100,13 @@ public final class IceRoadMacro extends InputMacro {
     }
 
     @Override
+    protected boolean losesInputCustody(MinecraftClient mc, int slot) {
+        // CivModern parity: chat, inventory and scroll-wheel don't stop the
+        // road — the macro keeps re-pressing movement inputs so the boat
+        // keeps going while screens are open. Only the toggle key stops it.
+        return false;
+    }
+
+    @Override
     protected String name() { return "ice road"; }
 }

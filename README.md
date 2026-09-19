@@ -80,10 +80,11 @@ system.
 
 ### Macros and configuration
 
-- Attack, hold-attack, hold-use, and ice-road macros with safe disengagement
-  when screens open, the mouse unlocks, or the selected hotbar slot changes.
+- Attack, hold-attack, and hold-use macros with safe disengagement when
+  screens open, the mouse unlocks, or the selected hotbar slot changes.
 - Ice-road automation supports 45-degree yaw/pitch snapping, sprint/jump
-  movement, auto-eating, and optional low-hunger parking.
+  movement, auto-eating, and optional low-hunger parking. It keeps running
+  through chat, inventory, and scroll-wheel — only its keybind stops it.
 - `/oi settings` opens a Sodium-style click GUI — sidebar categories, live
   search across every option, tooltips, sliders, toggles, and in-place keybind
   rebinding — covering relay credentials, rendering, markers, radar, HUD,
