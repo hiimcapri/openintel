@@ -49,7 +49,8 @@ public final class MarkerHud {
     private record Shape(float x, float y, int color, int kind) { }
     /** Edge arrowhead: dir 0=left, 1=right, 2=up, 3=down. */
     private record Arrow(float x, float y, int color, int dir) { }
-    private record Label(float x, float y, String text, int color) { }
+    /** scale: user marker-scale for over-head labels; edge labels stay 1f. */
+    private record Label(float x, float y, String text, int color, float scale) { }
     private record Glyph(float x, float y, String text, int color) { }
     private record EdgeEntry(String label, int color, double dist) { }
 
@@ -63,6 +64,8 @@ public final class MarkerHud {
         String myDim = client.level.dimension().identifier().toString();
         long now = System.currentTimeMillis();
         float opacity = cfg.relayOpacity / 255f;
+        float scale = cfg.markerScale;
+        int lineH = client.font.lineHeight + 2;
         float tickDelta = client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
         // ---- gather every target -------------------------------------------
@@ -166,11 +169,11 @@ public final class MarkerHud {
                 float sy = (0.5f - ny * 0.5f) * h;
                 if (t.kind == 2) {
                     // Snitch: ⚠ glyph floats above the name line.
-                    glyphs.add(new Glyph(sx, sy - 4f, "⚠", t.color));
-                    projectedLabels.add(new Label(sx, sy + 5f, text, t.color));
+                    glyphs.add(new Glyph(sx, sy - 4f * scale, "⚠", t.color));
+                    projectedLabels.add(new Label(sx, sy + 5f * scale, text, t.color, scale));
                 } else {
                     shapes.add(new Shape(sx, sy, t.color, t.kind));
-                    projectedLabels.add(new Label(sx, sy - 20, text, t.color));
+                    projectedLabels.add(new Label(sx, sy - (lineH + 9f) * scale, text, t.color, scale));
                 }
                 continue;
             }
@@ -196,7 +199,7 @@ public final class MarkerHud {
             }
         }
 
-        labels.addAll(stackProjectedLabels(client, projectedLabels));
+        labels.addAll(stackProjectedLabels(client, projectedLabels, scale));
 
         // ---- edge stacks ----------------------------------------------------
         // Anchors are configurable so the lists can be parked clear of other
@@ -218,7 +221,14 @@ public final class MarkerHud {
             Matrix3x2f pose = new Matrix3x2f(ctx.pose());
             ((DrawContextAccessor) ctx).openintel$state().addGuiElement(new ColoredQuadsElement(
                     pose, vc -> {
-                        for (Shape s : shapes) emitShape(vc, pose, s);
+                        for (Shape s : shapes) {
+                            // Scale around each marker's own anchor — edges
+                            // (arrows) stay at the user's HUD size.
+                            Matrix3x2f sp = new Matrix3x2f(pose)
+                                    .translate(s.x, s.y).scale(scale, scale)
+                                    .translate(-s.x, -s.y);
+                            emitShape(vc, sp, s);
+                        }
                         for (Arrow a : arrows) emitArrow(vc, pose, a);
                     },
                     new ScreenRectangle(0, 0, w, h).transformMaxBounds(pose)));
@@ -229,13 +239,22 @@ public final class MarkerHud {
             var pose = ctx.pose();
             pose.pushMatrix();
             pose.translate(g.x, g.y);
-            pose.scale(1.05f, 1.05f);
+            pose.scale(1.05f * scale, 1.05f * scale);
             ctx.centeredText(tr, g.text, 0, -tr.lineHeight / 2, g.color);
             pose.popMatrix();
         }
         for (Label l : labels) {
             int tw = tr.width(l.text);
-            ctx.text(tr, l.text, Math.round(l.x - tw / 2f), Math.round(l.y), l.color, true);
+            if (l.scale == 1f) {
+                ctx.text(tr, l.text, Math.round(l.x - tw / 2f), Math.round(l.y), l.color, true);
+            } else {
+                var pose = ctx.pose();
+                pose.pushMatrix();
+                pose.translate(l.x, l.y);
+                pose.scale(l.scale, l.scale);
+                ctx.text(tr, l.text, Math.round(-tw / 2f), 0, l.color, true);
+                pose.popMatrix();
+            }
         }
     }
 
@@ -245,12 +264,12 @@ public final class MarkerHud {
     private static final java.util.Map<String, Float> renderY = new java.util.HashMap<>();
 
     private static List<Label> stackProjectedLabels(Minecraft client,
-                                                    List<Label> source) {
+                                                    List<Label> source, float scale) {
         source.sort(Comparator.comparing((Label l) -> l.text)
                 .thenComparingDouble(l -> l.x));
         List<Label> resolved = new ArrayList<>();
         List<Label> placed = new ArrayList<>();
-        int lineH = client.font.lineHeight + 2;
+        float lineH = (client.font.lineHeight + 2) * scale;
         java.util.Set<String> seen = new java.util.HashSet<>();
 
         for (Label label : source) {
@@ -261,18 +280,18 @@ public final class MarkerHud {
             // discrete levels.
             float y = label.y;
             for (int iter = 0; iter <= resolved.size(); iter++) {
-                Label b = blocker(client, new Label(label.x, y, label.text, label.color),
-                        resolved, lineH);
+                Label b = blocker(client, new Label(label.x, y, label.text, label.color, scale),
+                        resolved, lineH, scale);
                 if (b == null) break;
                 y = b.y - lineH - 0.5f;
             }
             if (y < 2) y = label.y;
-            resolved.add(new Label(label.x, y, label.text, label.color));
+            resolved.add(new Label(label.x, y, label.text, label.color, scale));
 
             Float prev = renderY.get(label.text);
             float ry = prev != null ? prev + (y - prev) * 0.4f : y;
             renderY.put(label.text, ry);
-            placed.add(new Label(label.x, ry, label.text, label.color));
+            placed.add(new Label(label.x, ry, label.text, label.color, scale));
         }
         renderY.keySet().retainAll(seen);
         return placed;
@@ -280,13 +299,13 @@ public final class MarkerHud {
 
     /** The highest already-placed label the candidate collides with, or null. */
     private static Label blocker(Minecraft client, Label candidate,
-                                 List<Label> placed, int lineH) {
-        float half = client.font.width(candidate.text) / 2f;
+                                 List<Label> placed, float lineH, float scale) {
+        float half = client.font.width(candidate.text) * scale / 2f;
         float left = candidate.x - half - 2;
         float right = candidate.x + half + 2;
         Label top = null;
         for (Label other : placed) {
-            float otherHalf = client.font.width(other.text) / 2f;
+            float otherHalf = client.font.width(other.text) * scale / 2f;
             if (left < other.x + otherHalf + 2 && right > other.x - otherHalf - 2
                     && candidate.y < other.y + lineH && candidate.y + lineH > other.y
                     && (top == null || other.y < top.y)) {
@@ -317,9 +336,9 @@ public final class MarkerHud {
             float midY = y + lineH / 2f;
             int tw = tr.width(e.label);
             if (rightSide) {
-                labels.add(new Label(arrowX - 7f - tw / 2f, y, e.label, e.color));
+                labels.add(new Label(arrowX - 7f - tw / 2f, y, e.label, e.color, 1f));
             } else {
-                labels.add(new Label(arrowX + 7f + tw / 2f, y, e.label, e.color));
+                labels.add(new Label(arrowX + 7f + tw / 2f, y, e.label, e.color, 1f));
             }
             arrows.add(new Arrow(arrowX, midY, e.color, rightSide ? 1 : 0));
             y += lineH;
@@ -343,7 +362,7 @@ public final class MarkerHud {
 
         float y = inward ? arrowY + 6f : arrowY - 6f - entries.size() * lineH;
         for (EdgeEntry e : entries) {
-            labels.add(new Label(cx, y, e.label, e.color));
+            labels.add(new Label(cx, y, e.label, e.color, 1f));
             y += lineH;
         }
     }

@@ -15,6 +15,7 @@
   "options.openintel.relay.stale_decay": "Stale intel fade",
   "options.openintel.relay.enemy_alert": "Enemy alert sound",
   "options.openintel.relay.opacity": "Marker opacity",
+  "options.openintel.relay.marker_scale": "Marker scale",
   "options.openintel.presence.enabled": "Presence panel",
   "options.openintel.presence.all_dims": "Show all dimensions",
   "options.openintel.presence.rows": "Panel rows",

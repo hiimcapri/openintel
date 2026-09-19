@@ -90,6 +90,9 @@ public class OIConfig {
     /** Fade relay blips/markers out as their intel approaches staleAfterMs. */
     public boolean staleDecay = true;
 
+    /** Scale of over-head markers — chevron/diamond and the name label together. */
+    public float markerScale = 1.0f;
+
     // ---------------------------------------------------------- presence ----
 
     /** Side-panel list of all relay-tracked players. */
