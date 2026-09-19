@@ -54,23 +54,29 @@ public final class ArmorHud {
         if (vertical) {
             ctx.drawTextWithShadow(mc.textRenderer, text, itemX + 18, itemY + 4, color);
         } else {
-            ctx.drawCenteredTextWithShadow(mc.textRenderer, text, itemX + 8, itemY + 17, color);
+            // "100%" is wider than the 16px icon; shrink it so neighbors don't touch.
+            var pose = ctx.getMatrices();
+            pose.pushMatrix();
+            pose.translate(itemX + 8, itemY + 18);
+            pose.scale(0.8f, 0.8f);
+            ctx.drawCenteredTextWithShadow(mc.textRenderer, text, 0, 0, color);
+            pose.popMatrix();
         }
     }
 
     private static void drawBar(DrawContext ctx, ItemStack stack, boolean vertical,
                                 int itemX, int itemY) {
-        if (!stack.isItemBarVisible()) return;
+        // Draw for every damageable piece — a HUD readout wants a full bar on
+        // undamaged items, unlike the vanilla overlay that hides it.
         int step = stack.getItemBarStep();
         int color = stack.getItemBarColor() | 0xFF000000;
+        int fill = Math.round(step * 16f / 13f);
         if (vertical) {
-            int fill = Math.round(step * 16f / 13f);
-            ctx.fill(itemX + 17, itemY, itemX + 20, itemY + 16, 0xFF000000);
-            ctx.fill(itemX + 18, itemY + 16 - fill, itemX + 19, itemY + 16, color);
+            ctx.fill(itemX + 17, itemY, itemX + 21, itemY + 16, 0xFF000000);
+            ctx.fill(itemX + 18, itemY + 16 - fill, itemX + 20, itemY + 16, color);
         } else {
-            int fill = Math.round(step * 16f / 13f);
-            ctx.fill(itemX, itemY + 17, itemX + 16, itemY + 19, 0xFF000000);
-            ctx.fill(itemX, itemY + 17, itemX + fill, itemY + 18, color);
+            ctx.fill(itemX, itemY + 17, itemX + 16, itemY + 20, 0xFF000000);
+            ctx.fill(itemX, itemY + 17, itemX + fill, itemY + 19, color);
         }
     }
 
