@@ -241,29 +241,56 @@ public final class MarkerHud {
 
     // ------------------------------------------------------ collection ----
 
+    /** Rendered y per label text — the sticky slot labels glide between. */
+    private static final java.util.Map<String, Float> stickyY = new java.util.HashMap<>();
+
     private static List<Label> stackProjectedLabels(MinecraftClient client,
                                                     List<Label> source) {
         source.sort(Comparator.comparing((Label l) -> l.text)
                 .thenComparingDouble(l -> l.x));
         List<Label> placed = new ArrayList<>();
         int lineH = client.textRenderer.fontHeight + 2;
+        java.util.Set<String> seen = new java.util.HashSet<>();
 
         for (Label label : source) {
+            seen.add(label.text);
+            Float prev = stickyY.get(label.text);
             Label chosen = null;
+
+            // Stickiness: a raised label keeps its slot while its anchor is
+            // still blocked — without this, labels sliding past each other
+            // during a camera pan bounce between level 0 and 1 every frame.
+            if (prev != null && prev <= label.y + 1f && label.y - prev <= 2f * lineH) {
+                Label held = new Label(label.x, prev, label.text, label.color);
+                Label atAnchor = new Label(label.x, label.y, label.text, label.color);
+                if (!overlaps(client, held, placed, lineH)
+                        && overlaps(client, atAnchor, placed, lineH)) {
+                    chosen = held;
+                }
+            }
+
             // Upward-only stacking: a label never drops below its anchor,
             // so chevrons stay visible and colliding labels can't flip
             // above/below each other as projected heights wobble.
-            for (int level = 0; level <= source.size(); level++) {
-                float y = label.y - level * lineH;
-                if (y < 2) break;
-                Label candidate = new Label(label.x, y, label.text, label.color);
-                if (!overlaps(client, candidate, placed, lineH)) {
-                    chosen = candidate;
-                    break;
+            if (chosen == null) {
+                for (int level = 0; level <= source.size(); level++) {
+                    float y = label.y - level * lineH;
+                    if (y < 2) break;
+                    Label candidate = new Label(label.x, y, label.text, label.color);
+                    if (!overlaps(client, candidate, placed, lineH)) {
+                        chosen = candidate;
+                        break;
+                    }
                 }
             }
-            placed.add(chosen != null ? chosen : label);
+            if (chosen == null) chosen = label;
+
+            // Glide to the slot rather than popping to it.
+            float y = prev != null ? prev + (chosen.y - prev) * 0.4f : chosen.y;
+            placed.add(new Label(chosen.x, y, chosen.text, chosen.color));
+            stickyY.put(label.text, y);
         }
+        stickyY.keySet().retainAll(seen);
         return placed;
     }
 
