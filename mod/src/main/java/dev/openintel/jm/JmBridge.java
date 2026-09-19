@@ -165,7 +165,10 @@ final class JmBridge implements Runnable {
             for (int y = 0; y < 16; y++) {
                 for (int x = 0; x < 16; x++) {
                     int d = Math.abs(x - 7) + Math.abs(y - 7);
-                    if (d <= 6) icon.setColorArgb(x, y, d >= 5 ? 0xFF202020 : 0xFFFFFFFF);
+                    // Write every pixel — unwritten corners are garbage
+                    // memory that shows through as speckled noise.
+                    icon.setColorArgb(x, y,
+                            d <= 6 ? (d >= 5 ? 0xFF202020 : 0xFFFFFFFF) : 0);
                 }
             }
         }
