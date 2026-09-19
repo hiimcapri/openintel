@@ -21,6 +21,7 @@ import dev.openintel.render.MarkerHud;
 import dev.openintel.render.PotionHud;
 import dev.openintel.render.PresenceHud;
 import dev.openintel.tracker.Tracker;
+import dev.openintel.xaero.XaeroBridge;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -31,6 +32,7 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
@@ -144,6 +146,14 @@ public class OpenIntelClient implements ClientModInitializer {
             tracker.clear();
             allegiances.replaceAll(java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of());
         });
+
+        // Xaero World Map overlay — same soft-dep contract as JourneyMap:
+        // dev.openintel.xaero is only loaded when the bridge mod is present.
+        if (FabricLoader.getInstance().isModLoaded("xaero_world_map_bridge")) {
+            try {
+                XaeroBridge.register();
+            } catch (Throwable ignored) { }
+        }
 
         registerCommands();
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> ApiBridge.initialize());

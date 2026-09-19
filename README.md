@@ -65,6 +65,19 @@ system.
   clients without it. Toggle under `/oi settings` → Integrations →
   *JourneyMap fullscreen markers*. OpenIntel's own rendering is untouched.
 
+### Xaero's World Map integration (optional)
+
+- With [xaero-world-map-bridge](https://github.com/billstark001/xaero-world-map-bridge)
+  installed alongside Xaero's World Map, snitch hits and shared pings draw
+  onto the fullscreen map (the `M` key) as allegiance-tinted diamonds with
+  shadowed labels — same markers as the JourneyMap integration.
+- Markers fade and expire with their HUD counterparts, and the map's
+  dimension switcher filters them correctly.
+- Strictly optional: OpenIntel needs neither Xaero's World Map nor the
+  bridge to run, and a bridge/Xaero version mismatch simply disables the
+  overlay. Toggle under `/oi settings` → Integrations →
+  *Xaero World Map markers*.
+
 ### Movable HUD
 
 - `/oi hud` opens a visual editor: click and drag the radar, relay roster,
@@ -180,7 +193,7 @@ each change is announced in both the alerts and admin Discord channels.
 ## Repo layout
 
 - `mod/` — Fabric client mod (Java 21, Minecraft 1.21.11, Fabric API)
-- `mod/libs/` — vendored JourneyMap API jar, compile-time only (optional at runtime)
+- `mod/libs/` — vendored JourneyMap API + Xaero bridge jars, compile-time only (optional at runtime)
 - `relay/` — Node.js relay server + webhook integration
 
 ## Quick start
@@ -204,9 +217,10 @@ Drop the jar in `.minecraft/mods` alongside Fabric API. On first launch the
 mod writes `config/openintel.json` — set `relayUrl` (for example,
 `ws://your.server:8765`), `minecraftServer` (the allowed multiplayer address),
 and your personal `token`, then join that Minecraft server. These fields are
-also available under `/oi settings`. If JourneyMap is installed, snitch hits
-and shared pings are additionally drawn on its fullscreen map — toggleable
-under `/oi settings` → Integrations.
+also available under `/oi settings`. If JourneyMap or Xaero's World Map
+(via xaero-world-map-bridge) is installed, snitch hits and shared pings are
+additionally drawn on its fullscreen map — toggleable under `/oi settings` →
+Integrations.
 
 ### Discord setup
 1. Create two webhooks (Server Settings → Integrations → Webhooks):

@@ -156,6 +156,9 @@ public class OIConfig {
     /** Draw snitch hits + shared pings on JourneyMap's fullscreen map (soft dep). */
     public boolean jmMarkers = true;
 
+    /** Draw snitch hits + shared pings on Xaero's World Map screen (soft dep). */
+    public boolean xaeroMarkers = true;
+
     // -------------------------------------------------------------- radar ----
 
     /** Circular HUD radar. */

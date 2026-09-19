@@ -223,7 +223,10 @@ public final class ClickGui {
         cats.add(new Category("integrations", "Integrations", List.of(
                 new Group("JourneyMap"),
                 new Option(tr("options.openintel.jm.markers"), "Draw snitch hits and pings on JourneyMap's fullscreen map.",
-                        bool("options.openintel.jm.markers", cfg.jmMarkers, v -> cfg.jmMarkers = v))
+                        bool("options.openintel.jm.markers", cfg.jmMarkers, v -> cfg.jmMarkers = v)),
+                new Group("Xaero's World Map"),
+                new Option(tr("options.openintel.xaero.markers"), "Draw snitch hits and pings on Xaero's World Map screen.",
+                        bool("options.openintel.xaero.markers", cfg.xaeroMarkers, v -> cfg.xaeroMarkers = v))
         )));
 
         // ----------------------------------------------------------- macros
