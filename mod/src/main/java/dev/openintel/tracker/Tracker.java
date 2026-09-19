@@ -131,9 +131,13 @@ public class Tracker {
                 client.player.getX(), client.player.getY(), client.player.getZ(), dim));
 
         // Everyone the vanilla client is rendering near me — mod user or not.
+        // Relay users report themselves, so re-reporting them here only
+        // flaps the "via" reporter and doubles traffic for zero intel gain.
         for (AbstractClientPlayerEntity p : client.world.getPlayers()) {
             if (p == client.player) continue;
-            reports.add(report(p.getGameProfile().name(), p.getX(), p.getY(), p.getZ(), dim));
+            String name = p.getGameProfile().name();
+            if (OpenIntelClient.allegiances().isRelayUser(name)) continue;
+            reports.add(report(name, p.getX(), p.getY(), p.getZ(), dim));
         }
 
         JsonObject msg = new JsonObject();

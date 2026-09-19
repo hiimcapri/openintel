@@ -62,8 +62,15 @@ final class JmBridge implements Runnable {
 
         if (cfg != null && cfg.jmMarkers && tracker != null) {
             String myName = MinecraftClient.getInstance().getSession().getUsername();
+            // JM's own entity radar already draws players in render distance —
+            // a relay marker on top is just a duplicate label.
+            var world = MinecraftClient.getInstance().world;
+            java.util.Set<String> local = new java.util.HashSet<>();
+            if (world != null) {
+                for (var e : world.getPlayers()) local.add(e.getGameProfile().name().toLowerCase());
+            }
             for (Tracker.RemotePlayer p : tracker.all()) {
-                if (p.name.equalsIgnoreCase(myName)) continue;   // JM draws self
+                if (p.name.equalsIgnoreCase(myName) || local.contains(p.name.toLowerCase())) continue;
                 Allegiance a = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
                 int rgb = a.argb & 0xFFFFFF;
                 String label = p.reporter != null && !p.reporter.isBlank()
