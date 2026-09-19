@@ -18,6 +18,8 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     // JourneyMap fullscreen-map integration — compile-time only, optional at runtime.
     modCompileOnly files('libs/journeymap-api-fabric-2.0.0-1.21.11-SNAPSHOT.jar')
+    // Xaero World Map overlay bridge — compile-time only, optional at runtime.
+    modCompileOnly files('libs/xaero-world-map-bridge-0.1.1+1.21.11-fabric.jar')
 }
 
 processResources {
