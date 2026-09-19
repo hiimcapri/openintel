@@ -53,7 +53,7 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     private static final int GROUP_H = 22;
     private static final int WIDGET_W = 150;
     private static final int WIDGET_H = 20;
-    private static final int WIDGET_COL = 200;  // preferred widget column, px from pane content left
+    private static final int WIDGET_COL = 280;  // preferred widget column, px from pane content left
     private static final int AUX_W = 60;
     private static final int AUX_GAP = 6;
     private static final double SCROLL_STEP = 22;
