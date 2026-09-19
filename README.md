@@ -56,11 +56,12 @@ system.
 
 ### JourneyMap integration (optional)
 
-- When JourneyMap is installed, snitch hits and shared pings also appear on
-  its fullscreen map (the `J` key) as allegiance-tinted diamonds — enemy red,
-  focus purple, neutral grey.
-- Each marker shows the tripper and reporter (or ping label and sender) on a
-  shadowed, backed label, and expires alongside its HUD marker.
+- When JourneyMap is installed, relay player positions, snitch hits, and
+  shared pings also appear on its fullscreen map (the `J` key) as
+  allegiance-tinted diamonds — enemy red, focus purple, neutral grey.
+- Each marker shows the player name, tripper and reporter (or ping label
+  and sender) on a shadowed, backed label, and expires alongside its HUD
+  marker.
 - Strictly optional: JourneyMap is never required and nothing changes for
   clients without it. Toggle under `/oi settings` → Integrations →
   *JourneyMap fullscreen markers*. OpenIntel's own rendering is untouched.
@@ -68,9 +69,10 @@ system.
 ### Xaero's World Map integration (optional)
 
 - With [xaero-world-map-bridge](https://github.com/billstark001/xaero-world-map-bridge)
-  installed alongside Xaero's World Map, snitch hits and shared pings draw
-  onto the fullscreen map (the `M` key) as allegiance-tinted diamonds with
-  shadowed labels — same markers as the JourneyMap integration.
+  installed alongside Xaero's World Map, relay player positions, snitch
+  hits, and shared pings draw onto the fullscreen map (the `M` key) as
+  allegiance-tinted markers with shadowed labels — players are small dots,
+  focus targets, snitches and pings are diamonds.
 - Markers fade and expire with their HUD counterparts, and the map's
   dimension switcher filters them correctly.
 - Strictly optional: OpenIntel needs neither Xaero's World Map nor the
