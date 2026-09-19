@@ -241,32 +241,40 @@ public final class MarkerHud {
 
     // ------------------------------------------------------ collection ----
 
-    /** Rendered y per label text — the sticky slot labels glide between. */
-    private static final java.util.Map<String, Float> stickyY = new java.util.HashMap<>();
+    /** Assigned slot y per label — what overlap checks run against. */
+    private static final java.util.Map<String, Float> slotY = new java.util.HashMap<>();
+    /** Rendered y per label — glides toward slotY. */
+    private static final java.util.Map<String, Float> renderY = new java.util.HashMap<>();
+    /** Raised labels stay raised until this ms deadline — release hysteresis. */
+    private static final java.util.Map<String, Long> raisedUntil = new java.util.HashMap<>();
 
     private static List<Label> stackProjectedLabels(MinecraftClient client,
                                                     List<Label> source) {
         source.sort(Comparator.comparing((Label l) -> l.text)
                 .thenComparingDouble(l -> l.x));
         List<Label> placed = new ArrayList<>();
+        List<Label> placedSlots = new ArrayList<>();
         int lineH = client.textRenderer.fontHeight + 2;
         java.util.Set<String> seen = new java.util.HashSet<>();
+        long now = System.currentTimeMillis();
 
         for (Label label : source) {
             seen.add(label.text);
-            Float prev = stickyY.get(label.text);
-            Label chosen = null;
+            Label atAnchor = new Label(label.x, label.y, label.text, label.color);
+            if (overlaps(client, atAnchor, placedSlots, lineH)) {
+                raisedUntil.put(label.text, now + 400);
+            }
+            boolean blocked = now < raisedUntil.getOrDefault(label.text, 0L);
 
-            // Stickiness: a raised label keeps its slot while its anchor is
-            // still blocked — without this, labels sliding past each other
-            // during a camera pan bounce between level 0 and 1 every frame.
-            if (prev != null && prev <= label.y + 1f && label.y - prev <= 2f * lineH) {
-                Label held = new Label(label.x, prev, label.text, label.color);
-                Label atAnchor = new Label(label.x, label.y, label.text, label.color);
-                if (!overlaps(client, held, placed, lineH)
-                        && overlaps(client, atAnchor, placed, lineH)) {
-                    chosen = held;
-                }
+            Label chosen = null;
+            Float prevSlot = slotY.get(label.text);
+            // Stickiness: a raised label holds its slot while it's still
+            // needed — overlap jitters during a camera pan no longer bounce
+            // it, and the 400ms hold absorbs the release edge too.
+            if (prevSlot != null && prevSlot <= label.y + 1f
+                    && label.y - prevSlot <= 2f * lineH && blocked) {
+                Label held = new Label(label.x, prevSlot, label.text, label.color);
+                if (!overlaps(client, held, placedSlots, lineH)) chosen = held;
             }
 
             // Upward-only stacking: a label never drops below its anchor,
@@ -277,7 +285,7 @@ public final class MarkerHud {
                     float y = label.y - level * lineH;
                     if (y < 2) break;
                     Label candidate = new Label(label.x, y, label.text, label.color);
-                    if (!overlaps(client, candidate, placed, lineH)) {
+                    if (!overlaps(client, candidate, placedSlots, lineH)) {
                         chosen = candidate;
                         break;
                     }
@@ -285,12 +293,17 @@ public final class MarkerHud {
             }
             if (chosen == null) chosen = label;
 
-            // Glide to the slot rather than popping to it.
+            slotY.put(label.text, chosen.y);
+            placedSlots.add(chosen);
+            // Glide the rendered position toward the logical slot.
+            Float prev = renderY.get(label.text);
             float y = prev != null ? prev + (chosen.y - prev) * 0.4f : chosen.y;
+            renderY.put(label.text, y);
             placed.add(new Label(chosen.x, y, chosen.text, chosen.color));
-            stickyY.put(label.text, y);
         }
-        stickyY.keySet().retainAll(seen);
+        slotY.keySet().retainAll(seen);
+        renderY.keySet().retainAll(seen);
+        raisedUntil.keySet().retainAll(seen);
         return placed;
     }
 
