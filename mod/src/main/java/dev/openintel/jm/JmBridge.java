@@ -1,6 +1,7 @@
 package dev.openintel.jm;
 
 import dev.openintel.OpenIntelClient;
+import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.ping.PingManager;
 import dev.openintel.tracker.Tracker;
 import journeymap.api.v2.client.IClientAPI;
@@ -8,6 +9,7 @@ import journeymap.api.v2.client.display.Context;
 import journeymap.api.v2.client.display.MarkerOverlay;
 import journeymap.api.v2.client.model.MapImage;
 import journeymap.api.v2.client.model.TextProperties;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -59,6 +61,18 @@ final class JmBridge implements Runnable {
         Map<String, Desired> want = new HashMap<>();
 
         if (cfg != null && cfg.jmMarkers && tracker != null) {
+            String myName = MinecraftClient.getInstance().getSession().getUsername();
+            for (Tracker.RemotePlayer p : tracker.all()) {
+                if (p.name.equalsIgnoreCase(myName)) continue;   // JM draws self
+                Allegiance a = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
+                int rgb = a.argb & 0xFFFFFF;
+                String label = p.reporter != null && !p.reporter.isBlank()
+                        ? p.name + " (via " + p.reporter + ")" : p.name;
+                want.put("player:" + p.name,
+                        new Desired("player|" + rgb + "|" + label,
+                                BlockPos.ofFloored(p.x, p.y, p.z), p.dimension, rgb,
+                                p.name, label));
+            }
             for (Tracker.SnitchHit h : tracker.snitchHits()) {
                 int rgb = OpenIntelClient.allegiances().of(h.player).argb & 0xFFFFFF;
                 String label = h.player + " (via " + h.reporter + ")";

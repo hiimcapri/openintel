@@ -1,6 +1,7 @@
 package dev.openintel.xaero;
 
 import dev.openintel.OpenIntelClient;
+import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.ping.PingManager;
 import io.github.billstark001.xaerobridge.api.MapOverlayContext;
 import io.github.billstark001.xaerobridge.api.OverlayCanvas;
@@ -52,6 +53,27 @@ public final class XaeroBridge {
         long now = System.currentTimeMillis();
         long snitchLife = cfg.snitchMarkerSeconds * 1000L;
         OverlayCanvas canvas = ctx.canvas();
+        String myName = MinecraftClient.getInstance().getSession().getUsername();
+
+        // Relay positions: small allegiance dot, name underneath — focus
+        // targets keep the full diamond so they read like pings/snitches.
+        for (var p : tracker.all()) {
+            if (!dim.equals(p.dimension) || p.name.equalsIgnoreCase(myName)) continue;
+            float alpha = cfg.staleDecay
+                    ? Math.max(0f, 1f - (now - p.lastSeen) / (float) cfg.staleAfterMs)
+                    : 1f;
+            if (alpha < 0.03f) continue;
+            var a = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
+            int argb = scaleAlpha(a.argb, alpha);
+            int x = ctx.worldToScreenX(p.x);
+            int y = ctx.worldToScreenY(p.z);
+            if (a == Allegiance.FOCUS) {
+                diamond(canvas, x, y, argb);
+            } else {
+                dot(canvas, x, y, argb);
+            }
+            label(ctx, x, y + 6, p.name, argb);
+        }
 
         for (var h : tracker.snitchHits()) {
             if (!dim.equals(h.dimension)) continue;
@@ -81,6 +103,15 @@ public final class XaeroBridge {
     }
 
     // ------------------------------------------------------------ drawing ----
+
+    /** Relay player marker: small filled disc, allegiance-tinted. */
+    private static void dot(OverlayCanvas c, int x, int y, int argb) {
+        int[] rows = {1, 2, 2, 2, 1};
+        for (int dy = -2; dy <= 2; dy++) {
+            int hw = rows[dy + 2];
+            c.fill(x - hw, y + dy, x + hw + 1, y + dy + 1, argb);
+        }
+    }
 
     /** Allegiance-tinted diamond: dark silhouette one px larger, colored core. */
     private static void diamond(OverlayCanvas c, int x, int y, int argb) {
