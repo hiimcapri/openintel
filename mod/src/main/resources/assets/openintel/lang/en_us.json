@@ -5,6 +5,7 @@
   "key.openintel.hold_attack": "Hold attack",
   "key.openintel.hold_use": "Hold use",
   "key.openintel.attack_macro": "Attack macro",
+  "key.openintel.use_macro": "Use macro",
   "key.openintel.ice_road": "Ice road macro",
   "key.openintel.ping": "Ping wheel",
 
@@ -51,6 +52,7 @@
   "options.openintel.radar.fg_alpha": "Ring alpha",
 
   "options.openintel.macro.attack_interval": "Attack interval",
+  "options.openintel.macro.use_interval": "Use interval",
   "options.openintel.macro.snap_yaw": "Snap yaw to 45°",
   "options.openintel.macro.snap_pitch": "Snap pitch to 45°",
   "options.openintel.macro.auto_eat": "Auto-eat",

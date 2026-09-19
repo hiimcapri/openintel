@@ -95,7 +95,8 @@ system.
 
 ### Macros and configuration
 
-- Attack, hold-attack, and hold-use macros with safe disengagement when
+- Attack and use interval macros (spam XP bottles, pearls), hold-attack,
+  and hold-use macros with safe disengagement when
   screens open, the mouse unlocks, or the selected hotbar slot changes.
 - Ice-road automation supports 45-degree yaw/pitch snapping, sprint/jump
   movement, auto-eating, and optional low-hunger parking. It keeps running

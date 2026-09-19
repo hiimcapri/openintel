@@ -235,6 +235,9 @@ public class OIConfig {
     /** Milliseconds between simulated attack presses for the attack macro. */
     public int attackMacroIntervalMs = 200;
 
+    /** Milliseconds between simulated use presses for the use macro. */
+    public int useMacroIntervalMs = 200;
+
     /** Snap yaw to the nearest 45° when the ice road macro engages. */
     public boolean iceRoadSnapYaw = true;
 
