@@ -129,6 +129,41 @@ public class OIConfig {
     public int armorHudX = 8;
     public int armorHudY = 116;
 
+    /** Row or column arrangement for the armor pieces. */
+    public ArmorHudLayout armorHudLayout = ArmorHudLayout.HORIZONTAL;
+
+    /** How each piece's remaining durability is shown. */
+    public ArmorHudMode armorHudMode = ArmorHudMode.PERCENT;
+
+    /** Armor HUD arrangement. */
+    public enum ArmorHudLayout {
+        HORIZONTAL("options.openintel.armor.layout.horizontal"),
+        VERTICAL("options.openintel.armor.layout.vertical");
+
+        public final String translationKey;
+        ArmorHudLayout(String key) { this.translationKey = key; }
+
+        public static ArmorHudLayout byName(String name) {
+            for (ArmorHudLayout f : values()) if (f.name().equalsIgnoreCase(name)) return f;
+            return HORIZONTAL;
+        }
+    }
+
+    /** Armor HUD durability readout. */
+    public enum ArmorHudMode {
+        PERCENT("options.openintel.armor.mode.percent"),
+        BAR("options.openintel.armor.mode.bar"),
+        POINTS("options.openintel.armor.mode.points");
+
+        public final String translationKey;
+        ArmorHudMode(String key) { this.translationKey = key; }
+
+        public static ArmorHudMode byName(String name) {
+            for (ArmorHudMode f : values()) if (f.name().equalsIgnoreCase(name)) return f;
+            return PERCENT;
+        }
+    }
+
     public boolean potionHudEnabled = true;
     public int potionHudX = -1;
     public int potionHudY = 40;
@@ -286,6 +321,8 @@ public class OIConfig {
                 if (c == null || raw == null) return new OIConfig();
                 c.repairExternalHudElements();
                 if (c.radarPlayerFilter == null) c.radarPlayerFilter = RadarBlipFilter.EVERYONE;
+                if (c.armorHudLayout == null) c.armorHudLayout = ArmorHudLayout.HORIZONTAL;
+                if (c.armorHudMode == null) c.armorHudMode = ArmorHudMode.PERCENT;
                 // The old default (4096) silently hid teammates across the map.
                 // Migrate it to unlimited; explicit non-default caps survive.
                 if (c.maxMarkerDistance == 4096) c.maxMarkerDistance = 0;

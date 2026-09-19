@@ -5,6 +5,7 @@ import dev.openintel.api.hud.HudApi;
 import dev.openintel.api.hud.HudElementDescriptor;
 import dev.openintel.api.hud.HudPosition;
 import dev.openintel.config.OIConfig;
+import dev.openintel.render.ArmorHud;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -219,7 +220,9 @@ public class HudEditorScreen extends Screen {
         boxes.add(new Box(Element.RADAR, "Radar", clampX(c.radarX, radarD), clampY(c.radarY, radarD), radarD, radarD, 0xFF55FFFF));
         boxes.add(new Box(Element.RELAY, "Relay roster", resolveX(c.presenceX, 132), clampY(c.presenceY, 58), 132, 58, 0xFF55FF55));
         boxes.add(new Box(Element.EVENTS, "Event feed", resolveX(c.eventFeedX, 180), clampY(c.eventFeedY, 58), 180, 58, 0xFFFFAA00));
-        boxes.add(new Box(Element.ARMOR, "Armor HUD", resolveX(c.armorHudX, 80), clampY(c.armorHudY, 24), 80, 24, 0xFF55AAFF));
+        int armorW = ArmorHud.boxW(c);
+        int armorH = ArmorHud.boxH(c);
+        boxes.add(new Box(Element.ARMOR, "Armor HUD", resolveX(c.armorHudX, armorW), clampY(c.armorHudY, armorH), armorW, armorH, 0xFF55AAFF));
         boxes.add(new Box(Element.POTIONS, "Potion effects", resolveX(c.potionHudX, 140), clampY(c.potionHudY, 48), 140, 48, 0xFFAA55FF));
         boxes.add(new Box(Element.TOP, "Top markers", pctX(c.edgeTopXPct, 74), c.edgeRowInset, 74, 18, 0xFFFF5555));
         boxes.add(new Box(Element.BOTTOM, "Bottom markers", pctX(c.edgeBottomXPct, 88), height - c.edgeRowInset - 18, 88, 18, 0xFFFF5555));
@@ -245,8 +248,8 @@ public class HudEditorScreen extends Screen {
                 c.eventFeedY = snappedY(rawY, 58);
             }
             case ARMOR -> {
-                c.armorHudX = snappedX(rawX, 80);
-                c.armorHudY = snappedY(rawY, 24);
+                c.armorHudX = snappedX(rawX, ArmorHud.boxW(c));
+                c.armorHudY = snappedY(rawY, ArmorHud.boxH(c));
             }
             case POTIONS -> {
                 c.potionHudX = snappedX(rawX, 140);

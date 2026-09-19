@@ -90,7 +90,8 @@ system.
   distance, and freshness.
 - **Event feed** reports relay presence, teammate deaths, enemy sightings,
   pings, and snitch activity without blocking chat.
-- **Armor HUD** shows equipped pieces with remaining durability percentages.
+- **Armor HUD** shows equipped pieces in a horizontal row or vertical stack, with
+  durability as a percentage, a health bar, or exact points left.
 - **Potion HUD** shows active effect names, amplifier levels, and timers.
 
 ### Macros and configuration

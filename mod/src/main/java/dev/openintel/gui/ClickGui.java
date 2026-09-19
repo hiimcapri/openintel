@@ -14,6 +14,7 @@ import net.minecraft.text.Text;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Option model and content for {@link ClickGuiScreen}.
@@ -165,8 +166,16 @@ public final class ClickGui {
                         button("Open HUD editor…", () ->
                                 MinecraftClient.getInstance().setScreen(new HudEditorScreen(self)))),
                 new Group("Elements"),
-                new Option(tr("options.openintel.armor.enabled"), "Equipped armor with durability percentages.",
+                new Option(tr("options.openintel.armor.enabled"), "Equipped armor with durability readouts.",
                         bool("options.openintel.armor.enabled", cfg.armorHudEnabled, v -> cfg.armorHudEnabled = v)),
+                new Option(tr("options.openintel.armor.layout"), "Stack armor pieces in a row or a column.",
+                        cycle("options.openintel.armor.layout", OIConfig.ArmorHudLayout.values(),
+                                l -> l.translationKey, OIConfig.ArmorHudLayout::byName,
+                                cfg.armorHudLayout, v -> cfg.armorHudLayout = v)),
+                new Option(tr("options.openintel.armor.mode"), "Durability readout: percent, health bar, or points left.",
+                        cycle("options.openintel.armor.mode", OIConfig.ArmorHudMode.values(),
+                                m -> m.translationKey, OIConfig.ArmorHudMode::byName,
+                                cfg.armorHudMode, v -> cfg.armorHudMode = v)),
                 new Option(tr("options.openintel.potions.enabled"), "Active potion effects and timers.",
                         bool("options.openintel.potions.enabled", cfg.potionHudEnabled, v -> cfg.potionHudEnabled = v)),
                 new Group("Presence panel"),
@@ -312,12 +321,18 @@ public final class ClickGui {
     /** Cycles a RadarBlipFilter; the label resolves through the enum's lang key. */
     private static ClickableWidget cycle(String key, OIConfig.RadarBlipFilter current,
                                          Consumer<OIConfig.RadarBlipFilter> apply) {
-        var values = List.of(OIConfig.RadarBlipFilter.values());
+        return cycle(key, OIConfig.RadarBlipFilter.values(), f -> f.translationKey,
+                OIConfig.RadarBlipFilter::byName, current, apply);
+    }
+
+    /** Cycles an enum; each value's label resolves through its lang key. */
+    private static <E extends Enum<E>> ClickableWidget cycle(String key, E[] values,
+            Function<E, String> lang, Function<String, E> byName,
+            E current, Consumer<E> apply) {
         return new SimpleOption<>(key, SimpleOption.emptyTooltip(),
-                (text, v) -> text.copy().append(": ").append(Text.translatable(v.translationKey)),
-                new SimpleOption.PotentialValuesBasedCallbacks<>(values,
-                        com.mojang.serialization.Codec.STRING.xmap(
-                                OIConfig.RadarBlipFilter::byName, Enum::name)),
+                (text, v) -> text.copy().append(": ").append(Text.translatable(lang.apply(v))),
+                new SimpleOption.PotentialValuesBasedCallbacks<>(List.of(values),
+                        com.mojang.serialization.Codec.STRING.xmap(byName, Enum::name)),
                 current, apply)
                 .createWidget(MinecraftClient.getInstance().options, 0, 0, 150);
     }
