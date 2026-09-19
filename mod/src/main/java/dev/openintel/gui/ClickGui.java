@@ -330,7 +330,7 @@ public final class ClickGui {
             Function<E, String> lang, Function<String, E> byName,
             E current, Consumer<E> apply) {
         return new SimpleOption<>(key, SimpleOption.emptyTooltip(),
-                (text, v) -> text.copy().append(": ").append(Text.translatable(lang.apply(v))),
+                (text, v) -> Text.translatable(lang.apply(v)),
                 new SimpleOption.PotentialValuesBasedCallbacks<>(List.of(values),
                         com.mojang.serialization.Codec.STRING.xmap(byName, Enum::name)),
                 current, apply)
