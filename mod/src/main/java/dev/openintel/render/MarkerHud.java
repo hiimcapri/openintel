@@ -241,85 +241,59 @@ public final class MarkerHud {
 
     // ------------------------------------------------------ collection ----
 
-    /** Assigned slot y per label — what overlap checks run against. */
-    private static final java.util.Map<String, Float> slotY = new java.util.HashMap<>();
-    /** Rendered y per label — glides toward slotY. */
+    /** Rendered y per label text — glides toward the resolved target. */
     private static final java.util.Map<String, Float> renderY = new java.util.HashMap<>();
-    /** Raised labels stay raised until this ms deadline — release hysteresis. */
-    private static final java.util.Map<String, Long> raisedUntil = new java.util.HashMap<>();
 
     private static List<Label> stackProjectedLabels(MinecraftClient client,
                                                     List<Label> source) {
         source.sort(Comparator.comparing((Label l) -> l.text)
                 .thenComparingDouble(l -> l.x));
+        List<Label> resolved = new ArrayList<>();
         List<Label> placed = new ArrayList<>();
-        List<Label> placedSlots = new ArrayList<>();
         int lineH = client.textRenderer.fontHeight + 2;
         java.util.Set<String> seen = new java.util.HashSet<>();
-        long now = System.currentTimeMillis();
 
         for (Label label : source) {
             seen.add(label.text);
-            Label atAnchor = new Label(label.x, label.y, label.text, label.color);
-            if (overlaps(client, atAnchor, placedSlots, lineH)) {
-                raisedUntil.put(label.text, now + 400);
+            // Continuous upward stacking: sit just above whatever overlaps,
+            // never below the anchor. The target tracks the blocker's own
+            // position, so it slides smoothly instead of popping between
+            // discrete levels.
+            float y = label.y;
+            for (int iter = 0; iter <= resolved.size(); iter++) {
+                Label b = blocker(client, new Label(label.x, y, label.text, label.color),
+                        resolved, lineH);
+                if (b == null) break;
+                y = b.y - lineH - 0.5f;
             }
-            boolean blocked = now < raisedUntil.getOrDefault(label.text, 0L);
+            if (y < 2) y = label.y;
+            resolved.add(new Label(label.x, y, label.text, label.color));
 
-            Label chosen = null;
-            Float prevSlot = slotY.get(label.text);
-            // Stickiness: a raised label holds its slot while it's still
-            // needed — overlap jitters during a camera pan no longer bounce
-            // it, and the 400ms hold absorbs the release edge too.
-            if (prevSlot != null && prevSlot <= label.y + 1f
-                    && label.y - prevSlot <= 2f * lineH && blocked) {
-                Label held = new Label(label.x, prevSlot, label.text, label.color);
-                if (!overlaps(client, held, placedSlots, lineH)) chosen = held;
-            }
-
-            // Upward-only stacking: a label never drops below its anchor,
-            // so chevrons stay visible and colliding labels can't flip
-            // above/below each other as projected heights wobble.
-            if (chosen == null) {
-                for (int level = 0; level <= source.size(); level++) {
-                    float y = label.y - level * lineH;
-                    if (y < 2) break;
-                    Label candidate = new Label(label.x, y, label.text, label.color);
-                    if (!overlaps(client, candidate, placedSlots, lineH)) {
-                        chosen = candidate;
-                        break;
-                    }
-                }
-            }
-            if (chosen == null) chosen = label;
-
-            slotY.put(label.text, chosen.y);
-            placedSlots.add(chosen);
-            // Glide the rendered position toward the logical slot.
             Float prev = renderY.get(label.text);
-            float y = prev != null ? prev + (chosen.y - prev) * 0.4f : chosen.y;
-            renderY.put(label.text, y);
-            placed.add(new Label(chosen.x, y, chosen.text, chosen.color));
+            float ry = prev != null ? prev + (y - prev) * 0.4f : y;
+            renderY.put(label.text, ry);
+            placed.add(new Label(label.x, ry, label.text, label.color));
         }
-        slotY.keySet().retainAll(seen);
         renderY.keySet().retainAll(seen);
-        raisedUntil.keySet().retainAll(seen);
         return placed;
     }
 
-    private static boolean overlaps(MinecraftClient client, Label candidate,
-                                    List<Label> placed, int lineH) {
+    /** The highest already-placed label the candidate collides with, or null. */
+    private static Label blocker(MinecraftClient client, Label candidate,
+                                 List<Label> placed, int lineH) {
         float half = client.textRenderer.getWidth(candidate.text) / 2f;
         float left = candidate.x - half - 2;
         float right = candidate.x + half + 2;
+        Label top = null;
         for (Label other : placed) {
             float otherHalf = client.textRenderer.getWidth(other.text) / 2f;
             if (left < other.x + otherHalf + 2 && right > other.x - otherHalf - 2
-                    && candidate.y < other.y + lineH && candidate.y + lineH > other.y) {
-                return true;
+                    && candidate.y < other.y + lineH && candidate.y + lineH > other.y
+                    && (top == null || other.y < top.y)) {
+                top = other;
             }
         }
-        return false;
+        return top;
     }
 
     private static float staleFade(OIConfig cfg, long now, long lastSeen) {
