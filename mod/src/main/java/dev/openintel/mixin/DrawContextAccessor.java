@@ -1,13 +1,13 @@
 package dev.openintel.mixin;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.render.state.GuiRenderState;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 /** Exposes the retained GUI render state for custom element submission. */
-@Mixin(DrawContext.class)
+@Mixin(GuiGraphicsExtractor.class)
 public interface DrawContextAccessor {
-    @Accessor("state")
+    @Accessor("guiRenderState")
     GuiRenderState openintel$state();
 }

@@ -1,8 +1,8 @@
 package dev.openintel.macro;
 
 import dev.openintel.OpenIntelClient;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
 
 /**
  * Toggleable auto-attacker (CivModern parity): discrete attack-key presses
@@ -12,8 +12,8 @@ import net.minecraft.client.option.KeyBinding;
  */
 public final class AttackMacro extends IntervalMacro {
 
-    public AttackMacro(KeyBinding toggle) {
-        super(toggle, () -> MinecraftClient.getInstance().options.attackKey,
+    public AttackMacro(KeyMapping toggle) {
+        super(toggle, () -> Minecraft.getInstance().options.keyAttack,
                 () -> OpenIntelClient.config().attackMacroIntervalMs, "attack macro");
     }
 }

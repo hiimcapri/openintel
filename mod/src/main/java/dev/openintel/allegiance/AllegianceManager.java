@@ -1,7 +1,7 @@
 package dev.openintel.allegiance;
 
 import dev.openintel.api.internal.ApiBridge;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 import java.util.Collection;
 import java.util.Locale;
@@ -59,14 +59,14 @@ public final class AllegianceManager {
     /** Called when the relay pushes a fresh allegiance/user snapshot. */
     public void replaceAll(Collection<String> users, Collection<String> allyList,
                            Collection<String> enemyList, Collection<String> focusList) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             var userCopy = users == null ? java.util.List.<String>of() : java.util.List.copyOf(users);
             var allyCopy = allyList == null ? java.util.List.<String>of() : java.util.List.copyOf(allyList);
             var enemyCopy = enemyList == null ? java.util.List.<String>of() : java.util.List.copyOf(enemyList);
             var focusCopy = focusList == null ? java.util.List.<String>of() : java.util.List.copyOf(focusList);
-            var world = client.world;
-            client.execute(() -> { if (client.world == world) replaceAll(userCopy, allyCopy, enemyCopy, focusCopy); });
+            var world = client.level;
+            client.execute(() -> { if (client.level == world) replaceAll(userCopy, allyCopy, enemyCopy, focusCopy); });
             return;
         }
         replace(modUsers, users);

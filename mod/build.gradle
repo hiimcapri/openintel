@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.17.7'
+    id 'net.fabricmc.fabric-loom' version '1.16-SNAPSHOT'
     id 'java'
     id 'maven-publish'
 }
@@ -12,14 +12,14 @@ base { archivesName = project.archives_base_name }
 repositories {}
 
 dependencies {
+    // 26.x ships unobfuscated: no mappings, no remapping.
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
     // JourneyMap fullscreen-map integration — compile-time only, optional at runtime.
-    modCompileOnly files('libs/journeymap-api-fabric-2.0.0-1.21.11-SNAPSHOT.jar')
+    compileOnly files('libs/journeymap-api-fabric-2.0.0-26.1.jar')
     // Xaero World Map overlay bridge — compile-time only, optional at runtime.
-    modCompileOnly files('libs/xaero-world-map-bridge-0.1.1+1.21.11-fabric.jar')
+    compileOnly files('libs/xaero-world-map-bridge-0.1.2+26.1.2-fabric.jar')
 }
 
 processResources {
@@ -27,8 +27,12 @@ processResources {
     filesMatching("fabric.mod.json") { expand "version": project.version }
 }
 
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+}
+
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
     withSourcesJar()
 }
 

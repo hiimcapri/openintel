@@ -2,14 +2,14 @@ package dev.openintel.gui;
 
 import dev.openintel.OpenIntelClient;
 import dev.openintel.config.OIConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.option.SimpleOption;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.OptionInstance;
+import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,11 +42,11 @@ public final class ClickGui {
      * @param tooltip hover description, may be null
      * @param widget  main control, right-aligned
      * @param aux     optional narrow control to the right of widget (e.g. reset)
-     * @param keybind non-null when the row rebinds a KeyBinding
+     * @param keybind non-null when the row rebinds a KeyMapping
      */
-    public record Option(String label, String tooltip, ClickableWidget widget,
-                         ClickableWidget aux, KeyBinding keybind) implements Item {
-        public Option(String label, String tooltip, ClickableWidget widget) {
+    public record Option(String label, String tooltip, AbstractWidget widget,
+                         AbstractWidget aux, KeyMapping keybind) implements Item {
+        public Option(String label, String tooltip, AbstractWidget widget) {
             this(label, tooltip, widget, null, null);
         }
     }
@@ -56,8 +56,8 @@ public final class ClickGui {
 
     /** Rebind capture is owned by the screen; rows only report clicks. */
     public interface RebindHandler {
-        void begin(KeyBinding kb);
-        void reset(KeyBinding kb);
+        void begin(KeyMapping kb);
+        void reset(KeyMapping kb);
     }
 
     // ------------------------------------------------------------ content ----
@@ -164,7 +164,7 @@ public final class ClickGui {
                 new Group("Layout"),
                 new Option("HUD editor", "Drag every HUD element into place on a live preview.",
                         button("Open HUD editor…", () ->
-                                MinecraftClient.getInstance().setScreen(new HudEditorScreen(self)))),
+                                Minecraft.getInstance().setScreen(new HudEditorScreen(self)))),
                 new Group("Elements"),
                 new Option(tr("options.openintel.armor.enabled"), "Equipped armor with durability readouts.",
                         bool("options.openintel.armor.enabled", cfg.armorHudEnabled, v -> cfg.armorHudEnabled = v)),
@@ -262,13 +262,13 @@ public final class ClickGui {
         // --------------------------------------------------------- keybinds
         List<Item> keyItems = new ArrayList<>();
         keyItems.add(new Group("Controls"));
-        for (KeyBinding kb : OpenIntelClient.allKeys()) {
-            ButtonWidget bind = ButtonWidget.builder(kb.getBoundKeyLocalizedText(),
+        for (KeyMapping kb : OpenIntelClient.allKeys()) {
+            Button bind = Button.builder(kb.getTranslatedKeyMessage(),
                     b -> rebind.begin(kb)).build();
-            ButtonWidget reset = ButtonWidget.builder(Text.literal("Reset"),
+            Button reset = Button.builder(Component.literal("Reset"),
                     b -> rebind.reset(kb)).build();
-            keyItems.add(new Option(Text.translatable(kb.getId()).getString(),
-                    "Click to rebind, then press a key or mouse button. ESC cancels.",
+            keyItems.add(new Option(Component.translatable(kb.getName()).getString(),
+                    "MouseButtonEvent to rebind, then press a key or mouse button. ESC cancels.",
                     bind, reset, kb));
         }
         cats.add(new Category("keybinds", "Keybinds", keyItems));
@@ -279,78 +279,78 @@ public final class ClickGui {
     // ------------------------------------------------------------ helpers ----
 
     private static String tr(String key) {
-        return Text.translatable(key).getString();
+        return Component.translatable(key).getString();
     }
 
-    private static ClickableWidget bool(String key, boolean current,
+    private static AbstractWidget bool(String key, boolean current,
                                         Consumer<Boolean> apply) {
-        return SimpleOption.ofBoolean(key, current, apply)
-                .createWidget(MinecraftClient.getInstance().options, 0, 0, 150);
+        return OptionInstance.createBoolean(key, current, apply)
+                .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
-    private static ClickableWidget slider(String key, int min, int max, int current,
+    private static AbstractWidget slider(String key, int min, int max, int current,
                                           String suffix, Consumer<Integer> apply) {
-        return new SimpleOption<>(key, SimpleOption.emptyTooltip(),
+        return new OptionInstance<>(key, OptionInstance.noTooltip(),
                 (text, v) -> text.copy().append(": " + v + suffix),
-                new SimpleOption.ValidatingIntSliderCallbacks(min, max, true),
+                new OptionInstance.IntRange(min, max, true),
                 current, apply)
-                .createWidget(MinecraftClient.getInstance().options, 0, 0, 150);
+                .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
     /** 0–20000 slider that reads "unlimited" at 0. */
-    private static ClickableWidget rangeSlider(String key, int current,
+    private static AbstractWidget rangeSlider(String key, int current,
                                                Consumer<Integer> apply) {
-        return new SimpleOption<>(key, SimpleOption.emptyTooltip(),
+        return new OptionInstance<>(key, OptionInstance.noTooltip(),
                 (text, v) -> text.copy().append(": " + (v <= 0 ? "unlimited" : v + "m")),
-                new SimpleOption.ValidatingIntSliderCallbacks(0, 20000, true),
+                new OptionInstance.IntRange(0, 20000, true),
                 current, apply)
-                .createWidget(MinecraftClient.getInstance().options, 0, 0, 150);
+                .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
     /** 0–255 slider that writes only the alpha byte of an ARGB color. */
-    private static ClickableWidget alphaSlider(String key, int color,
+    private static AbstractWidget alphaSlider(String key, int color,
                                                Consumer<Integer> apply) {
         int alpha = (color >>> 24) & 0xFF;
-        return new SimpleOption<>(key, SimpleOption.emptyTooltip(),
+        return new OptionInstance<>(key, OptionInstance.noTooltip(),
                 (text, v) -> text.copy().append(": " + v),
-                new SimpleOption.ValidatingIntSliderCallbacks(0, 255, true),
+                new OptionInstance.IntRange(0, 255, true),
                 alpha, v -> apply.accept((color & 0x00FFFFFF) | (v << 24)))
-                .createWidget(MinecraftClient.getInstance().options, 0, 0, 150);
+                .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
     /** Cycles a RadarBlipFilter; the label resolves through the enum's lang key. */
-    private static ClickableWidget cycle(String key, OIConfig.RadarBlipFilter current,
+    private static AbstractWidget cycle(String key, OIConfig.RadarBlipFilter current,
                                          Consumer<OIConfig.RadarBlipFilter> apply) {
         return cycle(key, OIConfig.RadarBlipFilter.values(), f -> f.translationKey,
                 OIConfig.RadarBlipFilter::byName, current, apply);
     }
 
     /** Cycles an enum; each value's label resolves through its lang key. */
-    private static <E extends Enum<E>> ClickableWidget cycle(String key, E[] values,
+    private static <E extends Enum<E>> AbstractWidget cycle(String key, E[] values,
             Function<E, String> lang, Function<String, E> byName,
             E current, Consumer<E> apply) {
-        return new SimpleOption<>(key, SimpleOption.emptyTooltip(),
-                (text, v) -> Text.translatable(lang.apply(v)),
-                new SimpleOption.PotentialValuesBasedCallbacks<>(List.of(values),
+        return new OptionInstance<>(key, OptionInstance.noTooltip(),
+                (text, v) -> Component.translatable(lang.apply(v)),
+                new OptionInstance.Enum<>(List.of(values),
                         com.mojang.serialization.Codec.STRING.xmap(byName, Enum::name)),
                 current, apply)
-                .createWidget(MinecraftClient.getInstance().options, 0, 0, 150);
+                .createButton(Minecraft.getInstance().options, 0, 0, 150);
     }
 
-    private static ClickableWidget textField(String current, String placeholder,
+    private static AbstractWidget textField(String current, String placeholder,
                                              int maxLen, Consumer<String> apply) {
-        TextFieldWidget field = new TextFieldWidget(
-                MinecraftClient.getInstance().textRenderer, 0, 0, 150, 20,
-                Text.literal("field"));
+        EditBox field = new EditBox(
+                Minecraft.getInstance().font, 0, 0, 150, 20,
+                Component.literal("field"));
         field.setMaxLength(maxLen);
-        field.setText(current);
-        field.setPlaceholder(Text.literal(placeholder));
-        field.setChangedListener(s -> apply.accept(s.trim()));
+        field.setValue(current);
+        field.setHint(Component.literal(placeholder));
+        field.setResponder(s -> apply.accept(s.trim()));
         return field;
     }
 
-    private static ClickableWidget button(String label, Runnable action) {
-        return ButtonWidget.builder(Text.literal(label), b -> action.run()).build();
+    private static AbstractWidget button(String label, Runnable action) {
+        return Button.builder(Component.literal(label), b -> action.run()).build();
     }
 
     /**
@@ -358,17 +358,17 @@ public final class ClickGui {
      * option is in its "auto" state; `autoLabel`/`autoAction` offer an escape
      * hatch (e.g. "Allegiance color") back to it.
      */
-    private static ClickableWidget colorButton(Screen self, String label,
+    private static AbstractWidget colorButton(Screen self, String label,
                                                java.util.function.IntSupplier get,
                                                java.util.function.IntConsumer set,
                                                String autoLabel, Runnable autoAction) {
-        ButtonWidget[] ref = new ButtonWidget[1];
+        Button[] ref = new Button[1];
         java.util.function.IntConsumer apply = v -> {
             set.accept(v);
-            ref[0].setMessage(Text.literal(v == -1 ? "auto" : String.format("#%08X", v)));
+            ref[0].setMessage(Component.literal(v == -1 ? "auto" : String.format("#%08X", v)));
         };
-        ref[0] = ButtonWidget.builder(Text.literal(""), b ->
-                MinecraftClient.getInstance().setScreen(new ColorPickerScreen(self, label,
+        ref[0] = Button.builder(Component.literal(""), b ->
+                Minecraft.getInstance().setScreen(new ColorPickerScreen(self, label,
                         get.getAsInt() == -1 ? 0xFFFF5555 : get.getAsInt(),
                         apply, autoLabel, autoAction))).build();
         apply.accept(get.getAsInt());

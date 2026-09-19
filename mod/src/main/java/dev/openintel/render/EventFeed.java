@@ -4,10 +4,10 @@ import dev.openintel.OpenIntelClient;
 import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.config.OIConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.entity.Entity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.world.entity.Entity;
 
 import java.util.Deque;
 import java.util.HashSet;
@@ -38,10 +38,10 @@ public final class EventFeed {
     private static final Set<String> deadNotified = new HashSet<>();
 
     public static void add(String text, int argb) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
-            var world = client.world;
-            client.execute(() -> { if (client.world == world) add(text, argb); });
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
+            var world = client.level;
+            client.execute(() -> { if (client.level == world) add(text, argb); });
             return;
         }
         ApiBridge.notification(text, argb, "feed");
@@ -52,8 +52,8 @@ public final class EventFeed {
     }
 
     public static void clear() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             client.execute(EventFeed::clear);
             return;
         }
@@ -66,8 +66,8 @@ public final class EventFeed {
     // ------------------------------------------------------------ hooks ----
 
     /** Fabric ENTITY_LOAD — announces enemy/focus players entering render. */
-    public static void onEntityLoad(Entity entity, net.minecraft.client.world.ClientWorld world) {
-        if (!(entity instanceof AbstractClientPlayerEntity p)) return;
+    public static void onEntityLoad(Entity entity, net.minecraft.client.multiplayer.ClientLevel world) {
+        if (!(entity instanceof AbstractClientPlayer p)) return;
         String name = p.getGameProfile().name();
         if (!inRender.add(name)) return;
 
@@ -77,18 +77,18 @@ public final class EventFeed {
         }
     }
 
-    public static void onEntityUnload(Entity entity, net.minecraft.client.world.ClientWorld world) {
-        if (entity instanceof AbstractClientPlayerEntity p) {
+    public static void onEntityUnload(Entity entity, net.minecraft.client.multiplayer.ClientLevel world) {
+        if (entity instanceof AbstractClientPlayer p) {
             inRender.remove(p.getGameProfile().name());
         }
     }
 
     /** Client tick — watches rendered teammates for deaths. */
-    public static void tick(MinecraftClient client) {
+    public static void tick(Minecraft client) {
         OIConfig cfg = OpenIntelClient.config();
-        if (!cfg.eventFeedEnabled || client.world == null) return;
+        if (!cfg.eventFeedEnabled || client.level == null) return;
 
-        for (AbstractClientPlayerEntity p : client.world.getPlayers()) {
+        for (AbstractClientPlayer p : client.level.players()) {
             if (p == client.player) continue;
             String name = p.getGameProfile().name();
             Allegiance a = OpenIntelClient.allegiances().of(name);
@@ -110,19 +110,19 @@ public final class EventFeed {
 
     // ------------------------------------------------------------ render ---
 
-    public static void render(DrawContext ctx) {
+    public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
         if (!cfg.eventFeedEnabled || entries.isEmpty()) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.options.hudHidden) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.options.hideGui) return;
 
         long now = System.currentTimeMillis();
         long holdMs = cfg.eventFeedSeconds * 1000L;
         entries.removeIf(e -> now - e.createdAt > holdMs + FADE_MS);
         if (entries.isEmpty()) return;
 
-        int w = ctx.getScaledWindowWidth();
+        int w = ctx.guiWidth();
         int y = cfg.eventFeedY;
         for (Entry e : entries) {
             long age = now - e.createdAt;
@@ -130,9 +130,9 @@ public final class EventFeed {
             int color = scaleAlpha(e.color, fade);
 
             int x = cfg.eventFeedX >= 0 ? cfg.eventFeedX
-                    : w + cfg.eventFeedX - client.textRenderer.getWidth(e.text) - 3;
-            ctx.drawText(client.textRenderer, e.text, x, y, color, true);
-            y += client.textRenderer.fontHeight + 2;
+                    : w + cfg.eventFeedX - client.font.width(e.text) - 3;
+            ctx.text(client.font, e.text, x, y, color, true);
+            y += client.font.lineHeight + 2;
         }
     }
 

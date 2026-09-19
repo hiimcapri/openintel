@@ -5,7 +5,7 @@ import dev.openintel.OpenIntelClient;
 import dev.openintel.api.ApiEvent;
 import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.render.EventFeed;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 import java.util.Locale;
 import java.util.Map;
@@ -45,8 +45,8 @@ public final class PingManager {
     public static Iterable<Ping> active() { return pings.values(); }
 
     public static void clear() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             client.execute(PingManager::clear);
             return;
         }
@@ -56,8 +56,8 @@ public final class PingManager {
 
     /** Drop expired pings. Called from the client tick. */
     public static void tick() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             client.execute(PingManager::tick);
             return;
         }
@@ -67,10 +67,10 @@ public final class PingManager {
 
     /** Local send: register immediately, then push to the relay. */
     public static void send(String label, int color, double x, double y, double z, String dim) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
-            var world = client.world;
-            client.execute(() -> { if (client.world == world) send(label, color, x, y, z, dim); });
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
+            var world = client.level;
+            client.execute(() -> { if (client.level == world) send(label, color, x, y, z, dim); });
             return;
         }
         String sender = client.player != null ? client.player.getGameProfile().name() : "?";
@@ -96,8 +96,8 @@ public final class PingManager {
     }
 
     public static boolean sendShared(String label, int color, double x, double y, double z, String dim) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread() || client.player == null || !OpenIntelClient.relay().isAuthenticated()) return false;
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread() || client.player == null || !OpenIntelClient.relay().isAuthenticated()) return false;
         String sender = client.player.getGameProfile().name();
         String id = java.util.UUID.randomUUID().toString();
         JsonObject msg = new JsonObject();
@@ -117,11 +117,11 @@ public final class PingManager {
 
     /** Inbound ping from the relay (includes our own echo — deduped by id). */
     public static void receive(JsonObject msg) {
-        MinecraftClient executor = MinecraftClient.getInstance();
-        if (!executor.isOnThread()) {
+        Minecraft executor = Minecraft.getInstance();
+        if (!executor.isSameThread()) {
             JsonObject copy = msg.deepCopy();
-            var world = executor.world;
-            executor.execute(() -> { if (executor.world == world) receive(copy); });
+            var world = executor.level;
+            executor.execute(() -> { if (executor.level == world) receive(copy); });
             return;
         }
         if (!msg.has("id") || !msg.has("label")
@@ -138,7 +138,7 @@ public final class PingManager {
                 msg.get("z").getAsDouble(),
                 msg.has("dim") ? msg.get("dim").getAsString() : null);
 
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         String self = client.player != null
                 ? client.player.getGameProfile().name().toLowerCase(Locale.ROOT) : "";
         if (!sender.toLowerCase(Locale.ROOT).equals(self)) {

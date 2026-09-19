@@ -3,9 +3,9 @@ package dev.openintel.render;
 import dev.openintel.OpenIntelClient;
 import dev.openintel.config.OIConfig;
 import dev.openintel.tracker.Tracker.RemotePlayer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,15 +30,15 @@ public final class PresenceHud {
     private record Row(String name, int color, String dim, double dist,
                        float age, float alpha, boolean sameDim) { }
 
-    public static void render(DrawContext ctx) {
+    public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
         if (!cfg.presenceEnabled || !cfg.relayRendering) return;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null || mc.options.hudHidden) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null || mc.options.hideGui) return;
 
-        String myDim = mc.world.getRegistryKey().getValue().toString();
-        Vec3d self = mc.player.getEntityPos();
+        String myDim = mc.level.dimension().identifier().toString();
+        Vec3 self = mc.player.position();
         long now = System.currentTimeMillis();
 
         List<Row> rows = new ArrayList<>();
@@ -67,14 +67,14 @@ public final class PresenceHud {
             rows = new ArrayList<>(rows.subList(0, cfg.presenceMaxRows));
         }
 
-        var tr = mc.textRenderer;
-        int lineH = tr.fontHeight + 2;
+        var tr = mc.font;
+        int lineH = tr.lineHeight + 2;
         int padX = 4, padY = 4, dot = 4;
 
         int panelW = 0;
         for (Row r : rows) {
-            int w = padX + tr.getWidth(r.name) + 8 + tr.getWidth(r.dim)
-                    + 6 + tr.getWidth(distText(r)) + 4 + dot + padX;
+            int w = padX + tr.width(r.name) + 8 + tr.width(r.dim)
+                    + 6 + tr.width(distText(r)) + 4 + dot + padX;
             panelW = Math.max(panelW, w);
         }
         panelW = Math.max(panelW, 96);
@@ -82,7 +82,7 @@ public final class PresenceHud {
 
         int left = cfg.presenceX >= 0
                 ? cfg.presenceX
-                : ctx.getScaledWindowWidth() + cfg.presenceX - panelW;
+                : ctx.guiWidth() + cfg.presenceX - panelW;
         int top = cfg.presenceY;
 
         float opacity = cfg.relayOpacity / 255f;
@@ -93,12 +93,12 @@ public final class PresenceHud {
         for (Row r : rows) {
             float a = r.alpha * opacity;
             int dotX = left + panelW - padX - dot;
-            int distX = dotX - 4 - tr.getWidth(distText(r));
+            int distX = dotX - 4 - tr.width(distText(r));
 
-            ctx.drawText(tr, r.name, left + padX, y, scaleAlpha(r.color, a), true);
-            ctx.drawText(tr, r.dim, left + padX + tr.getWidth(r.name) + 8, y,
+            ctx.text(tr, r.name, left + padX, y, scaleAlpha(r.color, a), true);
+            ctx.text(tr, r.dim, left + padX + tr.width(r.name) + 8, y,
                     scaleAlpha(RIM, a), true);
-            ctx.drawText(tr, distText(r), distX, y, scaleAlpha(RIM, a), true);
+            ctx.text(tr, distText(r), distX, y, scaleAlpha(RIM, a), true);
 
             int dotY = y + (lineH - dot) / 2;
             ctx.fill(dotX, dotY, dotX + dot, dotY + dot, dotColor(r.age, a));

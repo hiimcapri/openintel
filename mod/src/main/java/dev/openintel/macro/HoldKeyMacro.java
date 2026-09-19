@@ -1,7 +1,7 @@
 package dev.openintel.macro;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
 
 import java.util.function.Supplier;
 
@@ -11,25 +11,25 @@ import java.util.function.Supplier;
  * held use key doesn't fight the item you're already consuming.
  */
 public final class HoldKeyMacro extends InputMacro {
-    private final Supplier<KeyBinding> target;
+    private final Supplier<KeyMapping> target;
     private final String label;
 
-    public HoldKeyMacro(KeyBinding toggle, Supplier<KeyBinding> target, String label) {
+    public HoldKeyMacro(KeyMapping toggle, Supplier<KeyMapping> target, String label) {
         super(toggle);
         this.target = target;
         this.label = label;
     }
 
     @Override
-    protected boolean canEngage(MinecraftClient mc) {
+    protected boolean canEngage(Minecraft mc) {
         return super.canEngage(mc) && !mc.player.isUsingItem();
     }
 
     @Override
-    protected void onEngage(MinecraftClient mc) { target.get().setPressed(true); }
+    protected void onEngage(Minecraft mc) { target.get().setDown(true); }
 
     @Override
-    protected void onRelease(MinecraftClient mc) { target.get().setPressed(false); }
+    protected void onRelease(Minecraft mc) { target.get().setDown(false); }
 
     @Override
     protected String name() { return label; }

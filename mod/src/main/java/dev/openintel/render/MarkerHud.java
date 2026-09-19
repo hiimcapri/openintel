@@ -6,11 +6,11 @@ import dev.openintel.config.OIConfig;
 import dev.openintel.mixin.DrawContextAccessor;
 import dev.openintel.ping.PingManager;
 import dev.openintel.tracker.Tracker.RemotePlayer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.ScreenRect;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix3x2fc;
 import org.joml.Quaternionf;
@@ -31,7 +31,7 @@ import java.util.List;
  *
  * All geometry is emitted as a single ColoredQuadsElement — triangle fans
  * with transparent corner vertices, so every shape has a real gradient
- * edge instead of a bitmap glyph. Text labels draw after the element so
+ * edge instead of a bitmap glyph. Component labels draw after the element so
  * they sit on top.
  *
  * Two multipliers ride on every alpha: `relayOpacity` (user slider) and a
@@ -53,24 +53,24 @@ public final class MarkerHud {
     private record Glyph(float x, float y, String text, int color) { }
     private record EdgeEntry(String label, int color, double dist) { }
 
-    public static void render(DrawContext ctx) {
+    public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
         if (!cfg.relayRendering) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.world == null || client.options.hudHidden) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.level == null || client.options.hideGui) return;
 
-        String myDim = client.world.getRegistryKey().getValue().toString();
+        String myDim = client.level.dimension().identifier().toString();
         long now = System.currentTimeMillis();
         float opacity = cfg.relayOpacity / 255f;
-        float tickDelta = client.getRenderTickCounter().getTickProgress(false);
+        float tickDelta = client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
         // ---- gather every target -------------------------------------------
         // Live handoff: when the subject is actually loaded, the marker anchors
         // to the entity's lerped position (frame-rate tracking) and the local
         // nameplate does the talking — relay position is only a fallback.
-        var localPlayers = new java.util.HashMap<String, net.minecraft.client.network.AbstractClientPlayerEntity>();
-        for (var e : client.world.getPlayers()) localPlayers.put(e.getGameProfile().name(), e);
+        var localPlayers = new java.util.HashMap<String, net.minecraft.client.player.AbstractClientPlayer>();
+        for (var e : client.level.players()) localPlayers.put(e.getGameProfile().name(), e);
 
         List<Target> targets = new ArrayList<>();
         for (RemotePlayer p : OpenIntelClient.tracker().all()) {
@@ -81,7 +81,7 @@ public final class MarkerHud {
             double tx, ty, tz;
             float alpha;
             if (local != null) {
-                Vec3d lp = local.getLerpedPos(tickDelta);
+                Vec3 lp = local.getPosition(tickDelta);
                 tx = lp.x; ty = lp.y + 2.4; tz = lp.z;
                 alpha = opacity;                         // live: never stale
             } else {
@@ -120,13 +120,13 @@ public final class MarkerHud {
         if (targets.isEmpty()) return;
 
         // ---- project + classify --------------------------------------------
-        int w = ctx.getScaledWindowWidth();
-        int h = ctx.getScaledWindowHeight();
+        int w = ctx.guiWidth();
+        int h = ctx.guiHeight();
         float cx = w / 2f, cy = h / 2f;
 
-        var camera = client.gameRenderer.getCamera();
-        Vec3d camPos = camera.getCameraPos();
-        Quaternionf worldToCam = new Quaternionf(camera.getRotation()).conjugate();
+        var camera = client.gameRenderer.getMainCamera();
+        Vec3 camPos = camera.position();
+        Quaternionf worldToCam = new Quaternionf(camera.rotation()).conjugate();
 
         List<Shape> shapes = new ArrayList<>();
         List<Arrow> arrows = new ArrayList<>();
@@ -151,7 +151,7 @@ public final class MarkerHud {
 
             // Full vanilla projection: real aspect + dynamic FOV (sprint,
             // speed effects, use-item zoom) → NDC in [-1,1].
-            Vec3d ndc = client.gameRenderer.project(new Vec3d(t.x, t.y, t.z));
+            Vec3 ndc = client.gameRenderer.projectPointToScreen(new Vec3(t.x, t.y, t.z));
             float nx = (float) ndc.x, ny = (float) ndc.y;
             // Behind the camera the perspective divide mirrors NDC — un-mirror
             // so the edge still reads as "the direction you'd turn".
@@ -215,27 +215,27 @@ public final class MarkerHud {
 
         // ---- one geometry pass, then text on top ----------------------------
         if (!shapes.isEmpty() || !arrows.isEmpty()) {
-            Matrix3x2f pose = new Matrix3x2f(ctx.getMatrices());
-            ((DrawContextAccessor) ctx).openintel$state().addSimpleElement(new ColoredQuadsElement(
+            Matrix3x2f pose = new Matrix3x2f(ctx.pose());
+            ((DrawContextAccessor) ctx).openintel$state().addGuiElement(new ColoredQuadsElement(
                     pose, vc -> {
                         for (Shape s : shapes) emitShape(vc, pose, s);
                         for (Arrow a : arrows) emitArrow(vc, pose, a);
                     },
-                    new ScreenRect(0, 0, w, h).transformEachVertex(pose)));
+                    new ScreenRectangle(0, 0, w, h).transformMaxBounds(pose)));
         }
 
-        var tr = client.textRenderer;
+        var tr = client.font;
         for (Glyph g : glyphs) {
-            var pose = ctx.getMatrices();
+            var pose = ctx.pose();
             pose.pushMatrix();
             pose.translate(g.x, g.y);
             pose.scale(1.05f, 1.05f);
-            ctx.drawCenteredTextWithShadow(tr, g.text, 0, -tr.fontHeight / 2, g.color);
+            ctx.centeredText(tr, g.text, 0, -tr.lineHeight / 2, g.color);
             pose.popMatrix();
         }
         for (Label l : labels) {
-            int tw = tr.getWidth(l.text);
-            ctx.drawText(tr, l.text, Math.round(l.x - tw / 2f), Math.round(l.y), l.color, true);
+            int tw = tr.width(l.text);
+            ctx.text(tr, l.text, Math.round(l.x - tw / 2f), Math.round(l.y), l.color, true);
         }
     }
 
@@ -244,13 +244,13 @@ public final class MarkerHud {
     /** Rendered y per label text — glides toward the resolved target. */
     private static final java.util.Map<String, Float> renderY = new java.util.HashMap<>();
 
-    private static List<Label> stackProjectedLabels(MinecraftClient client,
+    private static List<Label> stackProjectedLabels(Minecraft client,
                                                     List<Label> source) {
         source.sort(Comparator.comparing((Label l) -> l.text)
                 .thenComparingDouble(l -> l.x));
         List<Label> resolved = new ArrayList<>();
         List<Label> placed = new ArrayList<>();
-        int lineH = client.textRenderer.fontHeight + 2;
+        int lineH = client.font.lineHeight + 2;
         java.util.Set<String> seen = new java.util.HashSet<>();
 
         for (Label label : source) {
@@ -279,14 +279,14 @@ public final class MarkerHud {
     }
 
     /** The highest already-placed label the candidate collides with, or null. */
-    private static Label blocker(MinecraftClient client, Label candidate,
+    private static Label blocker(Minecraft client, Label candidate,
                                  List<Label> placed, int lineH) {
-        float half = client.textRenderer.getWidth(candidate.text) / 2f;
+        float half = client.font.width(candidate.text) / 2f;
         float left = candidate.x - half - 2;
         float right = candidate.x + half + 2;
         Label top = null;
         for (Label other : placed) {
-            float otherHalf = client.textRenderer.getWidth(other.text) / 2f;
+            float otherHalf = client.font.width(other.text) / 2f;
             if (left < other.x + otherHalf + 2 && right > other.x - otherHalf - 2
                     && candidate.y < other.y + lineH && candidate.y + lineH > other.y
                     && (top == null || other.y < top.y)) {
@@ -303,19 +303,19 @@ public final class MarkerHud {
     }
 
     /** Left/right edge column: entries stacked vertically, nearest first. */
-    private static void queueVerticalEdge(MinecraftClient client, List<EdgeEntry> entries,
+    private static void queueVerticalEdge(Minecraft client, List<EdgeEntry> entries,
                                           boolean rightSide, float arrowX, float anchorY,
                                           List<Arrow> arrows, List<Label> labels) {
         if (entries.isEmpty()) return;
         entries.sort(Comparator.comparingDouble(EdgeEntry::dist));
 
-        var tr = client.textRenderer;
-        int lineH = tr.fontHeight + 2;
+        var tr = client.font;
+        int lineH = tr.lineHeight + 2;
         float y = anchorY - (entries.size() * lineH) / 2f;
 
         for (EdgeEntry e : entries) {
             float midY = y + lineH / 2f;
-            int tw = tr.getWidth(e.label);
+            int tw = tr.width(e.label);
             if (rightSide) {
                 labels.add(new Label(arrowX - 7f - tw / 2f, y, e.label, e.color));
             } else {
@@ -331,14 +331,14 @@ public final class MarkerHud {
      * (nearest target's color), entries stacked vertically inward,
      * nearest first.
      */
-    private static void queueColumnEdge(MinecraftClient client, List<EdgeEntry> entries,
+    private static void queueColumnEdge(Minecraft client, List<EdgeEntry> entries,
                                         int dir, float cx, float arrowY, boolean inward,
                                         List<Arrow> arrows, List<Label> labels) {
         if (entries.isEmpty()) return;
         entries.sort(Comparator.comparingDouble(EdgeEntry::dist));
 
-        var tr = client.textRenderer;
-        int lineH = tr.fontHeight + 2;
+        var tr = client.font;
+        int lineH = tr.lineHeight + 2;
         arrows.add(new Arrow(cx, arrowY, entries.get(0).color, dir));
 
         float y = inward ? arrowY + 6f : arrowY - 6f - entries.size() * lineH;
@@ -417,10 +417,10 @@ public final class MarkerHud {
             float ty = y1; y1 = y2; y2 = ty;
             int tc = c1; c1 = c2; c2 = tc;
         }
-        vc.vertex(pose, x0, y0).color(c0);
-        vc.vertex(pose, x1, y1).color(c1);
-        vc.vertex(pose, x2, y2).color(c2);
-        vc.vertex(pose, x2, y2).color(c2);
+        vc.addVertexWith2DPose(pose, x0, y0).setColor(c0);
+        vc.addVertexWith2DPose(pose, x1, y1).setColor(c1);
+        vc.addVertexWith2DPose(pose, x2, y2).setColor(c2);
+        vc.addVertexWith2DPose(pose, x2, y2).setColor(c2);
     }
 
     /** Live "time since" for snitch labels: 8s, 47s, 1m 05s, 2m+ gone by fade. */

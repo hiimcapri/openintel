@@ -6,12 +6,12 @@ import dev.openintel.api.hud.HudElementDescriptor;
 import dev.openintel.api.hud.HudPosition;
 import dev.openintel.config.OIConfig;
 import dev.openintel.render.ArmorHud;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,21 +42,21 @@ public class HudEditorScreen extends Screen {
     }
 
     public HudEditorScreen(Screen parent) {
-        super(Text.literal("OpenIntel HUD Editor"));
+        super(Component.literal("OpenIntel HUD Editor"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
         finishDrag();
-        addDrawableChild(ButtonWidget.builder(Text.literal("Reset layout"), b -> reset())
-                .dimensions(width / 2 - 104, height - 26, 100, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Done"), b -> close())
-                .dimensions(width / 2 + 4, height - 26, 100, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Reset layout"), b -> reset())
+                .bounds(width / 2 - 104, height - 26, 100, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose())
+                .bounds(width / 2 + 4, height - 26, 100, 20).build());
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
+    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
         if (super.mouseClicked(click, doubled)) return true;
         if (click.button() != 0 && click.button() != 1) return false;
         finishDrag();
@@ -93,7 +93,7 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(Click click, double offsetX, double offsetY) {
+    public boolean mouseDragged(MouseButtonEvent click, double offsetX, double offsetY) {
         if (click.button() != 0) return super.mouseDragged(click, offsetX, offsetY);
         if (draggingExternalId != null) {
             HudElementDescriptor descriptor = HudApi.getInstance().element(draggingExternalId).orElse(null);
@@ -119,7 +119,7 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(Click click) {
+    public boolean mouseReleased(MouseButtonEvent click) {
         if (click.button() == 0 && (dragging != null || draggingExternalId != null)) {
             finishDrag();
             return true;
@@ -135,10 +135,10 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public void close() {
+    public void onClose() {
         finishDrag();
         HudApi.getInstance().saveLayout();
-        client.setScreen(parent);
+        minecraft.setScreen(parent);
     }
 
     @Override
@@ -148,11 +148,11 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        renderInGameBackground(ctx);
-        ctx.drawCenteredTextWithShadow(textRenderer, title, width / 2, 8, 0xFFFFFFFF);
-        ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.literal("Drag to move; right-click external HUDs to toggle. Markers stay on their edge."),
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
+        extractTransparentBackground(ctx);
+        ctx.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
+        ctx.centeredText(font,
+                Component.literal("Drag to move; right-click external HUDs to toggle. Markers stay on their edge."),
                 width / 2, 21, 0xFFAAAAAA);
 
         ctx.fill(width / 2, 34, width / 2 + 1, height - 34, 0x35FFFFFF);
@@ -160,31 +160,31 @@ public class HudEditorScreen extends Screen {
 
         for (Box box : boxes()) drawBox(ctx, box, mouseX, mouseY);
         for (ExternalBox box : externalBoxes()) drawExternalBox(ctx, box, mouseX, mouseY, delta);
-        super.render(ctx, mouseX, mouseY, delta);
+        super.extractRenderState(ctx, mouseX, mouseY, delta);
     }
 
-    private void drawBox(DrawContext ctx, Box box, int mouseX, int mouseY) {
+    private void drawBox(GuiGraphicsExtractor ctx, Box box, int mouseX, int mouseY) {
         boolean active = box.element == dragging || box.contains(mouseX, mouseY);
         int bg = active ? 0xD02B3545 : 0xB018202C;
         ctx.fill(box.x, box.y, box.x + box.w, box.y + box.h, bg);
-        ctx.drawStrokedRectangle(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : box.color);
+        ctx.outline(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : box.color);
         drawBoxLabel(ctx, box);
     }
 
     /** Single line when it fits; one word per line inside narrow boxes. */
-    private void drawBoxLabel(DrawContext ctx, Box box) {
+    private void drawBoxLabel(GuiGraphicsExtractor ctx, Box box) {
         int maxW = box.w - 4;
-        if (textRenderer.getWidth(box.label) <= maxW || !box.label.contains(" ")) {
-            ctx.drawCenteredTextWithShadow(textRenderer, box.label,
-                    box.x + box.w / 2, box.y + (box.h - textRenderer.fontHeight) / 2, box.color);
+        if (font.width(box.label) <= maxW || !box.label.contains(" ")) {
+            ctx.centeredText(font, box.label,
+                    box.x + box.w / 2, box.y + (box.h - font.lineHeight) / 2, box.color);
             return;
         }
         String[] words = box.label.split(" ");
-        int blockH = words.length * (textRenderer.fontHeight + 2) - 2;
+        int blockH = words.length * (font.lineHeight + 2) - 2;
         int ty = box.y + (box.h - blockH) / 2;
         for (String word : words) {
-            ctx.drawCenteredTextWithShadow(textRenderer, word, box.x + box.w / 2, ty, box.color);
-            ty += textRenderer.fontHeight + 2;
+            ctx.centeredText(font, word, box.x + box.w / 2, ty, box.color);
+            ty += font.lineHeight + 2;
         }
     }
 
@@ -199,23 +199,23 @@ public class HudEditorScreen extends Screen {
         return boxes;
     }
 
-    private void drawExternalBox(DrawContext ctx, ExternalBox box, int mouseX, int mouseY, float delta) {
+    private void drawExternalBox(GuiGraphicsExtractor ctx, ExternalBox box, int mouseX, int mouseY, float delta) {
         HudElementDescriptor descriptor = box.descriptor;
         boolean active = descriptor.id().equals(selectedExternalId) || box.contains(mouseX, mouseY);
         int color = descriptor.runtimeFailed() ? 0xFFFF5555 : descriptor.enabled() ? 0xFF55FFFF : 0xFF888888;
         ctx.fill(box.x, box.y, box.x + box.w, box.y + box.h, active ? 0xD02B3545 : 0xB018202C);
         HudApi.getInstance().renderPreview(descriptor.id(), ctx, width, height, delta);
-        ctx.drawStrokedRectangle(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : color);
+        ctx.outline(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : color);
         String label = descriptor.name() + (descriptor.runtimeFailed() ? " [error: reset]" : descriptor.enabled() ? "" : " [off]");
         ctx.enableScissor(box.x, box.y, box.x + box.w, box.y + box.h);
         try {
-            ctx.drawTextWithShadow(textRenderer, label, box.x + 3, box.y + 3, color);
+            ctx.text(font, label, box.x + 3, box.y + 3, color, true);
         } finally {
             ctx.disableScissor();
         }
         if (box.contains(mouseX, mouseY)) {
-            ctx.drawTooltip(textRenderer, List.of(Text.literal(label), Text.literal(descriptor.id().toString()),
-                    Text.literal("Left-drag to move; right-click to toggle")), mouseX, mouseY);
+            ctx.setComponentTooltipForNextFrame(font, List.of(Component.literal(label), Component.literal(descriptor.id().toString()),
+                    Component.literal("Left-drag to move; right-click to toggle")), mouseX, mouseY);
         }
     }
 

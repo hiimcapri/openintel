@@ -2,10 +2,10 @@ package dev.openintel.render;
 
 import dev.openintel.OpenIntelClient;
 import dev.openintel.config.OIConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 
 public final class ArmorHud {
     private static final EquipmentSlot[] SLOTS = {
@@ -22,22 +22,22 @@ public final class ArmorHud {
         return cfg.armorHudLayout == OIConfig.ArmorHudLayout.VERTICAL ? 80 : 26;
     }
 
-    public static void render(DrawContext ctx) {
+    public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (!cfg.armorHudEnabled || mc.player == null || mc.options.hudHidden) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (!cfg.armorHudEnabled || mc.player == null || mc.options.hideGui) return;
 
         boolean vertical = cfg.armorHudLayout == OIConfig.ArmorHudLayout.VERTICAL;
-        int x = resolveX(cfg.armorHudX, ctx.getScaledWindowWidth(), boxW(cfg));
+        int x = resolveX(cfg.armorHudX, ctx.guiWidth(), boxW(cfg));
         int y = cfg.armorHudY;
         for (int i = 0; i < SLOTS.length; i++) {
-            ItemStack stack = mc.player.getEquippedStack(SLOTS[i]);
+            ItemStack stack = mc.player.getItemBySlot(SLOTS[i]);
             int itemX = vertical ? x : x + i * 22;
             int itemY = vertical ? y + i * 20 : y;
             if (stack.isEmpty()) continue;
-            ctx.drawItem(stack, itemX, itemY);
-            if (!stack.isDamageable()) continue;
-            int remaining = stack.getMaxDamage() - stack.getDamage();
+            ctx.item(stack, itemX, itemY);
+            if (!stack.isDamageableItem()) continue;
+            int remaining = stack.getMaxDamage() - stack.getDamageValue();
             int percent = Math.round(remaining * 100f / stack.getMaxDamage());
             switch (cfg.armorHudMode) {
                 case PERCENT -> drawLabel(ctx, mc, vertical, itemX, itemY,
@@ -49,27 +49,27 @@ public final class ArmorHud {
         }
     }
 
-    private static void drawLabel(DrawContext ctx, MinecraftClient mc, boolean vertical,
+    private static void drawLabel(GuiGraphicsExtractor ctx, Minecraft mc, boolean vertical,
                                   int itemX, int itemY, String text, int color) {
         if (vertical) {
-            ctx.drawTextWithShadow(mc.textRenderer, text, itemX + 18, itemY + 4, color);
+            ctx.text(mc.font, text, itemX + 18, itemY + 4, color, true);
         } else {
             // "100%" is wider than the 16px icon; shrink it so neighbors don't touch.
-            var pose = ctx.getMatrices();
+            var pose = ctx.pose();
             pose.pushMatrix();
             pose.translate(itemX + 8, itemY + 18);
             pose.scale(0.8f, 0.8f);
-            ctx.drawCenteredTextWithShadow(mc.textRenderer, text, 0, 0, color);
+            ctx.centeredText(mc.font, text, 0, 0, color);
             pose.popMatrix();
         }
     }
 
-    private static void drawBar(DrawContext ctx, ItemStack stack, boolean vertical,
+    private static void drawBar(GuiGraphicsExtractor ctx, ItemStack stack, boolean vertical,
                                 int itemX, int itemY) {
         // Draw for every damageable piece — a HUD readout wants a full bar on
         // undamaged items, unlike the vanilla overlay that hides it.
-        int step = stack.getItemBarStep();
-        int color = stack.getItemBarColor() | 0xFF000000;
+        int step = stack.getBarWidth();
+        int color = stack.getBarColor() | 0xFF000000;
         int fill = Math.round(step * 16f / 13f);
         if (vertical) {
             ctx.fill(itemX + 17, itemY, itemX + 21, itemY + 16, 0xFF000000);

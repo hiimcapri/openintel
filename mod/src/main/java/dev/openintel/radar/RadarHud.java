@@ -6,20 +6,20 @@ import dev.openintel.mixin.DrawContextAccessor;
 import dev.openintel.ping.PingManager;
 import dev.openintel.render.ColoredQuadsElement;
 import dev.openintel.tracker.Tracker.RemotePlayer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.PlayerSkinDrawer;
-import net.minecraft.client.gui.ScreenRect;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.vehicle.AbstractBoatEntity;
-import net.minecraft.entity.vehicle.AbstractMinecartEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.vehicle.boat.AbstractBoat;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix3x2fStack;
 import org.joml.Matrix3x2fc;
@@ -50,20 +50,20 @@ public final class RadarHud {
     private static final int MAX_ITEM_BLIPS = 1000;
     private static final double TAU = Math.PI * 2;
 
-    public static void render(DrawContext ctx, float tickDelta) {
+    public static void render(GuiGraphicsExtractor ctx, float tickDelta) {
         OIConfig cfg = OpenIntelClient.config();
         if (!cfg.radarEnabled) return;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null || mc.options.hudHidden) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null || mc.options.hideGui) return;
 
         int r = cfg.radarSize;
-        float yaw = mc.player.getYaw(tickDelta);
-        Vec3d self = mc.player.getLerpedPos(tickDelta);
+        float yaw = mc.player.getYRot(tickDelta);
+        Vec3 self = mc.player.getPosition(tickDelta);
 
         float frameRot = cfg.radarNorthUp ? (float) Math.PI : (float) -Math.toRadians(yaw);
 
-        Matrix3x2fStack pose = ctx.getMatrices();
+        Matrix3x2fStack pose = ctx.pose();
         pose.pushMatrix();
         pose.translate(cfg.radarX + r, cfg.radarY + r);
         pose.rotate(frameRot);
@@ -89,14 +89,14 @@ public final class RadarHud {
 
     // ------------------------------------------------------------- blips ----
 
-    private static void renderPlayers(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
-                                      Vec3d self, float yaw, float tickDelta,
+    private static void renderPlayers(GuiGraphicsExtractor ctx, Minecraft mc, OIConfig cfg,
+                                      Vec3 self, float yaw, float tickDelta,
                                       Set<String> onRadar) {
-        for (AbstractClientPlayerEntity p : mc.world.getPlayers()) {
+        for (AbstractClientPlayer p : mc.level.players()) {
             if (p == mc.player || !p.isAlive()) continue;
             if (!contactAllowed(p.getGameProfile().name(), cfg)) continue;
 
-            Vec3d pos = p.getLerpedPos(tickDelta);
+            Vec3 pos = p.getPosition(tickDelta);
             double dx = self.x - pos.x, dz = self.z - pos.z;
             double dist = Math.hypot(dx, dz);
             if (dist > cfg.radarRange) continue;
@@ -107,46 +107,46 @@ public final class RadarHud {
             String label = name + " (" + Math.round(dist) + ")";
 
             blip(ctx, dx, dz, cfg, yaw, () -> {
-                Matrix3x2fStack pose = ctx.getMatrices();
+                Matrix3x2fStack pose = ctx.pose();
                 pose.pushMatrix();
                 pose.scale(cfg.radarIconSize, cfg.radarIconSize);
 
-                PlayerListEntry entry = mc.getNetworkHandler() == null
-                        ? null : mc.getNetworkHandler().getPlayerListEntry(p.getUuid());
+                PlayerInfo entry = mc.getConnection() == null
+                        ? null : mc.getConnection().getPlayerInfo(p.getUUID());
                 // Allegiance frame around the face.
-                ctx.drawStrokedRectangle(-5, -5, 10, 10, color);
+                ctx.outline(-5, -5, 10, 10, color);
                 if (entry != null) {
-                    PlayerSkinDrawer.draw(ctx, entry.getSkinTextures(), -4, -4, 8);
+                    PlayerFaceExtractor.extractRenderState(ctx, entry.getSkin(), -4, -4, 8);
                 } else {
                     ctx.fill(-3, -3, 3, 3, color);
                 }
 
                 pose.translate(0, 4.5f * cfg.radarIconSize);
                 pose.scale(0.6f * cfg.radarTextSize, 0.6f * cfg.radarTextSize);
-                ctx.drawCenteredTextWithShadow(mc.textRenderer, label, 0, 1, color);
+                ctx.centeredText(mc.font, label, 0, 1, color);
                 pose.popMatrix();
             });
         }
     }
 
-    private static void renderVehiclesAndItems(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
-                                               Vec3d self, float yaw, float tickDelta) {
+    private static void renderVehiclesAndItems(GuiGraphicsExtractor ctx, Minecraft mc, OIConfig cfg,
+                                               Vec3 self, float yaw, float tickDelta) {
         if (!cfg.radarShowItems && !cfg.radarShowVehicles) return;
 
         int drawn = 0;
-        for (Entity e : mc.world.getEntities()) {
+        for (Entity e : mc.level.entitiesForRendering()) {
             ItemStack icon = iconFor(e, cfg);
             if (icon == null || icon.isEmpty()) continue;
 
-            Vec3d pos = e.getLerpedPos(tickDelta);
+            Vec3 pos = e.getPosition(tickDelta);
             double dx = self.x - pos.x, dz = self.z - pos.z;
             if (dx * dx + dz * dz > cfg.radarRange * cfg.radarRange) continue;
 
             blip(ctx, dx, dz, cfg, yaw, () -> {
-                Matrix3x2fStack pose = ctx.getMatrices();
+                Matrix3x2fStack pose = ctx.pose();
                 pose.pushMatrix();
                 pose.scale(cfg.radarIconSize * 0.9f, cfg.radarIconSize * 0.9f);
-                ctx.drawItemWithoutEntity(icon, -8, -8);
+                ctx.fakeItem(icon, -8, -8);
                 pose.popMatrix();
             });
             if (++drawn > MAX_ITEM_BLIPS) return;
@@ -155,14 +155,14 @@ public final class RadarHud {
 
     private static ItemStack iconFor(Entity e, OIConfig cfg) {
         if (e instanceof ItemEntity item) {
-            return cfg.radarShowItems ? item.getStack() : null;
+            return cfg.radarShowItems ? item.getItem() : null;
         }
-        if (e instanceof AbstractBoatEntity boat) {
-            return cfg.radarShowVehicles ? boat.getPickBlockStack() : null;
+        if (e instanceof AbstractBoat boat) {
+            return cfg.radarShowVehicles ? boat.getPickResult() : null;
         }
-        if (e instanceof AbstractMinecartEntity cart) {
+        if (e instanceof AbstractMinecart cart) {
             // Pick-stack gives the real cart type (TNT, chest, hopper...).
-            return cfg.radarShowVehicles ? cart.getPickBlockStack() : null;
+            return cfg.radarShowVehicles ? cart.getPickResult() : null;
         }
         return null;
     }
@@ -181,10 +181,10 @@ public final class RadarHud {
      * sit at their true position; beyond it they pin to the rim so the dial
      * answers "which way" even at 400m out.
      */
-    private static void renderRelayBlips(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
-                                         Vec3d self, float yaw, int r,
+    private static void renderRelayBlips(GuiGraphicsExtractor ctx, Minecraft mc, OIConfig cfg,
+                                         Vec3 self, float yaw, int r,
                                          Set<String> onRadar) {
-        String myDim = mc.world.getRegistryKey().getValue().toString();
+        String myDim = mc.level.dimension().identifier().toString();
         long now = System.currentTimeMillis();
 
         for (RemotePlayer p : OpenIntelClient.tracker().all()) {
@@ -207,12 +207,12 @@ public final class RadarHud {
             String label = p.name + " (" + Math.round(dist) + ")";
 
             blip(ctx, dx, dz, cfg, yaw, () -> {
-                Matrix3x2fStack pose = ctx.getMatrices();
+                Matrix3x2fStack pose = ctx.pose();
                 pose.pushMatrix();
                 ctx.fill(-2, -2, 2, 2, color);
                 pose.translate(0, 3.5f);
                 pose.scale(0.5f * cfg.radarTextSize, 0.5f * cfg.radarTextSize);
-                ctx.drawCenteredTextWithShadow(mc.textRenderer, label, 0, 1, color);
+                ctx.centeredText(mc.font, label, 0, 1, color);
                 pose.popMatrix();
             });
         }
@@ -222,9 +222,9 @@ public final class RadarHud {
      * Shared pings from the wheel — diamonds on the dial, pinned to the rim
      * when the ping is beyond the sweep. Fades during its last seconds.
      */
-    private static void renderPings(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
-                                    Vec3d self, float yaw) {
-        String myDim = mc.world.getRegistryKey().getValue().toString();
+    private static void renderPings(GuiGraphicsExtractor ctx, Minecraft mc, OIConfig cfg,
+                                    Vec3 self, float yaw) {
+        String myDim = mc.level.dimension().identifier().toString();
         long now = System.currentTimeMillis();
 
         for (PingManager.Ping ping : PingManager.active()) {
@@ -239,7 +239,7 @@ public final class RadarHud {
             String label = "⚑ " + ping.label + " (" + Math.round(dist) + ")";
 
             blip(ctx, dx, dz, cfg, yaw, () -> {
-                Matrix3x2fStack pose = ctx.getMatrices();
+                Matrix3x2fStack pose = ctx.pose();
                 pose.pushMatrix();
                 // Diamond, drawn as a small rotated square.
                 ctx.fill(-1, -3, 1, 1, color);
@@ -248,7 +248,7 @@ public final class RadarHud {
                 ctx.fill(1, -1, 3, 1, color);
                 pose.translate(0, 4.5f);
                 pose.scale(0.5f * cfg.radarTextSize, 0.5f * cfg.radarTextSize);
-                ctx.drawCenteredTextWithShadow(mc.textRenderer, label, 0, 1, color);
+                ctx.centeredText(mc.font, label, 0, 1, color);
                 pose.popMatrix();
             });
         }
@@ -259,14 +259,14 @@ public final class RadarHud {
      * compression blend, the result is clamped just inside the rim, then
      * counter-rotated so icons and text stay upright.
      */
-    private static void blip(DrawContext ctx, double dx, double dz,
+    private static void blip(GuiGraphicsExtractor ctx, double dx, double dz,
                              OIConfig cfg, float yaw, Runnable painter) {
         double dist = Math.hypot(dx, dz);
         if (dist < 0.1) return;
         double radius = Math.min(mapDistance(dist, cfg.radarRange, cfg.radarCompression), 0.97) * cfg.radarSize;
         double unit = radius / dist;
 
-        Matrix3x2fStack pose = ctx.getMatrices();
+        Matrix3x2fStack pose = ctx.pose();
         pose.pushMatrix();
         pose.translate((float) (dx * unit), (float) (dz * unit));
         pose.rotate(cfg.radarNorthUp ? (float) Math.PI : (float) Math.toRadians(yaw));
@@ -297,12 +297,12 @@ public final class RadarHud {
      * (degenerate quads for triangles) with per-vertex colors, so every edge
      * is a real gradient at screen resolution. No texture, no texels.
      */
-    private static void drawDial(DrawContext ctx, OIConfig cfg, int r) {
-        Matrix3x2f pose = new Matrix3x2f(ctx.getMatrices());
-        ((DrawContextAccessor) ctx).openintel$state().addSimpleElement(new ColoredQuadsElement(
+    private static void drawDial(GuiGraphicsExtractor ctx, OIConfig cfg, int r) {
+        Matrix3x2f pose = new Matrix3x2f(ctx.pose());
+        ((DrawContextAccessor) ctx).openintel$state().addGuiElement(new ColoredQuadsElement(
                 pose, vc -> paintDial(vc, pose, r, cfg),
-                new ScreenRect(-(r + 3), -(r + 3), 2 * r + 6, 2 * r + 6)
-                        .transformEachVertex(pose)));
+                new ScreenRectangle(-(r + 3), -(r + 3), 2 * r + 6, 2 * r + 6)
+                        .transformMaxBounds(pose)));
     }
 
     private static void paintDial(VertexConsumer vc, Matrix3x2fc pose, int r, OIConfig cfg) {
@@ -413,10 +413,10 @@ public final class RadarHud {
                              float x1, float y1, int c1,
                              float x2, float y2, int c2,
                              float x3, float y3, int c3) {
-        vc.vertex(pose, x0, y0).color(c0);
-        vc.vertex(pose, x1, y1).color(c1);
-        vc.vertex(pose, x2, y2).color(c2);
-        vc.vertex(pose, x3, y3).color(c3);
+        vc.addVertexWith2DPose(pose, x0, y0).setColor(c0);
+        vc.addVertexWith2DPose(pose, x1, y1).setColor(c1);
+        vc.addVertexWith2DPose(pose, x2, y2).setColor(c2);
+        vc.addVertexWith2DPose(pose, x3, y3).setColor(c3);
     }
 
     private static int scaleAlpha(int argb, float f) {
@@ -425,7 +425,7 @@ public final class RadarHud {
     }
 
     /** N/E/S/W hugging the rim — small, soft, upright in the rotated frame. */
-    private static void drawCardinals(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
+    private static void drawCardinals(GuiGraphicsExtractor ctx, Minecraft mc, OIConfig cfg,
                                       float frameRot, int r) {
         float R = r * 0.85f;
         cardinal(ctx, mc, cfg, frameRot, 0f, 1f, R, "N");   // north = -Z → +dz in our convention
@@ -434,9 +434,9 @@ public final class RadarHud {
         cardinal(ctx, mc, cfg, frameRot, 1f, 0f, R, "W");
     }
 
-    private static void cardinal(DrawContext ctx, MinecraftClient mc, OIConfig cfg,
+    private static void cardinal(GuiGraphicsExtractor ctx, Minecraft mc, OIConfig cfg,
                                  float frameRot, float vx, float vz, float R, String letter) {
-        Matrix3x2fStack pose = ctx.getMatrices();
+        Matrix3x2fStack pose = ctx.pose();
         pose.pushMatrix();
         // The pose already carries the frame rotation, so translating by the
         // world-direction vector lands the letter on that bearing — applying
@@ -444,14 +444,14 @@ public final class RadarHud {
         pose.translate(vx * R, vz * R);
         pose.rotate(-frameRot);                          // letters stay upright
         pose.scale(0.5f * cfg.radarTextSize, 0.5f * cfg.radarTextSize);
-        ctx.drawCenteredTextWithShadow(mc.textRenderer, letter, 0, -4,
+        ctx.centeredText(mc.font, letter, 0, -4,
                 (cfg.radarFgColor & 0x00FFFFFF) | 0xD9000000);
         pose.popMatrix();
     }
 
     /** Slim needle marking your view direction on the dial. */
-    private static void drawFacingChevron(DrawContext ctx, OIConfig cfg, float yaw) {
-        Matrix3x2fStack pose = ctx.getMatrices();
+    private static void drawFacingChevron(GuiGraphicsExtractor ctx, OIConfig cfg, float yaw) {
+        Matrix3x2fStack pose = ctx.pose();
         pose.pushMatrix();
         // The dial frame is world-aligned, so the marker just turns with
         // yaw: rotating mode nets out to screen-up (frame -yaw + yaw),
