@@ -1,9 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { isAdmin, canReceiveIntel, visiblePositions, visibilityKey } = require("./visibility");
+const { isAdmin, isTrial, canReceiveIntel, visiblePositions, visibilityKey } = require("./visibility");
 
-const USER_ROLES = ["member", "operator", "captain", "admin"];
+const USER_ROLES = ["trial", "member", "operator", "captain", "admin"];
 const MINECRAFT_NAME = /^[A-Za-z0-9_]{3,16}$/;
 const lower = (s) => String(s).toLowerCase();
 const normalizeMinecraftServer = (value) => {
@@ -50,7 +50,10 @@ function runSelfTest() {
   assert(!validName("ab"));
   assert(!validName("bad-name"));
   assert(validRole("operator"));
+  assert(validRole("trial"));
   assert(!validRole("owner"));
+  assert(!hasTier("trial", "member"));
+  assert(hasTier("member", "trial"));
   assert(hasTier("admin", "captain"));
   assert(!hasTier("operator", "captain"));
   assert.equal(pageText("users", ["a", "b", "c"], 2, 2), "users — page 2/2 (3)\nc");
@@ -210,6 +213,10 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 function allegiancePayload(recipient = null) {
+  if (isTrial(recipient)) {
+    // Send-only rank: authenticate and report, receive nothing.
+    return { type: "allegiances", users: [], allies: [], enemies: [], focus: [] };
+  }
   return {
     type: "allegiances",
     users: userNames(),

@@ -9,6 +9,7 @@ const users = [
   { name: 'AdminOne', token: 'test-admin-one', role: 'admin' },
   { name: 'AdminTwo', token: 'test-admin-two', role: 'admin' },
   ...['member', 'operator', 'captain'].map(role => ({ name: role, token: 'test-' + role, role })),
+  { name: 'trial', token: 'test-trial', role: 'trial' },
 ];
 const files = new Map([
   ['config.json', JSON.stringify({ minecraftServer: 'play.example.net', adminToken: 'test-api', discord: {}, webhooks: {} })],
@@ -58,7 +59,9 @@ function login(user) {
   return socket;
 }
 const sessions = users.map(login);
-const [a, b, ...lower] = sessions;
+const [a, b, ...rest] = sessions;
+const trialSocket = rest.at(-1);
+const lower = rest.slice(0, -1);
 const tick = () => timers.forEach(fn => fn());
 const clear = () => sessions.forEach(socket => socket.messages.length = 0);
 function report(socket, subject, x) {
@@ -136,4 +139,18 @@ a.submit({ type: 'ping', id: 'not-for-demoted-admin' });
 assert.equal(b.take('ping').length, 0);
 b.submit({ type: 'cut', action: 'off' });
 assert.match(b.take('notice')[0].msg, /admin-only/);
-console.log('Cut routing tests passed: permissions, both admin cut states, provenance, reset, persistence, focus, demotion and audience deduplication');
+clear();
+// Trial is send-only: its reports fan out to everyone, it receives nothing.
+report(trialSocket, 'TrialObserved', 900);
+trialSocket.submit({ ...snitch, player: 'TrialTripper' });
+tick();
+assert(players(a).some(p => p.name === 'TrialObserved'));
+assert(players(b).some(p => p.name === 'TrialObserved'));
+assert(lower.every(socket => players(socket).some(p => p.name === 'TrialObserved')));
+assert.equal(players(trialSocket).length, 0);
+assert.equal(b.take('snitch').length, 1);
+assert.equal(trialSocket.take('snitch').length, 0);
+a.submit({ type: 'focus', action: 'add', subject: 'FocusAllButTrial' });
+assert(b.take('allegiances').some(m => m.focus.includes('FocusAllButTrial')));
+assert.equal(trialSocket.take('allegiances').at(-1)?.focus.length ?? 0, 0);
+console.log('Cut routing tests passed: permissions, both admin cut states, provenance, reset, persistence, focus, demotion, trial send-only and audience deduplication');
