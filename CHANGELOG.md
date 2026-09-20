@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 — marker scaling and public focus
+
+- Added a Marker scale slider (50–200%) sizing over-head relay markers —
+  chevron/diamond, snitch glyph, and name label together — with scaled
+  label stacking. Edge-of-screen indicators keep their fixed size.
+- Focus targets are now shared with every relay rank; `/oi focus` no longer
+  becomes admin-only intel when the caller is relay-cut.
+
 ## 1.3.0 — public integration API
 
 - Added admin-only `/oi cut [on|off|status]`: outgoing relay intel can be

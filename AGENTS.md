@@ -7,4 +7,4 @@
 - API examples live in `README.md`; a compiling consumer example lives in `mod/src/test/java/example/ExampleOpenIntelIntegration.java`.
 - Initialize the integration API on Fabric `ClientLifecycleEvents.CLIENT_STARTED`, not directly in `onInitializeClient`: Minecraft's executor thread identity is not ready during its constructor. The API contract test checks this startup hook.
 - Never publish personalized jars or relay credentials as development dependencies. Keep `openintel_token.txt` set to `CHANGE_ME` in source/base builds.
-- Read `mod_version` from `mod/gradle.properties` when selecting artifacts; older jars can remain in `mod/build/libs/` after a version bump. The API release is 1.3.0, not 1.2.1.
+- Read `mod_version` from `mod/gradle.properties` when selecting artifacts; older jars can remain in `mod/build/libs/` after a version bump. The API release is 1.5.0, not 1.2.1.
