@@ -401,7 +401,7 @@ wss.on("connection", (ws, req) => {
         return;
       }
       applyFocus(msg.action, msg.subject ? String(msg.subject) : null, ws.authedAs, {
-        tier: ws.role, adminOnly: user.relayCut === true, source: { guild: null, channel: "websocket" },
+        tier: ws.role, adminOnly: false, source: { guild: null, channel: "websocket" },
       });
       return;
     }
