@@ -108,6 +108,16 @@ public final class XaeroBridge {
             diamond(canvas, x, y, argb);
             label(ctx, x, y + 6, "⚑ " + p.label + " (" + p.sender + ")", argb);
         }
+
+        // Relic points — session overlay, gold diamonds.
+        for (var r : dev.openintel.relic.RelicMaps.all()) {
+            if (!dim.equals(r.dimension())) continue;
+            int argb = 0xFFFFAA00;
+            int x = ctx.worldToScreenX(r.x());
+            int y = ctx.worldToScreenY(r.z());
+            diamond(canvas, x, y, argb);
+            label(ctx, x, y + 6, "✖ Relic " + r.x() + ", " + r.z(), argb);
+        }
     }
 
     // ------------------------------------------------------------ drawing ----

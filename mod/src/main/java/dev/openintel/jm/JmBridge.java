@@ -73,27 +73,42 @@ final class JmBridge implements Runnable {
                 if (p.name.equalsIgnoreCase(myName) || local.contains(p.name.toLowerCase())) continue;
                 Allegiance a = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
                 int rgb = a.argb & 0xFFFFFF;
+                // Position lives in the signature — a move means a new
+                // overlay, or the marker freezes at first sight forever.
                 // No "(via reporter)" — the reporter flaps as nearby clients
                 // hand off coverage, and the flicker reads worse than it helps.
+                BlockPos pos = BlockPos.ofFloored(p.x, p.y, p.z);
                 want.put("player:" + p.name,
-                        new Desired("player|" + rgb,
-                                BlockPos.ofFloored(p.x, p.y, p.z), p.dimension, rgb,
-                                p.name, p.name));
+                        new Desired("player|" + rgb + "|" + pos + "|" + p.dimension,
+                                pos, p.dimension, rgb, p.name, p.name));
             }
             for (Tracker.SnitchHit h : tracker.snitchHits()) {
                 int rgb = OpenIntelClient.allegiances().of(h.player).argb & 0xFFFFFF;
                 String label = h.snitch + " | " + h.player;
+                // Position in the signature here too — a re-hit at new
+                // coords must move the marker, same as player tracking.
+                BlockPos pos = BlockPos.ofFloored(h.x, h.y, h.z);
                 want.put("snitch:" + h.player + "@" + h.snitch,
-                        new Desired("snitch|" + rgb + "|" + label,
-                                BlockPos.ofFloored(h.x, h.y, h.z), h.dimension, rgb,
+                        new Desired("snitch|" + rgb + "|" + label + "|" + pos
+                                        + "|" + h.dimension,
+                                pos, h.dimension, rgb,
                                 "Snitch: " + h.snitch, label));
             }
             for (PingManager.Ping p : PingManager.active()) {
                 int rgb = p.color & 0xFFFFFF;
+                BlockPos pos = BlockPos.ofFloored(p.x, p.y, p.z);
                 want.put("ping:" + p.id,
-                        new Desired("ping|" + rgb + "|" + p.label,
-                                BlockPos.ofFloored(p.x, p.y, p.z), p.dimension, rgb,
+                        new Desired("ping|" + rgb + "|" + p.label + "|" + pos
+                                        + "|" + p.dimension,
+                                pos, p.dimension, rgb,
                                 "Ping: " + p.label, p.sender));
+            }
+            for (var r : dev.openintel.relic.RelicMaps.all()) {
+                String label = "Relic " + r.x() + ", " + r.z();
+                BlockPos pos = new BlockPos(r.x(), 64, r.z());
+                want.put("relic:" + r.x() + "," + r.z(),
+                        new Desired("relic|" + pos + "|" + r.dimension(),
+                                pos, r.dimension(), 0xFFAA00, label, label));
             }
         }
 

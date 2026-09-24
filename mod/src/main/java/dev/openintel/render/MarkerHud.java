@@ -120,6 +120,14 @@ public final class MarkerHud {
                     scaleAlpha(argb, opacity * fade), 2,
                     hit.x, hit.y + 2.4, hit.z));
         }
+        // Relic points: X/Z only, so the diamond rides at eye level —
+        // close enough to read, far ones live on the edge as direction.
+        for (var r : dev.openintel.relic.RelicMaps.all()) {
+            if (!r.dimension().equals(myDim)) continue;
+            targets.add(new Target("Relic " + r.x() + ", " + r.z(),
+                    scaleAlpha(0xFFFFAA00, opacity), 1,
+                    r.x() + 0.5, client.player.getY() + 1.5, r.z() + 0.5));
+        }
         if (targets.isEmpty()) return;
 
         // ---- project + classify --------------------------------------------
