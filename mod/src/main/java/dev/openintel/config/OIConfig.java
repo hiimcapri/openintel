@@ -26,8 +26,8 @@ public class OIConfig {
     private static final String DEFAULT_SNITCH_PATTERN = OLD_SNITCH_PATTERN
             + "|opened container|logged in at|logged out at|damaged sanctuary|broke block|placed block";
 
-    /** WebSocket URL of the relay server, e.g. ws://relay.example.net:8765 */
-    public String relayUrl = "ws://relay.example.net:8765";
+    /** WebSocket URL of the relay server, e.g. ws://relay.example.com:8765 */
+    public String relayUrl = "ws://localhost:8765";
 
     /** Minecraft multiplayer server allowed to use this relay. */
     public String minecraftServer = "play.example.net";
