@@ -16,11 +16,14 @@ import dev.openintel.net.RelayClient;
 import dev.openintel.ping.PingManager;
 import dev.openintel.ping.PingWheelScreen;
 import dev.openintel.radar.RadarHud;
+import dev.openintel.relic.RelicMaps;
 import dev.openintel.render.ArmorHud;
+import dev.openintel.render.CleanFont;
 import dev.openintel.render.EventFeed;
 import dev.openintel.render.MarkerHud;
 import dev.openintel.render.PotionHud;
 import dev.openintel.render.PresenceHud;
+import dev.openintel.render.UiFont;
 import dev.openintel.tracker.Tracker;
 import dev.openintel.xaero.XaeroBridge;
 import net.fabricmc.api.ClientModInitializer;
@@ -37,14 +40,24 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.item.FilledMapItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.text.Text;
+import net.minecraft.util.Hand;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+
 import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 
 public class OpenIntelClient implements ClientModInitializer {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("OpenIntel");
 
     private static final KeyBinding.Category OI_CATEGORY =
             KeyBinding.Category.create(Identifier.of("openintel", "main"));
@@ -83,7 +96,9 @@ public class OpenIntelClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        CleanFont.registerPipeline();
         config = OIConfig.load();
+        UiFont.initialize(config.cleanFont);
         tracker = new Tracker();
         allegiances = new AllegianceManager();
         relay = new RelayClient(
@@ -93,6 +108,8 @@ public class OpenIntelClient implements ClientModInitializer {
         registerKeybinds();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (UiFont.setEnabled(config.cleanFont)) client.inGameHud.getChatHud().reset();
+            dev.openintel.render.HudLayouts.flush();
             relay.tick();
             tracker.tick(client);
             attackMacro.tick(client);
@@ -103,6 +120,7 @@ public class OpenIntelClient implements ClientModInitializer {
             PingManager.tick();
             Runnable jm = jmTick;
             if (jm != null) jm.run();
+            RelicMaps.tick(client);
             EventFeed.tick(client);
             ApiBridge.settingsChanged();
             while (radarToggleKey.wasPressed()) {
@@ -137,16 +155,26 @@ public class OpenIntelClient implements ClientModInitializer {
         ClientEntityEvents.ENTITY_LOAD.register(EventFeed::onEntityLoad);
         ClientEntityEvents.ENTITY_UNLOAD.register(EventFeed::onEntityUnload);
         ClientReceiveMessageEvents.GAME.register(SnitchRelay::onGameMessage);
+        ClientReceiveMessageEvents.GAME.register(RelicMaps::onGameMessage);
         // Plugins can deliver alerts through either channel — catch both.
         // The 10s text dedupe in SnitchRelay covers any double-fire.
         ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, instant) ->
                 SnitchRelay.onGameMessage(message, false));
         ClientReceiveMessageEvents.MODIFY_GAME.register(SnitchRelay::restyleForChat);
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> reconnectRelay());
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            tracker.clear();
+            PingManager.clear();
+            EventFeed.clear();
+            RelicMaps.reset();
+            SnitchRelay.reset();
+            reconnectRelay();
+        });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             relay.disconnect();
             EventFeed.clear();
             PingManager.clear();
+            RelicMaps.reset();
+            SnitchRelay.reset();
             tracker.clear();
             allegiances.replaceAll(java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of());
         });
@@ -166,9 +194,9 @@ public class OpenIntelClient implements ClientModInitializer {
     public static boolean reconnectRelay() {
         MinecraftClient client = MinecraftClient.getInstance();
         relay.disconnect();
-        tracker.clear();
-        PingManager.clear();
-        EventFeed.clear();
+        tracker.clearRelay();
+        PingManager.clearRelay();
+        EventFeed.clearRelay();
         allegiances.replaceAll(java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of());
         String actual = currentMinecraftServer(client);
         String selected = normalizeMinecraftServer(config.minecraftServer);
@@ -255,6 +283,10 @@ public class OpenIntelClient implements ClientModInitializer {
                                                        : "not connected");
                             return 1;
                         }))
+                        .then(ClientCommandManager.literal("dumpmap").executes(c -> {
+                            dumpMap();
+                            return 1;
+                        }))
                         .then(ClientCommandManager.literal("cut")
                                 .requires(source -> OpenIntelApi.relay().snapshot().role()
                                         .map(role -> role.equalsIgnoreCase("admin")).orElse(false))
@@ -293,7 +325,7 @@ public class OpenIntelClient implements ClientModInitializer {
                         .then(ClientCommandManager.literal("snitchtest").executes(c -> {
                             MinecraftClient mc = MinecraftClient.getInstance();
                             if (mc.player != null && mc.world != null) {
-                                tracker.addSnitchHit("Test Vault", "Capri", "local",
+                                tracker.addSnitchHit("Test Vault", "ExamplePlayer", "local",
                                         mc.player.getX() + 40, mc.player.getY(), mc.player.getZ(),
                                         mc.world.getRegistryKey().getValue().toString(),
                                         System.currentTimeMillis());
@@ -334,6 +366,76 @@ public class OpenIntelClient implements ClientModInitializer {
                                             sendFocus("remove", StringArgumentType.getString(c, "player"));
                                             return 1;
                                         })))));
+    }
+
+    /**
+     * Recon for relic maps: dump everything we can extract from the held
+     * filled_map — item components, MapState geometry, decoration icons,
+     * and a top-N color histogram to spot baked-pixel markers.
+     */
+    private static void dumpMap() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null) {
+            status("no world");
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Hand hand : Hand.values()) {
+            ItemStack stack = mc.player.getStackInHand(hand);
+            if (!stack.isOf(Items.FILLED_MAP)) continue;
+            sb.append("== filled_map in ").append(hand).append(" ==\n");
+
+            var mapId = stack.get(DataComponentTypes.MAP_ID);
+            sb.append("mapId: ").append(mapId == null ? "null" : mapId.id()).append('\n');
+
+            var decos = stack.get(DataComponentTypes.MAP_DECORATIONS);
+            if (decos == null || decos.decorations().isEmpty()) {
+                sb.append("map_decorations: none\n");
+            } else {
+                decos.decorations().forEach((key, d) -> sb.append("deco ").append(key)
+                        .append(": type=").append(d.type().getKey()
+                                .map(k -> k.getValue().toString()).orElse("?"))
+                        .append(" x=").append(d.x())
+                        .append(" z=").append(d.z())
+                        .append(" rot=").append(d.rotation()).append('\n'));
+            }
+
+            var state = FilledMapItem.getMapState(stack, mc.world);
+            if (state == null) {
+                sb.append("MapState: not received yet — hold/open the map first\n");
+                continue;
+            }
+            sb.append("state: center=").append(state.centerX).append(',').append(state.centerZ)
+                    .append(" scale=").append((int) state.scale)
+                    .append(" dim=").append(state.dimension.getValue()).append('\n');
+            int iconCount = 0;
+            for (var ic : state.getDecorations()) {
+                iconCount++;
+                sb.append("icon: type=").append(ic.type().getKey()
+                                .map(k -> k.getValue().toString()).orElse("?"))
+                        .append(" x=").append((int) ic.x())
+                        .append(" z=").append((int) ic.z())
+                        .append(" rot=").append((int) ic.rotation())
+                        .append(ic.name().map(n -> " name=" + n.getString()).orElse(""))
+                        .append('\n');
+            }
+            sb.append("icons: ").append(iconCount).append('\n');
+
+            java.util.Map<Integer, Integer> hist = new java.util.HashMap<>();
+            for (byte b : state.colors) hist.merge(b & 0xFF, 1, Integer::sum);
+            sb.append("colors: ").append(hist.size()).append(" distinct, top:");
+            hist.entrySet().stream()
+                    .sorted(java.util.Map.Entry.<Integer, Integer>comparingByValue().reversed())
+                    .limit(8)
+                    .forEach(e -> sb.append(' ').append(e.getKey()).append('x').append(e.getValue()));
+            sb.append('\n');
+        }
+        if (sb.length() == 0) {
+            status("no filled_map in either hand");
+            return;
+        }
+        LOGGER.info("\n{}", sb);
+        status("map dumped to latest.log — check for icons/decorations");
     }
 
     private static void sendFocus(String action, String subject) {

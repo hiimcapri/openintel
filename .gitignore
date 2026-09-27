@@ -21,3 +21,11 @@ mod/*.iml
 
 # --- misc ---
 *.log
+*.jfr
+*.hprof
+hs_err_pid*
+replay_pid*
+.env
+.env.*
+*.pem
+*.key

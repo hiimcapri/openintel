@@ -5,8 +5,19 @@
   "minVersion": "0.8",
   "client": [
     "DrawContextAccessor",
+    "BakedGlyphShadowMixin",
+    "GlyphAtlasTextureMixin",
+    "GlyphGuiElementMixin",
+    "TextRendererMixin",
+    "TextRendererAccessor",
+    "ChatInputFontMixin",
+    "TextGuiFontMixin",
+    "HudTextFontMixin",
+    "ChatHudFontMixin",
+    "JourneyMapTextMixin",
     "FocusGlowMixin",
     "KeyBindingAccessor",
+    "OverlayMessageMixin",
     "PlayerNameplateMixin"
   ],
   "injectors": {

@@ -3,6 +3,7 @@ package dev.openintel.xaero;
 import dev.openintel.OpenIntelClient;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.ping.PingManager;
+import dev.openintel.render.UiFont;
 import io.github.billstark001.xaerobridge.api.MapOverlayContext;
 import io.github.billstark001.xaerobridge.api.OverlayCanvas;
 import io.github.billstark001.xaerobridge.api.XaeroWorldMapBridge;
@@ -108,6 +109,16 @@ public final class XaeroBridge {
             diamond(canvas, x, y, argb);
             label(ctx, x, y + 6, "⚑ " + p.label + " (" + p.sender + ")", argb);
         }
+
+        // Relic points — session overlay, gold diamonds.
+        for (var r : dev.openintel.relic.RelicMaps.all()) {
+            if (!dim.equals(r.dimension())) continue;
+            int argb = 0xFFFFAA00;
+            int x = ctx.worldToScreenX(r.x());
+            int y = ctx.worldToScreenY(r.z());
+            diamond(canvas, x, y, argb);
+            label(ctx, x, y + 6, "✖ " + r.name(), argb);
+        }
     }
 
     // ------------------------------------------------------------ drawing ----
@@ -140,13 +151,17 @@ public final class XaeroBridge {
      * that unwrap fails the markers still draw, just unlabeled.
      */
     private static void label(MapOverlayContext ctx, int cx, int y, String text, int argb) {
+        UiFont.withMapFont("openintel", () -> drawLabel(ctx, cx, y, text, argb));
+    }
+
+    private static void drawLabel(MapOverlayContext ctx, int cx, int y, String text, int argb) {
         DrawContext dc = drawContext(ctx.canvas());
         if (dc == null) return;
         var tr = MinecraftClient.getInstance().textRenderer;
         int tw = tr.getWidth(text);
         ctx.canvas().fill(cx - tw / 2 - 2, y - 1, cx + (tw + 1) / 2 + 2,
                 y + tr.fontHeight + 1, BACKING);
-        dc.drawText(tr, text, cx - tw / 2, y, argb | 0xFF000000, true);
+        dc.drawText(tr, text, cx - tw / 2, y, argb | 0xFF000000, false);
     }
 
     /**

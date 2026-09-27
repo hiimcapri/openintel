@@ -63,7 +63,7 @@ public final class SnitchRelay {
     public static void onGameMessage(Text message, boolean overlay) {
         if (overlay) return;
         var cfg = OpenIntelClient.config();
-        if (cfg == null || !cfg.snitchRelay) return;
+        if (cfg == null) return;
 
         String text = message.getString();
         if (text == null || text.isEmpty()) return;
@@ -169,7 +169,8 @@ public final class SnitchRelay {
                     snitchName, player, me, x, y, z, world, System.currentTimeMillis());
         }
 
-        OpenIntelClient.relay().send(msg);
+        if (cfg.snitchRelay) OpenIntelClient.relay().send(msg);
+        else dev.openintel.api.internal.ApiBridge.relaySnitch(msg);
         EventFeed.add("📡 Snitch: " + compact(text), 0xFFFFAA00);
     }
 
@@ -240,6 +241,10 @@ public final class SnitchRelay {
             return Optional.empty();
         }, Style.EMPTY);
         return worlds.isEmpty() ? null : worlds.size() == 1 ? worlds.iterator().next() : "openintel:unknown";
+    }
+
+    public static void reset() {
+        recent.clear();
     }
 
     private static boolean dedupe(String text) {

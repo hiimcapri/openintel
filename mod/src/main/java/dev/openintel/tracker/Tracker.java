@@ -65,7 +65,8 @@ public class Tracker {
     }
 
     private final Map<String, RemotePlayer> players = new ConcurrentHashMap<>();
-    private final Map<String, SnitchHit> snitchHits = new ConcurrentHashMap<>();
+    private final LocalRelayStore<String, SnitchHit> snitchHits = new LocalRelayStore<>(
+            (local, relay) -> local.t >= relay.t ? local : relay);
     private java.util.Set<String> knownUsers = java.util.Set.of();
     private long lastReport = 0;
     private long lastAlertSweep = 0;
@@ -80,17 +81,30 @@ public class Tracker {
 
     /** Drop all intel (called on disconnect). */
     public void clear() {
+        clear(true);
+    }
+
+    public void clearRelay() {
+        clear(false);
+    }
+
+    private void clear(boolean includeLocal) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (!client.isOnThread()) {
-            client.execute(this::clear);
+            client.execute(() -> clear(includeLocal));
             return;
         }
+        clearData(includeLocal);
+        ApiBridge.trackerChanged(ApiEvent.Cause.CLEAR);
+    }
+
+    private void clearData(boolean includeLocal) {
         players.clear();
-        snitchHits.clear();
+        if (includeLocal) snitchHits.clear();
+        else snitchHits.clearRelay();
         knownUsers = java.util.Set.of();
         lastReport = 0;
         lastAlertSweep = 0;
-        ApiBridge.trackerChanged(ApiEvent.Cause.CLEAR);
     }
 
     // ------------------------------------------------------------------ //
@@ -110,12 +124,12 @@ public class Tracker {
             if (now - p.lastSeen <= cfg.staleAfterMs) return false;
             if (p.allegiance == Allegiance.FRIEND || p.allegiance == Allegiance.ALLY
                     || p.allegiance == Allegiance.FOCUS) {
-                EventFeed.add(p.name + " went dark", 0xFFAAAAAA);
+                EventFeed.addRelay(p.name + " went dark", 0xFFAAAAAA);
             }
             return true;
         });
         // Snitch-hit markers live on their own 2-minute clock.
-        boolean expiredSnitches = snitchHits.values().removeIf(h -> now - h.t > cfg.snitchMarkerSeconds * 1000L);
+        boolean expiredSnitches = snitchHits.removeIf(h -> now - h.t > cfg.snitchMarkerSeconds * 1000L);
         if (expiredPlayers || expiredSnitches) ApiBridge.trackerChanged(ApiEvent.Cause.EXPIRED);
 
         if (client.player == null || client.world == null) return;
@@ -172,16 +186,16 @@ public class Tracker {
             case "welcome", "allegiances" -> applyAllegiances(msg);
             case "state" -> applyState(msg, client);
             case "intel_reset" -> {
-                clear();
-                PingManager.clear();
-                EventFeed.clear();
+                clearRelay();
+                PingManager.clearRelay();
+                EventFeed.clearRelay();
             }
             case "ping" -> PingManager.receive(msg);
             case "snitch" -> applySnitch(msg);
             case "notice" -> {
                 String text = msg.has("msg") ? msg.get("msg").getAsString() : "";
                 OpenIntelClient.status(text);
-                if (text.startsWith("[Broadcast]")) EventFeed.add(text, 0xFFFFAA00);
+                if (text.startsWith("[Broadcast]")) EventFeed.addRelay(text, 0xFFFFAA00);
                 else ApiBridge.notification(text, 0xFFAAAAAA, "relay");
             }
             case "deny" -> {
@@ -207,12 +221,12 @@ public class Tracker {
         if (!knownUsers.isEmpty()) {
             for (String n : now) {
                 if (!knownUsers.contains(n)) {
-                    EventFeed.add(n + " joined the relay", 0xFF55FF55);
+                    EventFeed.addRelay(n + " joined the relay", 0xFF55FF55);
                 }
             }
             for (String n : knownUsers) {
                 if (!now.contains(n)) {
-                    EventFeed.add(n + " left the relay", 0xFFFFAA00);
+                    EventFeed.addRelay(n + " left the relay", 0xFFFFAA00);
                 }
             }
         }
@@ -250,7 +264,7 @@ public class Tracker {
                 text += " at " + msg.get("x").getAsInt() + ", " + msg.get("z").getAsInt();
             }
             text += " (" + from + ")";
-            EventFeed.add(text, 0xFFFFAA00);
+            EventFeed.addRelay(text, 0xFFFFAA00);
         }
 
         if (msg.has("x") && msg.has("y") && msg.has("z")
@@ -274,7 +288,7 @@ public class Tracker {
             // One marker per tripper — a new hit updates their location, no
             // ghost trail through a snitch field. Unknown trippers key on the
             // hit itself so they don't collapse onto each other.
-            snitchHits.put(who.equals("?") ? snitch + "@" + msg.get("x").getAsInt()
+            snitchHits.putRelay(who.equals("?") ? snitch + "@" + msg.get("x").getAsInt()
                             + "," + msg.get("z").getAsInt() : who,
                     new SnitchHit(snitch, who, from,
                             msg.get("x").getAsDouble(), msg.get("y").getAsDouble(),
@@ -299,8 +313,7 @@ public class Tracker {
             });
             return;
         }
-        if (OpenIntelClient.allegiances().of(player) == Allegiance.FRIEND) return;
-        snitchHits.put(player.equals("?") ? snitch + "@" + (int) x + "," + (int) z : player,
+        snitchHits.putLocal(player.equals("?") ? snitch + "@" + (int) x + "," + (int) z : player,
                 new SnitchHit(snitch, player, reporter, x, y, z, dim, t));
         ApiBridge.trackerChanged(ApiEvent.Cause.UPDATE);
     }

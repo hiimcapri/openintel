@@ -4,6 +4,7 @@ import dev.openintel.OpenIntelClient;
 import dev.openintel.config.OIConfig;
 import dev.openintel.gui.HudEditorScreen;
 import dev.openintel.mixin.DrawContextAccessor;
+import dev.openintel.render.HudLayout;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.Identifier;
@@ -19,8 +20,9 @@ import java.util.Optional;
 
 public final class HudApi {
     public static final String COORDINATE_CONTRACT = "Positions are nonnegative top-left GUI-scaled pixels. "
-            + "Stored positions are clamped against the current viewport and declared size at draw/hit-test time; "
-            + "resizing does not rewrite them. Callbacks draw from local (0, 0), with the matrix already translated "
+            + "Stored positions are clamped against the current viewport at draw/hit-test time; oversized elements "
+            + "are uniformly fitted without changing their declared size or saved position. Callbacks draw from local (0, 0), "
+            + "with the matrix already translated and scaled "
             + "and clipping restricted to the element and viewport. Do not add the stored position again.";
     public static final String THREADING_CONTRACT = "register, registration.close, elements, element, isEnabled and getPosition are thread-safe. "
             + "Off-thread reads return immutable last-synchronized snapshots. Registration may precede OpenIntel initialization. "
@@ -191,9 +193,10 @@ public final class HudApi {
             if (!job.preview && !job.entry.enabled) return;
         }
         if (viewportWidth <= 0 || viewportHeight <= 0) return;
-        HudPosition origin = job.descriptor.position().clamp(job.descriptor.size(), viewportWidth, viewportHeight);
+        var frame = HudLayout.pixels(job.descriptor.position().x(), job.descriptor.position().y(),
+                job.descriptor.size().width(), job.descriptor.size().height(), viewportWidth, viewportHeight);
         rendering = true;
-        try (ElementDrawContext local = new ElementDrawContext(context, origin, job.descriptor.size(), viewportWidth, viewportHeight)) {
+        try (ElementDrawContext local = new ElementDrawContext(context, frame, job.descriptor.size())) {
             job.renderer.render(local, job.descriptor.size(), tickDelta);
             local.drawDeferredElements();
         } catch (VirtualMachineError | ThreadDeath fatal) {
@@ -313,13 +316,13 @@ public final class HudApi {
     private static final class ElementDrawContext extends DrawContext implements AutoCloseable {
         private int scissorDepth;
 
-        private ElementDrawContext(DrawContext parent, HudPosition origin, HudSize size, int viewportWidth, int viewportHeight) {
+        private ElementDrawContext(DrawContext parent, HudLayout.Frame frame, HudSize size) {
             super(MinecraftClient.getInstance(), ((DrawContextAccessor) parent).openintel$state(), -1, -1);
             getMatrices().set(parent.getMatrices());
             getMatrices().pushMatrix();
-            getMatrices().translate((float) origin.x(), (float) origin.y());
-            enableScissor(0, 0, Math.min(size.width(), viewportWidth - origin.x()),
-                    Math.min(size.height(), viewportHeight - origin.y()));
+            getMatrices().translate((float) frame.x(), (float) frame.y());
+            getMatrices().scale(frame.scale(), frame.scale());
+            enableScissor(0, 0, size.width(), size.height());
         }
 
         @Override

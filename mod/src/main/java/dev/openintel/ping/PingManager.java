@@ -5,11 +5,10 @@ import dev.openintel.OpenIntelClient;
 import dev.openintel.api.ApiEvent;
 import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.render.EventFeed;
+import dev.openintel.tracker.LocalRelayStore;
 import net.minecraft.client.MinecraftClient;
 
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Shared location pings. A ping is a labelled point relayed to every
@@ -40,18 +39,31 @@ public final class PingManager {
         }
     }
 
-    private static final Map<String, Ping> pings = new ConcurrentHashMap<>();
+    private static final LocalRelayStore<String, Ping> pings = new LocalRelayStore<>((local, relay) -> local);
 
     public static Iterable<Ping> active() { return pings.values(); }
 
     public static void clear() {
+        clear(true);
+    }
+
+    public static void clearRelay() {
+        clear(false);
+    }
+
+    private static void clear(boolean includeLocal) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (!client.isOnThread()) {
-            client.execute(PingManager::clear);
+            client.execute(() -> clear(includeLocal));
             return;
         }
-        pings.clear();
+        clearData(includeLocal);
         ApiBridge.pingsChanged(ApiEvent.Cause.CLEAR);
+    }
+
+    private static void clearData(boolean includeLocal) {
+        if (includeLocal) pings.clear();
+        else pings.clearRelay();
     }
 
     /** Drop expired pings. Called from the client tick. */
@@ -62,7 +74,7 @@ public final class PingManager {
             return;
         }
         long now = System.currentTimeMillis();
-        if (pings.values().removeIf(p -> now > p.expiresAt)) ApiBridge.pingsChanged(ApiEvent.Cause.EXPIRED);
+        if (pings.removeIf(p -> now > p.expiresAt)) ApiBridge.pingsChanged(ApiEvent.Cause.EXPIRED);
     }
 
     /** Local send: register immediately, then push to the relay. */
@@ -77,7 +89,7 @@ public final class PingManager {
         String id = sender + "-" + Long.toString(System.currentTimeMillis(), 36)
                 + Integer.toString((int) x ^ (int) z, 36);
 
-        add(id, label, color, sender, x, y, z, dim);
+        add(id, label, color, sender, x, y, z, dim, true);
         EventFeed.add("You pinged \"" + label + "\" at "
                 + (int) x + ", " + (int) z, color);
 
@@ -110,7 +122,7 @@ public final class PingManager {
         msg.addProperty("dim", dim);
         msg.addProperty("color", color);
         if (!OpenIntelClient.relay().trySend(msg)) return false;
-        add(id, label, color, sender, x, y, z, dim);
+        add(id, label, color, sender, x, y, z, dim, true);
         EventFeed.add("You pinged \"" + label + "\" at " + (int) x + ", " + (int) z, color);
         return true;
     }
@@ -136,19 +148,19 @@ public final class PingManager {
         Ping p = add(id, label, color, sender,
                 msg.get("x").getAsDouble(), msg.get("y").getAsDouble(),
                 msg.get("z").getAsDouble(),
-                msg.has("dim") ? msg.get("dim").getAsString() : null);
+                msg.has("dim") ? msg.get("dim").getAsString() : null, false);
 
         MinecraftClient client = MinecraftClient.getInstance();
         String self = client.player != null
                 ? client.player.getGameProfile().name().toLowerCase(Locale.ROOT) : "";
         if (!sender.toLowerCase(Locale.ROOT).equals(self)) {
-            EventFeed.add(sender + " pinged \"" + label + "\" at "
+            EventFeed.addRelay(sender + " pinged \"" + label + "\" at "
                     + (int) p.x + ", " + (int) p.z, color);
         }
     }
 
     private static Ping add(String id, String label, int color, String sender,
-                            double x, double y, double z, String dim) {
+                            double x, double y, double z, String dim, boolean local) {
         Ping p = new Ping(id, label, color, sender);
         p.x = x;
         p.y = y;
@@ -156,7 +168,8 @@ public final class PingManager {
         p.dimension = dim;
         p.expiresAt = System.currentTimeMillis()
                 + OpenIntelClient.config().pingSeconds * 1000L;
-        pings.put(id, p);
+        if (local) pings.putLocal(id, p);
+        else pings.putRelay(id, p);
         ApiBridge.pingsChanged(ApiEvent.Cause.UPDATE);
         return p;
     }

@@ -2,6 +2,7 @@ package dev.openintel.gui;
 
 import dev.openintel.OpenIntelClient;
 import dev.openintel.config.OIConfig;
+import dev.openintel.render.UiFont;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -121,10 +122,8 @@ public final class ClickGui {
                         bool("options.openintel.radar.items", cfg.radarShowItems, v -> cfg.radarShowItems = v)),
                 new Option(tr("options.openintel.radar.vehicles"), "Draw boats and minecarts on the radar.",
                         bool("options.openintel.radar.vehicles", cfg.radarShowVehicles, v -> cfg.radarShowVehicles = v)),
-                new Option(tr("options.openintel.radar.relay"), "Pin relay contacts beyond render distance to the rim.",
-                        bool("options.openintel.radar.relay", cfg.radarShowRelay, v -> cfg.radarShowRelay = v)),
                 new Group("Contacts"),
-                new Option(tr("options.openintel.radar.players"), "Draw player contacts at all.",
+                new Option(tr("options.openintel.radar.players"), "Show locally loaded players within radar range. Distant relay-only players are not shown.",
                         bool("options.openintel.radar.players", cfg.radarShowPlayers, v -> cfg.radarShowPlayers = v)),
                 new Option(tr("options.openintel.radar.ping_filter"), "Which players appear: everyone, non-relay players, or enemies only.",
                         cycle("options.openintel.radar.ping_filter", cfg.radarPlayerFilter,
@@ -168,6 +167,10 @@ public final class ClickGui {
                 new Option("HUD editor", "Drag every HUD element into place on a live preview.",
                         button("Open HUD editor…", () ->
                                 MinecraftClient.getInstance().setScreen(new HudEditorScreen(self)))),
+                new Group("Text"),
+                new Option(tr("options.openintel.hud.font"),
+                        "Switch between clean text and Minecraft/resource-pack fonts. Applies immediately; other menus and mods keep their fonts.",
+                        fontToggle(() -> cfg.cleanFont, value -> applyFont(cfg, value))),
                 new Group("Elements"),
                 new Option(tr("options.openintel.armor.enabled"), "Equipped armor with durability readouts.",
                         bool("options.openintel.armor.enabled", cfg.armorHudEnabled, v -> cfg.armorHudEnabled = v)),
@@ -200,7 +203,7 @@ public final class ClickGui {
         // ----------------------------------------------------------- snitch
         cats.add(new Category("snitch", "Snitch", List.of(
                 new Group("Snitch relay"),
-                new Option(tr("options.openintel.snitch.enabled"), "Forward JukeAlert hits to the relay and draw markers.",
+                new Option(tr("options.openintel.snitch.enabled"), "Forward local snitch alerts to the relay. Local detection and markers still work when this is off.",
                         bool("options.openintel.snitch.enabled", cfg.snitchRelay, v -> cfg.snitchRelay = v)),
                 new Option(tr("options.openintel.snitch.seconds"), "How long a snitch-hit marker stays on screen.",
                         slider("options.openintel.snitch.seconds", 30, 300, cfg.snitchMarkerSeconds,
@@ -283,6 +286,23 @@ public final class ClickGui {
 
     private static String tr(String key) {
         return Text.translatable(key).getString();
+    }
+
+    private static ButtonWidget fontToggle(java.util.function.BooleanSupplier current, Consumer<Boolean> apply) {
+        return ButtonWidget.builder(fontLabel(current.getAsBoolean()), button -> {
+            apply.accept(!current.getAsBoolean());
+            button.setMessage(fontLabel(current.getAsBoolean()));
+        }).build();
+    }
+
+    private static Text fontLabel(boolean clean) {
+        return Text.translatable(clean ? "options.openintel.hud.font.clean" : "options.openintel.hud.font.minecraft");
+    }
+
+    private static void applyFont(OIConfig config, boolean clean) {
+        config.cleanFont = clean;
+        if (UiFont.setEnabled(clean)) MinecraftClient.getInstance().inGameHud.getChatHud().reset();
+        config.save();
     }
 
     private static ClickableWidget bool(String key, boolean current,

@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.6.0 — clean text, responsive HUDs, and local intelligence
+
+- Added a bundled clean font with light antialiasing and no shadows, plus a
+  live Clean font / Minecraft font toggle under HUD settings.
+- Applied font selection to chat and its input field, actionbar messages,
+  titles, OpenIntel HUDs, and OpenIntel-owned map labels only. Other menus,
+  text fields, map-mod UI, and explicit server icon fonts keep their fonts.
+- Batched custom text by label and reused font styles/atlas identifiers to
+  reduce per-character GUI submission and allocation overhead.
+- Added responsive HUD scaling, relative anchors, consistent editor/runtime
+  bounds, small-window fitting, and true top-edge snapping at Y=0.
+- Radar player contacts are now local Minecraft entities within radar range;
+  distant relay-only contacts remain in world/map intel, not on the radar rim.
+- Added bounded, identity-stable radar label placement, transparent labels,
+  and explicit overflow counts without compass collision reservations.
+- Added compatible relic-map tracking using item decorations, lore-based
+  names, gold world/map overlays, and map-away/claim cleanup without permanent
+  waypoints or a relay dependency.
+- Snitch forwarding can be disabled without stopping local detection. Local
+  hits on relay friends are retained, and reconnect/visibility resets preserve
+  local observations while removing received relay data.
+- Kept normal expiry and full Minecraft-session cleanup, including local
+  ping/feed data and snitch deduplication state.
+- Added regression coverage for font rendering, input metrics, map ownership,
+  radar rotation/layout, viewport resizing, relic names, and offline data ownership.
+- Public source/base builds contain a placeholder token and no configured
+  deployment endpoints; live relay configuration and personalized artifacts
+  remain outside version control.
+- Updated the relay's Express/Discord.js dependencies and affected transitive
+  packages; the verified lockfile has no reported npm audit vulnerabilities.
+
 ## 1.5.0 — marker scaling and public focus
 
 - Added a Marker scale slider (50–200%) sizing over-head relay markers —

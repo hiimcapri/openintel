@@ -1,11 +1,23 @@
 package dev.openintel.render;
 
 import dev.openintel.OpenIntelClient;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.AddressMode;
+import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.blaze3d.textures.TextureFormat;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.ScreenRect;
+import net.minecraft.client.gui.render.state.SimpleGuiElementRenderState;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.texture.TextureSetup;
+import dev.openintel.mixin.DrawContextAccessor;
+import org.joml.Matrix3x2f;
+import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
 import org.lwjgl.stb.STBTTFontinfo;
 import org.lwjgl.stb.STBTruetype;
@@ -37,8 +49,14 @@ public final class CleanFont {
     private static final Logger LOGGER = LoggerFactory.getLogger("OpenIntel/CleanFont");
 
     private static final Identifier ATLAS_ID = Identifier.of("openintel", "clean_font");
+    private static final RenderPipeline PIPELINE = RenderPipeline.builder(RenderPipelines.POSITION_TEX_COLOR_SNIPPET)
+            .withLocation(Identifier.of("openintel", "pipeline/clean_font"))
+            .withFragmentShader(Identifier.of("openintel", "core/clean_font"))
+            .withDepthWrite(false)
+            .build();
     private static final int ATLAS = 1024;
-    private static final int PAD = 2;
+    private static final int MIP_LEVELS = 4;
+    private static final int PAD = 1 << (MIP_LEVELS - 1);
     private static final float PIXEL_H = 48f;
     /** Logical text height — same ballpark as vanilla fontHeight (9). */
     private static final float HEIGHT = 9f;
@@ -57,6 +75,10 @@ public final class CleanFont {
 
     private CleanFont() { }
 
+    public static void registerPipeline() {
+        RenderPipelines.register(PIPELINE);
+    }
+
     /** True when the config wants clean text and the atlas baked OK. */
     public static boolean active() {
         var cfg = OpenIntelClient.config();
@@ -69,6 +91,7 @@ public final class CleanFont {
         float pen = 0;
         for (int i = 0; i < text.length(); i++) {
             Glyph g = glyphs.get((int) text.charAt(i));
+            if (g == null) g = glyphs.get((int) '?');
             pen += (g != null ? g.adv : spaceAdv) * S;
         }
         return pen;
@@ -77,8 +100,9 @@ public final class CleanFont {
     public static void draw(DrawContext ctx, String text, float x, float y,
                             int argb, boolean shadow) {
         if (shadow) {
-            int sc = (argb & 0xFF000000) | ((argb & 0xFCFCFC) >>> 2);
-            pass(ctx, text, x + 0.8f, y + 0.8f, sc);
+            int sc = UiFont.shadowColor((argb & 0xFF000000) | ((argb & 0xFCFCFC) >>> 2));
+            float offset = UiFont.shadowOffset(0.8f);
+            if (sc != 0) pass(ctx, text, x + offset, y + offset, sc);
         }
         pass(ctx, text, x, y, argb);
     }
@@ -89,17 +113,61 @@ public final class CleanFont {
     }
 
     private static void pass(DrawContext ctx, String text, float x, float y, int argb) {
-        float pen = x;
+        if ((argb >>> 24) == 0 || text.isEmpty()) return;
+        var pose = new Matrix3x2f(ctx.getMatrices());
+        ScreenRect bounds = textBounds(text, x, y, pose);
+        if (bounds == null) return;
+        ScreenRect scissor = ctx.scissorStack.peekLast();
+        if (scissor != null) bounds = bounds.intersection(scissor);
+        if (bounds == null) return;
+        var texture = MinecraftClient.getInstance().getTextureManager().getTexture(ATLAS_ID);
+        ((DrawContextAccessor) ctx).openintel$state().addSimpleElement(new TextRun(pose,
+                TextureSetup.of(texture.getGlTextureView(), texture.getSampler()), text, x, y, argb, scissor, bounds));
+    }
+
+    private static ScreenRect textBounds(String text, float x, float y, Matrix3x2f pose) {
+        float pen = x, left = Float.POSITIVE_INFINITY, top = Float.POSITIVE_INFINITY;
+        float right = Float.NEGATIVE_INFINITY, bottom = Float.NEGATIVE_INFINITY;
         for (int i = 0; i < text.length(); i++) {
             Glyph g = glyphs.get((int) text.charAt(i));
             if (g == null) g = glyphs.get((int) '?');
             if (g != null && g.w > 0 && g.h > 0) {
-                ctx.drawTexture(RenderPipelines.GUI_TEXTURED, ATLAS_ID,
-                        Math.round(pen + g.xoff * S),
-                        Math.round(y + (ascentPx + g.yoff) * S),
-                        g.x0, g.y0, g.w, g.h, ATLAS, ATLAS, argb);
+                float gx = pen + g.xoff * S, gy = y + (ascentPx + g.yoff) * S;
+                left = Math.min(left, gx);
+                top = Math.min(top, gy);
+                right = Math.max(right, gx + g.w * S);
+                bottom = Math.max(bottom, gy + g.h * S);
             }
             pen += (g != null ? g.adv : spaceAdv) * S;
+        }
+        if (!Float.isFinite(left)) return null;
+        int x0 = (int) Math.floor(left), y0 = (int) Math.floor(top);
+        return new ScreenRect(x0, y0, (int) Math.ceil(right) - x0, (int) Math.ceil(bottom) - y0).transformEachVertex(pose);
+    }
+
+    private record TextRun(Matrix3x2f pose, TextureSetup textureSetup, String text, float x, float y, int color,
+                           ScreenRect scissorArea, ScreenRect bounds) implements SimpleGuiElementRenderState {
+        @Override
+        public RenderPipeline pipeline() { return PIPELINE; }
+
+        @Override
+        public void setupVertices(VertexConsumer vertices) {
+            float pen = x;
+            for (int i = 0; i < text.length(); i++) {
+                Glyph g = glyphs.get((int) text.charAt(i));
+                if (g == null) g = glyphs.get((int) '?');
+                if (g != null && g.w > 0 && g.h > 0) {
+                    float x0 = pen + g.xoff * S, y0 = y + (ascentPx + g.yoff) * S;
+                    float x1 = x0 + g.w * S, y1 = y0 + g.h * S;
+                    float u0 = g.x0 / (float) ATLAS, u1 = (g.x0 + g.w) / (float) ATLAS;
+                    float v0 = g.y0 / (float) ATLAS, v1 = (g.y0 + g.h) / (float) ATLAS;
+                    vertices.vertex(pose, x0, y0).texture(u0, v0).color(color);
+                    vertices.vertex(pose, x0, y1).texture(u0, v1).color(color);
+                    vertices.vertex(pose, x1, y1).texture(u1, v1).color(color);
+                    vertices.vertex(pose, x1, y0).texture(u1, v0).color(color);
+                }
+                pen += (g != null ? g.adv : spaceAdv) * S;
+            }
         }
     }
 
@@ -117,8 +185,7 @@ public final class CleanFont {
         return cps;
     }
 
-    private static void bake() {
-        init = true;
+    private static NativeImage createAtlas() throws java.io.IOException {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             byte[] fontBytes;
             try (InputStream in = CleanFont.class
@@ -139,9 +206,10 @@ public final class CleanFont {
             STBTruetype.stbtt_GetFontVMetrics(info, ia, ib, ic);
             ascentPx = ia.get(0) * scale;
             STBTruetype.stbtt_GetCodepointHMetrics(info, ' ', ia, ib);
-            spaceAdv = ia.get(0);
+            spaceAdv = ia.get(0) * scale;
 
             NativeImage img = new NativeImage(ATLAS, ATLAS, false);
+            img.fillRect(0, 0, ATLAS, ATLAS, 0x00FFFFFF);
             int pen = 0, rowY = 0, rowH = 0;
             for (int cp : codepoints()) {
                 if (STBTruetype.stbtt_FindGlyphIndex(info, cp) == 0) continue;
@@ -150,34 +218,92 @@ public final class CleanFont {
                 int x0 = ia.get(0), y0 = ib.get(0),
                         gw = ic.get(0) - x0, gh = id.get(0) - y0;
                 STBTruetype.stbtt_GetCodepointHMetrics(info, cp, ia, ib);
-                float adv = ia.get(0);
+                float adv = ia.get(0) * scale;
                 if (gw > 0 && gh > 0) {
-                    if (pen + gw + PAD > ATLAS) { pen = 0; rowY += rowH + PAD; rowH = 0; }
-                    if (rowY + gh + PAD > ATLAS) break;   // atlas full
+                    int cellW = ((gw + 2 * PAD + PAD - 1) / PAD) * PAD;
+                    int cellH = ((gh + 2 * PAD + PAD - 1) / PAD) * PAD;
+                    if (pen + cellW > ATLAS) { pen = 0; rowY += rowH; rowH = 0; }
+                    if (rowY + cellH > ATLAS) {
+                        img.close();
+                        throw new IllegalStateException("Font atlas full");   // atlas full
+                    }
                     ByteBuffer glyph = ByteBuffer.allocateDirect(gw * gh);
                     STBTruetype.stbtt_MakeCodepointBitmap(info, glyph, gw, gh, gw,
                             scale, scale, cp);
                     for (int gy = 0; gy < gh; gy++) {
                         for (int gx = 0; gx < gw; gx++) {
-                            img.setColorArgb(pen + gx, rowY + gy,
+                            img.setColorArgb(pen + PAD + gx, rowY + PAD + gy,
                                     ((glyph.get(gy * gw + gx) & 0xFF) << 24) | 0xFFFFFF);
                         }
                     }
-                    glyphs.put(cp, new Glyph(pen, rowY, gw, gh, x0, y0, adv));
-                    pen += gw + PAD;
-                    rowH = Math.max(rowH, gh);
+                    glyphs.put(cp, new Glyph(pen, rowY, cellW, cellH, x0 - PAD, y0 - PAD, adv));
+                    pen += cellW;
+                    rowH = Math.max(rowH, cellH);
                 } else {
                     // Whitespace — no bitmap, just advance.
                     glyphs.put(cp, new Glyph(0, 0, 0, 0, 0, 0, adv));
                 }
             }
+            return img;
+        }
+    }
 
-            NativeImageBackedTexture tex = new NativeImageBackedTexture(
-                    () -> "openintel-clean-font", img);
-            tex.upload();
-            MinecraftClient.getInstance().getTextureManager()
-                    .registerTexture(ATLAS_ID, tex);
-            LOGGER.info("clean font baked: {} glyphs", glyphs.size());
+    private static NativeImage downsample(NativeImage source) {
+        NativeImage result = new NativeImage(source.getWidth() / 2, source.getHeight() / 2, false);
+        for (int y = 0; y < result.getHeight(); y++) {
+            for (int x = 0; x < result.getWidth(); x++) {
+                int sx = x * 2, sy = y * 2;
+                int alpha = ((source.getColorArgb(sx, sy) >>> 24)
+                        + (source.getColorArgb(sx + 1, sy) >>> 24)
+                        + (source.getColorArgb(sx, sy + 1) >>> 24)
+                        + (source.getColorArgb(sx + 1, sy + 1) >>> 24) + 2) / 4;
+                result.setColorArgb(x, y, (alpha << 24) | 0xFFFFFF);
+            }
+        }
+        return result;
+    }
+
+    private static final class FontTexture extends AbstractTexture {
+        private FontTexture(NativeImage image) {   // Default sampler minifies with NEAREST — far too crunchy
+            // for 48px glyphs drawn at ~9px; use linear both ways.
+            sampler = RenderSystem.getSamplerCache().get(
+                    AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE,
+                    FilterMode.LINEAR, FilterMode.LINEAR, true);
+            var device = RenderSystem.getDevice();
+            glTexture = device.createTexture("openintel-clean-font",
+                    GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_COPY_DST,
+                    TextureFormat.RGBA8, ATLAS, ATLAS, 1, MIP_LEVELS);
+            try {
+                glTextureView = device.createTextureView(glTexture);
+                uploadMip(image, 0);
+            } catch (RuntimeException | Error error) {
+                close();
+                throw error;
+            }
+        }
+
+        private void uploadMip(NativeImage image, int level) {
+            RenderSystem.getDevice().createCommandEncoder().writeToTexture(
+                    glTexture, image, level, 0, 0, 0, image.getWidth(), image.getHeight(), 0, 0);
+            if (level + 1 < MIP_LEVELS) {
+                try (NativeImage next = downsample(image)) {
+                    uploadMip(next, level + 1);
+                }
+            }
+        }
+    }
+
+    private static void bake() {
+        init = true;
+        try (NativeImage img = createAtlas()) {
+            FontTexture tex = new FontTexture(img);
+            try {
+                MinecraftClient.getInstance().getTextureManager().registerTexture(ATLAS_ID, tex);
+            } catch (RuntimeException | Error error) {
+                tex.close();
+                throw error;
+            }
+            LOGGER.info("clean font baked: {} glyphs, {} mip levels", glyphs.size(), MIP_LEVELS);
         } catch (Throwable t) {
             failed = true;
             LOGGER.warn("clean font unavailable, using vanilla text: {}", t.toString());

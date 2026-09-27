@@ -110,7 +110,7 @@ public final class ApiBridge {
         var value = new SettingsApi.View(
                 new SettingsApi.Radar(c.radarEnabled, c.radarX, c.radarY, c.radarSize, c.radarRange,
                         c.radarCircles, c.radarNorthUp, c.radarCompression > 0, c.radarShowItems,
-                        c.radarShowVehicles, c.radarShowRelay, c.radarIconSize, c.radarTextSize,
+                        c.radarShowVehicles, false, c.radarIconSize, c.radarTextSize,
                         c.radarBgColor, c.radarFgColor),
                 new SettingsApi.Markers(c.relayRendering, c.markVisiblePlayers, c.edgeChevrons,
                         c.relayOpacity, c.staleDecay, c.staleAfterMs, c.maxMarkerDistance,
