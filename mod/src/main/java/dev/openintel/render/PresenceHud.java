@@ -70,12 +70,13 @@ public final class PresenceHud {
         var tr = mc.textRenderer;
         int lineH = tr.fontHeight + 2;
         int padX = 4, padY = 4, dot = 4;
+        boolean cf = CleanFont.active();
 
         int panelW = 0;
         for (Row r : rows) {
-            int w = padX + tr.getWidth(r.name) + 8 + tr.getWidth(r.dim)
-                    + 6 + tr.getWidth(distText(r)) + 4 + dot + padX;
-            panelW = Math.max(panelW, w);
+            float w = padX + tw(tr, cf, r.name) + 8 + tw(tr, cf, r.dim)
+                    + 6 + tw(tr, cf, distText(r)) + 4 + dot + padX;
+            panelW = Math.max(panelW, (int) Math.ceil(w));
         }
         panelW = Math.max(panelW, 96);
         int panelH = rows.size() * lineH + 2 * padY;
@@ -93,17 +94,28 @@ public final class PresenceHud {
         for (Row r : rows) {
             float a = r.alpha * opacity;
             int dotX = left + panelW - padX - dot;
-            int distX = dotX - 4 - tr.getWidth(distText(r));
+            int distX = (int) (dotX - 4 - tw(tr, cf, distText(r)));
 
-            ctx.drawText(tr, r.name, left + padX, y, scaleAlpha(r.color, a), true);
-            ctx.drawText(tr, r.dim, left + padX + tr.getWidth(r.name) + 8, y,
-                    scaleAlpha(RIM, a), true);
-            ctx.drawText(tr, distText(r), distX, y, scaleAlpha(RIM, a), true);
+            draw(ctx, tr, cf, r.name, left + padX, y, scaleAlpha(r.color, a));
+            draw(ctx, tr, cf, r.dim, left + padX + tw(tr, cf, r.name) + 8, y,
+                    scaleAlpha(RIM, a));
+            draw(ctx, tr, cf, distText(r), distX, y, scaleAlpha(RIM, a));
 
             int dotY = y + (lineH - dot) / 2;
             ctx.fill(dotX, dotY, dotX + dot, dotY + dot, dotColor(r.age, a));
             y += lineH;
         }
+    }
+
+    private static float tw(net.minecraft.client.font.TextRenderer tr,
+                            boolean cf, String s) {
+        return cf ? CleanFont.width(s) : tr.getWidth(s);
+    }
+
+    private static void draw(DrawContext ctx, net.minecraft.client.font.TextRenderer tr,
+                             boolean cf, String s, float x, int y, int color) {
+        if (cf) CleanFont.draw(ctx, s, x, y, color, true);
+        else ctx.drawText(tr, s, (int) x, y, color, true);
     }
 
     private static String distText(Row r) {

@@ -4,6 +4,7 @@ import dev.openintel.OpenIntelClient;
 import dev.openintel.config.OIConfig;
 import dev.openintel.mixin.DrawContextAccessor;
 import dev.openintel.ping.PingManager;
+import dev.openintel.render.CleanFont;
 import dev.openintel.render.ColoredQuadsElement;
 import dev.openintel.tracker.Tracker.RemotePlayer;
 import net.minecraft.client.MinecraftClient;
@@ -123,7 +124,7 @@ public final class RadarHud {
 
                 pose.translate(0, 4.5f * cfg.radarIconSize);
                 pose.scale(0.6f * cfg.radarTextSize, 0.6f * cfg.radarTextSize);
-                ctx.drawCenteredTextWithShadow(mc.textRenderer, label, 0, 1, color);
+                lbl(ctx, mc, label, 0, 1, color);
                 pose.popMatrix();
             });
         }
@@ -212,7 +213,7 @@ public final class RadarHud {
                 ctx.fill(-2, -2, 2, 2, color);
                 pose.translate(0, 3.5f);
                 pose.scale(0.5f * cfg.radarTextSize, 0.5f * cfg.radarTextSize);
-                ctx.drawCenteredTextWithShadow(mc.textRenderer, label, 0, 1, color);
+                lbl(ctx, mc, label, 0, 1, color);
                 pose.popMatrix();
             });
         }
@@ -248,7 +249,7 @@ public final class RadarHud {
                 ctx.fill(1, -1, 3, 1, color);
                 pose.translate(0, 4.5f);
                 pose.scale(0.5f * cfg.radarTextSize, 0.5f * cfg.radarTextSize);
-                ctx.drawCenteredTextWithShadow(mc.textRenderer, label, 0, 1, color);
+                lbl(ctx, mc, label, 0, 1, color);
                 pose.popMatrix();
             });
         }
@@ -444,7 +445,7 @@ public final class RadarHud {
         pose.translate(vx * R, vz * R);
         pose.rotate(-frameRot);                          // letters stay upright
         pose.scale(0.5f * cfg.radarTextSize, 0.5f * cfg.radarTextSize);
-        ctx.drawCenteredTextWithShadow(mc.textRenderer, letter, 0, -4,
+        lbl(ctx, mc, letter, 0, -4,
                 (cfg.radarFgColor & 0x00FFFFFF) | 0xD9000000);
         pose.popMatrix();
     }
@@ -465,4 +466,15 @@ public final class RadarHud {
         pose.popMatrix();
     }
 
+
+    /** Radar text through the clean font when it's enabled. */
+    private static void lbl(DrawContext ctx, MinecraftClient mc, String s,
+                            float cx, float y, int color) {
+        if (CleanFont.active()) {
+            CleanFont.drawCentered(ctx, s, cx, y, color);
+        } else {
+            ctx.drawCenteredTextWithShadow(mc.textRenderer, s,
+                    Math.round(cx), Math.round(y), color);
+        }
+    }
 }

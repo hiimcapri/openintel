@@ -124,14 +124,17 @@ public final class EventFeed {
 
         int w = ctx.getScaledWindowWidth();
         int y = cfg.eventFeedY;
+        boolean cf = CleanFont.active();
         for (Entry e : entries) {
             long age = now - e.createdAt;
             float fade = age <= holdMs ? 1f : 1f - (age - holdMs) / (float) FADE_MS;
             int color = scaleAlpha(e.color, fade);
 
+            float tw = cf ? CleanFont.width(e.text) : client.textRenderer.getWidth(e.text);
             int x = cfg.eventFeedX >= 0 ? cfg.eventFeedX
-                    : w + cfg.eventFeedX - client.textRenderer.getWidth(e.text) - 3;
-            ctx.drawText(client.textRenderer, e.text, x, y, color, true);
+                    : Math.round(w + cfg.eventFeedX - tw - 3);
+            if (cf) CleanFont.draw(ctx, e.text, x, y, color, true);
+            else ctx.drawText(client.textRenderer, e.text, x, y, color, true);
             y += client.textRenderer.fontHeight + 2;
         }
     }

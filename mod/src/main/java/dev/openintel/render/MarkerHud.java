@@ -235,24 +235,28 @@ public final class MarkerHud {
         }
 
         var tr = client.textRenderer;
+        boolean cf = cleanFont();
         for (Glyph g : glyphs) {
             var pose = ctx.getMatrices();
             pose.pushMatrix();
             pose.translate(g.x, g.y);
             pose.scale(1.05f * scale, 1.05f * scale);
-            ctx.drawCenteredTextWithShadow(tr, g.text, 0, -tr.fontHeight / 2, g.color);
+            if (cf) CleanFont.drawCentered(ctx, g.text, 0, -tr.fontHeight / 2, g.color);
+            else ctx.drawCenteredTextWithShadow(tr, g.text, 0, -tr.fontHeight / 2, g.color);
             pose.popMatrix();
         }
         for (Label l : labels) {
-            int tw = tr.getWidth(l.text);
+            float tw = cf ? CleanFont.width(l.text) : tr.getWidth(l.text);
             if (l.scale == 1f) {
-                ctx.drawText(tr, l.text, Math.round(l.x - tw / 2f), Math.round(l.y), l.color, true);
+                if (cf) CleanFont.draw(ctx, l.text, l.x - tw / 2f, l.y, l.color, true);
+                else ctx.drawText(tr, l.text, Math.round(l.x - tw / 2f), Math.round(l.y), l.color, true);
             } else {
                 var pose = ctx.getMatrices();
                 pose.pushMatrix();
                 pose.translate(l.x, l.y);
                 pose.scale(l.scale, l.scale);
-                ctx.drawText(tr, l.text, Math.round(-tw / 2f), 0, l.color, true);
+                if (cf) CleanFont.draw(ctx, l.text, -tw / 2f, 0, l.color, true);
+                else ctx.drawText(tr, l.text, Math.round(-tw / 2f), 0, l.color, true);
                 pose.popMatrix();
             }
         }
@@ -297,15 +301,24 @@ public final class MarkerHud {
         return placed;
     }
 
+    /** Config-aware text renderer check for clean vs vanilla fonts. */
+    private static boolean cleanFont() {
+        return CleanFont.active();
+    }
+
+    private static float textW(MinecraftClient client, String s) {
+        return cleanFont() ? CleanFont.width(s) : client.textRenderer.getWidth(s);
+    }
+
     /** The highest already-placed label the candidate collides with, or null. */
     private static Label blocker(MinecraftClient client, Label candidate,
                                  List<Label> placed, float lineH, float scale) {
-        float half = client.textRenderer.getWidth(candidate.text) * scale / 2f;
+        float half = textW(client, candidate.text) * scale / 2f;
         float left = candidate.x - half - 2;
         float right = candidate.x + half + 2;
         Label top = null;
         for (Label other : placed) {
-            float otherHalf = client.textRenderer.getWidth(other.text) * scale / 2f;
+            float otherHalf = textW(client, other.text) * scale / 2f;
             if (left < other.x + otherHalf + 2 && right > other.x - otherHalf - 2
                     && candidate.y < other.y + lineH && candidate.y + lineH > other.y
                     && (top == null || other.y < top.y)) {
@@ -334,7 +347,7 @@ public final class MarkerHud {
 
         for (EdgeEntry e : entries) {
             float midY = y + lineH / 2f;
-            int tw = tr.getWidth(e.label);
+            float tw = textW(client, e.label);
             if (rightSide) {
                 labels.add(new Label(arrowX - 7f - tw / 2f, y, e.label, e.color, 1f));
             } else {

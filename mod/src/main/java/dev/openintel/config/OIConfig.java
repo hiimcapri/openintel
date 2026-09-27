@@ -93,6 +93,9 @@ public class OIConfig {
     /** Scale of over-head markers — chevron/diamond and the name label together. */
     public float markerScale = 1.0f;
 
+    /** Clean TTF text on OpenIntel surfaces instead of the vanilla bitmap font. */
+    public boolean cleanFont = true;
+
     // ---------------------------------------------------------- presence ----
 
     /** Side-panel list of all relay-tracked players. */
