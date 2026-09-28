@@ -1,4 +1,11 @@
-# OpenIntel
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/icon-dark.png">
+    <img src="mod/src/main/resources/assets/openintel/icon.png" alt="OpenIntel logo" width="128">
+  </picture>
+</p>
+
+<h1 align="center">OpenIntel</h1>
 
 OpenIntel **1.6.0** is an open-source Fabric intelligence client for
 **Minecraft 1.21.11 / Java 21**. It combines nearby-player radar, responsive
@@ -15,7 +22,8 @@ features do not require a relay connection.
 
 ### Clean text, with a Minecraft-font toggle
 
-- Bundled DejaVu Sans provides lightly antialiased, shadow-free clean text.
+- Bundled Noto Sans Medium (with Noto symbol/math companions) provides lightly
+  antialiased, shadow-free clean text.
 - Switch live under `/oi settings` → HUD → Text → Font between **Clean font**
   and **Minecraft font**. The choice persists, and existing chat rewraps
   without losing history.
@@ -692,6 +700,6 @@ varies between Civ servers.
 
 OpenIntel code is MIT-licensed — see `LICENSE`.
 
-The bundled DejaVu Sans font has its own Bitstream Vera/Arev licensing terms;
-see `mod/src/main/resources/assets/openintel/font/LICENSE-DejaVu.txt`.
+The bundled Noto fonts are licensed under the SIL Open Font License 1.1;
+see `mod/src/main/resources/assets/openintel/font/LICENSE-Noto.txt`.
 Third-party integration API jars retain their respective licenses.

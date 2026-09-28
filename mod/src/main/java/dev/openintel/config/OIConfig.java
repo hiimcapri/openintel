@@ -95,6 +95,7 @@ public class OIConfig {
 
     /** Clean TTF text on OpenIntel surfaces instead of the vanilla bitmap font. */
     public boolean cleanFont = true;
+    public boolean logoHudEnabled = true;
 
     // ---------------------------------------------------------- presence ----
 

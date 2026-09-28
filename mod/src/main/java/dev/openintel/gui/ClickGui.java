@@ -172,6 +172,8 @@ public final class ClickGui {
                         "Switch between clean text and Minecraft/resource-pack fonts. Applies immediately; other menus and mods keep their fonts.",
                         fontToggle(() -> cfg.cleanFont, value -> applyFont(cfg, value))),
                 new Group("Elements"),
+                new Option(tr("options.openintel.logo.enabled"), "Small resolution-aware logo in the bottom-right corner. Hidden while menus are open.",
+                        bool("options.openintel.logo.enabled", cfg.logoHudEnabled, value -> cfg.logoHudEnabled = value)),
                 new Option(tr("options.openintel.armor.enabled"), "Equipped armor with durability readouts.",
                         bool("options.openintel.armor.enabled", cfg.armorHudEnabled, v -> cfg.armorHudEnabled = v)),
                 new Option(tr("options.openintel.armor.layout"), "Stack armor pieces in a row or a column.",

@@ -3,6 +3,7 @@
   "id": "openintel",
   "version": "${version}",
   "name": "OpenIntel",
+  "icon": "assets/openintel/icon.png",
   "description": "Open-source position sharing for Civ servers. Friends green, allies purple, enemies red, neutrals grey. Relay + Discord webhook alerts.",
   "authors": ["OpenIntel contributors"],
   "license": "MIT",

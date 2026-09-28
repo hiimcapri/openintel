@@ -171,7 +171,7 @@ public final class SnitchRelay {
 
         if (cfg.snitchRelay) OpenIntelClient.relay().send(msg);
         else dev.openintel.api.internal.ApiBridge.relaySnitch(msg);
-        EventFeed.add("📡 Snitch: " + compact(text), 0xFFFFAA00);
+        EventFeed.add("Snitch: " + compact(text), 0xFFFFAA00);
     }
 
     /**

@@ -11,23 +11,34 @@ public final class CleanFontMetricsTest {
     public static void main(String[] args) throws Exception {
         var createAtlas = CleanFont.class.getDeclaredMethod("createAtlas");
         createAtlas.setAccessible(true);
+        var faces = new java.util.ArrayList<STBTTFontinfo>();
+        var buffers = new java.util.ArrayList<ByteBuffer>();
+        for (String name : new String[]{"noto_sans_medium.ttf", "noto_sans_math.ttf",
+                "noto_sans_symbols.ttf", "noto_sans_symbols2.ttf"}) {
+            try (var input = CleanFont.class.getResourceAsStream("/assets/openintel/font/" + name)) {
+                check(input != null, "Bundled font face packaged: " + name);
+                byte[] bytes = input.readAllBytes();
+                var data = ByteBuffer.allocateDirect(bytes.length).put(bytes).flip();
+                var info = STBTTFontinfo.create();
+                check(STBTruetype.stbtt_InitFont(info, data), "Bundled font loads: " + name);
+                faces.add(info);
+                buffers.add(data);
+            }
+        }
         try (var atlas = (AutoCloseable) createAtlas.invoke(null);
-             var input = CleanFont.class.getResourceAsStream("/assets/openintel/font/clean.ttf");
              var stack = MemoryStack.stackPush()) {
-            byte[] bytes = input.readAllBytes();
-            var data = ByteBuffer.allocateDirect(bytes.length).put(bytes).flip();
-            var info = STBTTFontinfo.create();
-            check(STBTruetype.stbtt_InitFont(info, data), "Bundled font loads");
-            float scale = STBTruetype.stbtt_ScaleForPixelHeight(info, 9f);
+            float scale = STBTruetype.stbtt_ScaleForPixelHeight(faces.get(0), 9f);
             var advance = stack.ints(0);
             var bearing = stack.ints(0);
             for (String text : new String[]{"", " ", "N", "S", "E", "W", "NSEW",
-                    "Relic -120, 340 | 120m", "ExamplePlayer", "A  B", "\u2691 \u26a0 \u2716", "\u0378"}) {
+                    "Relic -120, 340 | 120m", "ExamplePlayer", "A  B", "\u2691 \u26a0 \u2716", "\u0378", "\uD83D\uDCE1", "A\uD83D\uDCE1B"}) {
                 float expected = 0;
                 for (int cp : text.codePoints().toArray()) {
-                    if (STBTruetype.stbtt_FindGlyphIndex(info, cp) == 0) cp = '?';
-                    STBTruetype.stbtt_GetCodepointHMetrics(info, cp, advance, bearing);
-                    expected += advance.get(0) * scale;
+                    STBTTFontinfo face = null;
+                    for (var f : faces) if (STBTruetype.stbtt_FindGlyphIndex(f, cp) != 0) { face = f; break; }
+                    if (face == null) { face = faces.get(0); cp = '?'; }
+                    STBTruetype.stbtt_GetCodepointHMetrics(face, cp, advance, bearing);
+                    expected += advance.get(0) * STBTruetype.stbtt_ScaleForPixelHeight(face, 9f);
                 }
                 float actual = CleanFont.width(text);
                 check(Math.abs(actual - expected) < 0.001f,
@@ -36,7 +47,7 @@ public final class CleanFontMetricsTest {
                 check(Math.abs(centeredStart + expected / 2f - 100f) < 0.001f,
                         "Centered advance bounds for '" + text + "'");
             }
-            check(CleanFont.width(" ") > 2f && CleanFont.width(" ") < 3f, "Space is logical pixels, not font units");
+            check(CleanFont.width(" ") > 1f && CleanFont.width(" ") < 3f, "Space is logical pixels, not font units");
             check(CleanFont.width("W") > CleanFont.width("i"), "Proportional advances preserved");
             check(CleanFont.width("\u0378") == CleanFont.width("?"), "Fallback measurement matches drawing");
             verifyAtlas((net.minecraft.client.texture.NativeImage) atlas);
@@ -66,7 +77,7 @@ public final class CleanFontMetricsTest {
         var glyphsField = CleanFont.class.getDeclaredField("glyphs");
         glyphsField.setAccessible(true);
         var glyphs = (java.util.Map<?, ?>) glyphsField.get(null);
-        check(glyphs.size() == 125, "All bundled glyphs fit in padded atlas");
+        check(glyphs.size() == 126 && glyphs.containsKey(0x271D), "Bundled glyphs include the event-feed death marker");
         for (Object glyph : glyphs.values()) {
             int x = glyphInt(glyph, "x0") >> level, y = glyphInt(glyph, "y0") >> level;
             int w = glyphInt(glyph, "w") >> level, h = glyphInt(glyph, "h") >> level;
@@ -161,6 +172,24 @@ public final class CleanFontMetricsTest {
         for (var vertex : vertices) check(vertex.x >= bounds.getLeft() && vertex.x <= bounds.getRight()
                 && vertex.y >= bounds.getTop() && vertex.y <= bounds.getBottom(), "Run bounds contain all transformed glyph vertices");
         check(boundsMethod.invoke(null, "   ", 0f, 0f, pose) == null, "Blank text queues no render element");
+        vertices.clear();
+        uvCount[0] = 0;
+        var fallbackBounds = (net.minecraft.client.gui.ScreenRect) boundsMethod.invoke(null, "\uD83D\uDCE1", 0f, 0f, pose);
+        var fallback = (net.minecraft.client.gui.render.state.SimpleGuiElementRenderState) constructor.newInstance(
+                pose, net.minecraft.client.texture.TextureSetup.empty(), "\uD83D\uDCE1", 0f, 0f, -1, null, fallbackBounds);
+        fallback.setupVertices(consumer);
+        check(vertices.size() == 4 && uvCount[0] == 4, "Unsupported supplementary character draws one fallback, not two");
+        check(fallbackBounds.equals(boundsMethod.invoke(null, "?", 0f, 0f, pose)), "Fallback drawing and bounds agree on codepoints");
+        for (String source : new String[]{"/dev/openintel/SnitchRelay.class", "/dev/openintel/tracker/Tracker.class"}) {
+            try (var input = CleanFontMetricsTest.class.getResourceAsStream(source)) {
+                var node = new org.objectweb.asm.tree.ClassNode();
+                new org.objectweb.asm.ClassReader(input).accept(node, 0);
+                for (var method : node.methods) for (var instruction : method.instructions) {
+                    if (instruction instanceof org.objectweb.asm.tree.LdcInsnNode constant && constant.cst instanceof String text)
+                        check(!text.contains("\uD83D\uDCE1"), "Snitch feed prefixes do not depend on unsupported pictographs");
+                }
+            }
+        }
         try (var input = CleanFont.class.getResourceAsStream("CleanFont.class")) {
             var node = new org.objectweb.asm.tree.ClassNode();
             new org.objectweb.asm.ClassReader(input).accept(node, 0);

@@ -19,7 +19,7 @@ public final class CleanFontShaderTest {
             GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 3);
             GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 3);
             GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
-            window = GLFW.glfwCreateWindow(32, 32, "OpenIntel font shader test", 0, 0);
+            window = GLFW.glfwCreateWindow(128, 128, "OpenIntel shader tests", 0, 0);
             check(window != 0, "Hidden OpenGL context");
             GLFW.glfwMakeContextCurrent(window);
             GL.createCapabilities();
@@ -43,7 +43,16 @@ public final class CleanFontShaderTest {
                 GL33C.glDeleteShader(fragment);
                 program = fragment = 0;
             }
-            System.out.println("Both clean font shader variants compiled, linked, and coverage-tested on " + GL33C.glGetString(GL33C.GL_RENDERER));
+            fragment = compile(GL33C.GL_FRAGMENT_SHADER, "/assets/openintel/shaders/core/logo.fsh");
+            program = GL33C.glCreateProgram();
+            GL33C.glAttachShader(program, vertex);
+            GL33C.glAttachShader(program, fragment);
+            GL33C.glLinkProgram(program);
+            check(GL33C.glGetProgrami(program, GL33C.GL_LINK_STATUS) == GL33C.GL_TRUE,
+                    "Logo shader link: " + GL33C.glGetProgramInfoLog(program));
+            verifyCoverage(program, false, true);
+            check(GL33C.glGetError() == GL33C.GL_NO_ERROR, "No logo OpenGL errors");
+            System.out.println("Clean font variants and logo shader compiled, linked, and coverage-tested on " + GL33C.glGetString(GL33C.GL_RENDERER));
         } finally {
             if (program != 0) GL33C.glDeleteProgram(program);
             if (fragment != 0) GL33C.glDeleteShader(fragment);
@@ -78,6 +87,10 @@ public final class CleanFontShaderTest {
     }
 
     private static void verifyCoverage(int program, boolean intensity) {
+        verifyCoverage(program, intensity, false);
+    }
+
+    private static void verifyCoverage(int program, boolean intensity, boolean logo) {
         int vao = GL33C.glGenVertexArrays(), vertices = GL33C.glGenBuffers();
         int transforms = GL33C.glGenBuffers(), projection = GL33C.glGenBuffers();
         int texture = GL33C.glGenTextures();
@@ -85,11 +98,13 @@ public final class CleanFontShaderTest {
             GL33C.glUseProgram(program);
             GL33C.glBindVertexArray(vao);
             GL33C.glBindBuffer(GL33C.GL_ARRAY_BUFFER, vertices);
-            GL33C.glBufferData(GL33C.GL_ARRAY_BUFFER, new float[]{-1, -1, 0, 3, -1, 0, -1, 3, 0}, GL33C.GL_STATIC_DRAW);
+            GL33C.glBufferData(GL33C.GL_ARRAY_BUFFER, new float[]{-1, -1, 0, 0, 0, 3, -1, 0, 2, 0, -1, 3, 0, 0, 2}, GL33C.GL_STATIC_DRAW);
             int position = GL33C.glGetAttribLocation(program, "Position");
             GL33C.glEnableVertexAttribArray(position);
-            GL33C.glVertexAttribPointer(position, 3, GL33C.GL_FLOAT, false, 12, 0L);
-            GL33C.glVertexAttrib2f(GL33C.glGetAttribLocation(program, "UV0"), 0.5f, 0.5f);
+            GL33C.glVertexAttribPointer(position, 3, GL33C.GL_FLOAT, false, 20, 0L);
+            int uv = GL33C.glGetAttribLocation(program, "UV0");
+            GL33C.glEnableVertexAttribArray(uv);
+            GL33C.glVertexAttribPointer(uv, 2, GL33C.GL_FLOAT, false, 20, 12L);
             GL33C.glVertexAttrib4f(GL33C.glGetAttribLocation(program, "Color"), 1f, 0.5f, 0.25f, 1f);
             float[] identity = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
             float[] dynamic = new float[40];
@@ -112,8 +127,12 @@ public final class CleanFontShaderTest {
             GL33C.glPixelStorei(GL33C.GL_UNPACK_ALIGNMENT, 1);
             GL33C.glDisable(GL33C.GL_BLEND);
             GL33C.glDisable(GL33C.GL_DEPTH_TEST);
+            if (logo) {
+                verifyLogoPixels(stack);
+                return;
+            }
             GL33C.glViewport(0, 0, 32, 32);
-            for (int coverage : new int[]{0, 128, 255}) {
+            for (int coverage : new int[]{0, 32, 64, 128, 192, 255}) {
                 var texel = stack.malloc(4);
                 if (intensity) texel.put((byte) coverage);
                 else texel.put((byte) 255).put((byte) 255).put((byte) 255).put((byte) coverage);
@@ -135,6 +154,41 @@ public final class CleanFontShaderTest {
             GL33C.glDeleteBuffers(transforms);
             GL33C.glDeleteBuffers(vertices);
             GL33C.glDeleteVertexArrays(vao);
+        }
+    }
+
+    private static void verifyLogoPixels(org.lwjgl.system.MemoryStack stack) {
+        var white = stack.bytes((byte) 255, (byte) 255, (byte) 255, (byte) 255);
+        GL33C.glTexImage2D(GL33C.GL_TEXTURE_2D, 0, GL33C.GL_RGBA8, 1, 1, 0,
+                GL33C.GL_RGBA, GL33C.GL_UNSIGNED_BYTE, white);
+        var pixels = stack.malloc(96 * 96 * 4);
+        for (int size : new int[]{24, 45, 72, 96}) {
+            GL33C.glViewport(0, 0, size, size);
+            GL33C.glClearColor(0f, 0f, 0f, 0f);
+            GL33C.glClear(GL33C.GL_COLOR_BUFFER_BIT);
+            GL33C.glDrawArrays(GL33C.GL_TRIANGLES, 0, 3);
+            pixels.clear();
+            GL33C.glReadPixels(0, 0, size, size, GL33C.GL_RGBA, GL33C.GL_UNSIGNED_BYTE, pixels);
+            check((pixels.get(3) & 255) == 0, "Logo has transparent corners at " + size + "px");
+            check((pixels.get(((size / 2) * size + size / 2) * 4 + 3) & 255) > 240,
+                    "Logo eye pupil remains visible at " + size + "px");
+            int rimX = (int) (size * (0.5 + 0.78 / 1.06 / 2));
+            check((pixels.get(((size / 2) * size + rimX) * 4 + 3) & 255) > 200,
+                    "Logo O-ring remains visible at " + size + "px");
+            int eyeX = (int) (size * 0.8), eyeY = (int) (size * 0.45);
+            check((pixels.get((eyeY * size + eyeX) * 4 + 3) & 255) > 25,
+                    "Eye contour extends toward the O instead of floating inside it at " + size + "px");
+            int gapY = (int) (size * 0.75);
+            check((pixels.get((gapY * size + size / 2) * 4 + 3) & 255) == 0,
+                    "Logo preserves open space between eye and O-ring at " + size + "px");
+            int partial = 0;
+            for (int i = 0; i < size * size; i++) {
+                int alpha = pixels.get(i * 4 + 3) & 255;
+                check(pixels.get(i * 4) == 0 && pixels.get(i * 4 + 1) == 0 && pixels.get(i * 4 + 2) == 0,
+                        "HUD logo is monochrome black at every pixel");
+                if (alpha > 0 && alpha < 255) partial++;
+            }
+            check(partial > 4, "Logo edges remain antialiased at " + size + "px");
         }
     }
 

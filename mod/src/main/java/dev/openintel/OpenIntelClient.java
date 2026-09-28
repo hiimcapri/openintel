@@ -97,6 +97,7 @@ public class OpenIntelClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         CleanFont.registerPipeline();
+        dev.openintel.render.LogoHud.registerPipeline();
         config = OIConfig.load();
         UiFont.initialize(config.cleanFont);
         tracker = new Tracker();
@@ -149,6 +150,8 @@ public class OpenIntelClient implements ClientModInitializer {
                 (ctx, tickCounter) -> ArmorHud.render(ctx));
         HudElementRegistry.addLast(Identifier.of("openintel", "potions"),
                 (ctx, tickCounter) -> PotionHud.render(ctx));
+        HudElementRegistry.addLast(Identifier.of("openintel", "logo"),
+                (ctx, tickCounter) -> dev.openintel.render.LogoHud.render(ctx));
         HudElementRegistry.addLast(Identifier.of("openintel", "integrations"),
                 (ctx, tickCounter) -> OpenIntelApi.hud().renderAll(ctx, tickCounter.getTickProgress(true)));
 

@@ -57,25 +57,39 @@ public final class UiFontTest {
             check(loader instanceof TrueTypeFontLoader, "Uses native TrueType loader");
             var ttf = (TrueTypeFontLoader) loader;
             check(ttf.oversample() == 4f && ttf.size() == 9f, "Oversampled text fits standard GUI line height");
-            check(providers.get(1).getAsJsonObject().get("id").getAsString().equals("minecraft:default"),
-                    "Vanilla glyph providers remain as Unicode fallback");
+            check(providers.size() == 5 && providers.get(4).getAsJsonObject().get("id").getAsString()
+                    .equals("minecraft:default"), "Vanilla glyph providers remain as Unicode fallback");
+            var requested = new java.util.ArrayList<Identifier>();
             var resources = (ResourceManager) Proxy.newProxyInstance(UiFontTest.class.getClassLoader(),
                     new Class<?>[]{ResourceManager.class}, (proxy, method, values) -> {
                         if (!method.getName().equals("open")) throw new UnsupportedOperationException(method.getName());
                         Identifier id = (Identifier) values[0];
-                        check(id.equals(Identifier.of("openintel", "font/clean.ttf")), "TTF resolves to bundled resource");
+                        requested.add(id);
                         return UiFontTest.class.getResourceAsStream("/assets/" + id.getNamespace() + "/" + id.getPath());
                     });
-            try (var font = loader.build().left().orElseThrow().load(resources)) {
+            check(requested.isEmpty(), "Fresh resource proxy");
+            var fonts = new java.util.ArrayList<net.minecraft.client.font.Font>();
+            for (int i = 0; i < 4; i++) {
+                var provider = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(i)).getOrThrow();
+                check(provider instanceof TrueTypeFontLoader, "Noto stack uses native TrueType loader");
+                fonts.add(provider.build().left().orElseThrow().load(resources));
+            }
+            check(requested.get(0).equals(Identifier.of("openintel", "font/noto_sans_medium.ttf")),
+                    "Primary TTF resolves to bundled Noto Medium");
+            try {
+                var medium = fonts.get(0);
                 for (int cp : "Entering The Dog Den [STAFF OUT] Reinforcing White Rabbit's Timepiece 294 0:32".codePoints().toArray()) {
-                    var glyph = font.getGlyph(cp);
+                    var glyph = medium.getGlyph(cp);
                     check(glyph != null, "Sample HUD/chat/title character has a glyph: " + cp);
                     float width = glyph.getMetrics().getAdvance();
                     check(width > 0f && width < 12f, "Native font advance stays in logical pixels");
                     check(glyph.getMetrics().getAdvance(true) >= width, "Bold layout preserves glyph advances");
                 }
-                check(font.getGlyph(0x221E) != null, "Infinite potion duration glyph supported");
-                check(font.getGlyph(0x00E9) != null, "Accented chat characters supported");
+                check(fonts.stream().anyMatch(f -> f.getGlyph(0x221E) != null),
+                        "Infinite potion duration glyph supported by Noto stack");
+                check(medium.getGlyph(0x00E9) != null, "Accented chat characters supported");
+            } finally {
+                for (var f : fonts) f.close();
             }
         }
         verifyShadows();

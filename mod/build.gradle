@@ -103,7 +103,13 @@ tasks.register('publicationSafetyTest', JavaExec) {
     mainClass = 'dev.openintel.PublicationSafetyTest'
 }
 
-check.dependsOn snitchDimensionTest, apiContractTest, cleanFontMetricsTest, relicMapNameTest, uiFontTest, radarLabelLayoutTest, mapFontTest, hudLayoutTest, offlineIntelTest, publicationSafetyTest
+tasks.register('logoHudTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.LogoHudTest'
+}
+
+check.dependsOn snitchDimensionTest, apiContractTest, cleanFontMetricsTest, relicMapNameTest, uiFontTest, radarLabelLayoutTest, mapFontTest, hudLayoutTest, offlineIntelTest, publicationSafetyTest, logoHudTest
 
 publishing {
     publications {

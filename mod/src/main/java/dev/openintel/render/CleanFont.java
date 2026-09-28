@@ -33,7 +33,8 @@ import java.util.Map;
 /**
  * Clean text for OpenIntel surfaces — the vanilla bitmap font stays
  * for chat/commands, but marker/HUD text goes through a bundled TTF
- * (DejaVu Sans, covers the ⚑/⚠/✖ symbols our labels use).
+ * (Noto Sans Medium plus Noto symbol/math companions, covering the
+ * ⚑/⚠/✖/✝ symbols our labels use).
  *
  * STBTruetype (bundled with LWJGL) rasterizes each needed codepoint
  * into a 1024px alpha atlas at 48px, registered as a texture; drawing
@@ -66,10 +67,16 @@ public final class CleanFont {
     public static final float LINE_H = HEIGHT + 2f;
 
     private record Glyph(int x0, int y0, int w, int h,
-                         float xoff, float yoff, float adv) { }
+                         float xoff, float yoff, float adv, float ascent) { }
+
+    private record Face(STBTTFontinfo info, ByteBuffer data, float scale, float ascent) { }
+
+    /** First face containing a codepoint wins: normal text from Medium, math/symbol fallbacks after. */
+    private static final String[] FONT_RESOURCES = {
+            "noto_sans_medium.ttf", "noto_sans_math.ttf",
+            "noto_sans_symbols.ttf", "noto_sans_symbols2.ttf"};
 
     private static final Map<Integer, Glyph> glyphs = new HashMap<>();
-    private static float ascentPx;
     private static float spaceAdv;
     private static boolean init, failed;
 
@@ -89,8 +96,10 @@ public final class CleanFont {
 
     public static float width(String text) {
         float pen = 0;
-        for (int i = 0; i < text.length(); i++) {
-            Glyph g = glyphs.get((int) text.charAt(i));
+        for (int i = 0; i < text.length();) {
+            int codePoint = text.codePointAt(i);
+            i += Character.charCount(codePoint);
+            Glyph g = glyphs.get(codePoint);
             if (g == null) g = glyphs.get((int) '?');
             pen += (g != null ? g.adv : spaceAdv) * S;
         }
@@ -128,11 +137,13 @@ public final class CleanFont {
     private static ScreenRect textBounds(String text, float x, float y, Matrix3x2f pose) {
         float pen = x, left = Float.POSITIVE_INFINITY, top = Float.POSITIVE_INFINITY;
         float right = Float.NEGATIVE_INFINITY, bottom = Float.NEGATIVE_INFINITY;
-        for (int i = 0; i < text.length(); i++) {
-            Glyph g = glyphs.get((int) text.charAt(i));
+        for (int i = 0; i < text.length();) {
+            int codePoint = text.codePointAt(i);
+            i += Character.charCount(codePoint);
+            Glyph g = glyphs.get(codePoint);
             if (g == null) g = glyphs.get((int) '?');
             if (g != null && g.w > 0 && g.h > 0) {
-                float gx = pen + g.xoff * S, gy = y + (ascentPx + g.yoff) * S;
+                float gx = pen + g.xoff * S, gy = y + (g.ascent + g.yoff) * S;
                 left = Math.min(left, gx);
                 top = Math.min(top, gy);
                 right = Math.max(right, gx + g.w * S);
@@ -153,11 +164,13 @@ public final class CleanFont {
         @Override
         public void setupVertices(VertexConsumer vertices) {
             float pen = x;
-            for (int i = 0; i < text.length(); i++) {
-                Glyph g = glyphs.get((int) text.charAt(i));
+            for (int i = 0; i < text.length();) {
+                int codePoint = text.codePointAt(i);
+                i += Character.charCount(codePoint);
+                Glyph g = glyphs.get(codePoint);
                 if (g == null) g = glyphs.get((int) '?');
                 if (g != null && g.w > 0 && g.h > 0) {
-                    float x0 = pen + g.xoff * S, y0 = y + (ascentPx + g.yoff) * S;
+                    float x0 = pen + g.xoff * S, y0 = y + (g.ascent + g.yoff) * S;
                     float x1 = x0 + g.w * S, y1 = y0 + g.h * S;
                     float u0 = g.x0 / (float) ATLAS, u1 = (g.x0 + g.w) / (float) ATLAS;
                     float v0 = g.y0 / (float) ATLAS, v1 = (g.y0 + g.h) / (float) ATLAS;
@@ -178,7 +191,7 @@ public final class CleanFont {
         int[] extra = {0x2691, 0x26A0, 0x2716, 0x00D7, 0x2192, 0x2190, 0x2191,
                 0x2193, 0x00B7, 0x2014, 0x2013, 0x2018, 0x2019, 0x201C, 0x201D,
                 0x2026, 0x00B0, 0x25B2, 0x25BC, 0x25C4, 0x25BA, 0x25C6, 0x25CF,
-                0x2605, 0x2726, 0x00A7, 0x2212, 0x00B1, 0x2264, 0x2265};
+                0x2605, 0x2726, 0x00A7, 0x2212, 0x00B1, 0x2264, 0x2265, 0x271D};
         int[] cps = new int[95 + extra.length];
         for (int i = 0; i < 95; i++) cps[i] = 32 + i;
         System.arraycopy(extra, 0, cps, 95, extra.length);
@@ -187,37 +200,46 @@ public final class CleanFont {
 
     private static NativeImage createAtlas() throws java.io.IOException {
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            byte[] fontBytes;
-            try (InputStream in = CleanFont.class
-                    .getResourceAsStream("/assets/openintel/font/clean.ttf")) {
-                if (in == null) throw new IllegalStateException("clean.ttf missing");
-                fontBytes = in.readAllBytes();
+            var faces = new java.util.ArrayList<Face>();
+            for (String name : FONT_RESOURCES) {
+                byte[] fontBytes;
+                try (InputStream in = CleanFont.class
+                        .getResourceAsStream("/assets/openintel/font/" + name)) {
+                    if (in == null) throw new IllegalStateException(name + " missing");
+                    fontBytes = in.readAllBytes();
+                }
+                ByteBuffer ttf = ByteBuffer.allocateDirect(fontBytes.length)
+                        .put(fontBytes).flip();
+                STBTTFontinfo info = STBTTFontinfo.create();
+                if (!STBTruetype.stbtt_InitFont(info, ttf)) {
+                    throw new IllegalStateException("stbtt_InitFont failed: " + name);
+                }
+                float scale = STBTruetype.stbtt_ScaleForPixelHeight(info, PIXEL_H);
+                var ia = stack.ints(0); var ib = stack.ints(0);
+                STBTruetype.stbtt_GetFontVMetrics(info, ia, ib, stack.ints(0));
+                faces.add(new Face(info, ttf, scale, ia.get(0) * scale));
             }
-            ByteBuffer ttf = ByteBuffer.allocateDirect(fontBytes.length)
-                    .put(fontBytes).flip();
-            STBTTFontinfo info = STBTTFontinfo.create();
-            if (!STBTruetype.stbtt_InitFont(info, ttf)) {
-                throw new IllegalStateException("stbtt_InitFont failed");
-            }
-            float scale = STBTruetype.stbtt_ScaleForPixelHeight(info, PIXEL_H);
 
             var ia = stack.ints(0); var ib = stack.ints(0);
             var ic = stack.ints(0); var id = stack.ints(0);
-            STBTruetype.stbtt_GetFontVMetrics(info, ia, ib, ic);
-            ascentPx = ia.get(0) * scale;
-            STBTruetype.stbtt_GetCodepointHMetrics(info, ' ', ia, ib);
-            spaceAdv = ia.get(0) * scale;
+            STBTruetype.stbtt_GetCodepointHMetrics(faces.get(0).info(), ' ', ia, ib);
+            spaceAdv = ia.get(0) * faces.get(0).scale();
 
             NativeImage img = new NativeImage(ATLAS, ATLAS, false);
             img.fillRect(0, 0, ATLAS, ATLAS, 0x00FFFFFF);
             int pen = 0, rowY = 0, rowH = 0;
             for (int cp : codepoints()) {
-                if (STBTruetype.stbtt_FindGlyphIndex(info, cp) == 0) continue;
-                STBTruetype.stbtt_GetCodepointBitmapBox(info, cp, scale, scale,
+                Face face = null;
+                for (Face f : faces) {
+                    if (STBTruetype.stbtt_FindGlyphIndex(f.info(), cp) != 0) { face = f; break; }
+                }
+                if (face == null) continue;
+                float scale = face.scale();
+                STBTruetype.stbtt_GetCodepointBitmapBox(face.info(), cp, scale, scale,
                         ia, ib, ic, id);
                 int x0 = ia.get(0), y0 = ib.get(0),
                         gw = ic.get(0) - x0, gh = id.get(0) - y0;
-                STBTruetype.stbtt_GetCodepointHMetrics(info, cp, ia, ib);
+                STBTruetype.stbtt_GetCodepointHMetrics(face.info(), cp, ia, ib);
                 float adv = ia.get(0) * scale;
                 if (gw > 0 && gh > 0) {
                     int cellW = ((gw + 2 * PAD + PAD - 1) / PAD) * PAD;
@@ -228,7 +250,7 @@ public final class CleanFont {
                         throw new IllegalStateException("Font atlas full");   // atlas full
                     }
                     ByteBuffer glyph = ByteBuffer.allocateDirect(gw * gh);
-                    STBTruetype.stbtt_MakeCodepointBitmap(info, glyph, gw, gh, gw,
+                    STBTruetype.stbtt_MakeCodepointBitmap(face.info(), glyph, gw, gh, gw,
                             scale, scale, cp);
                     for (int gy = 0; gy < gh; gy++) {
                         for (int gx = 0; gx < gw; gx++) {
@@ -236,12 +258,13 @@ public final class CleanFont {
                                     ((glyph.get(gy * gw + gx) & 0xFF) << 24) | 0xFFFFFF);
                         }
                     }
-                    glyphs.put(cp, new Glyph(pen, rowY, cellW, cellH, x0 - PAD, y0 - PAD, adv));
+                    glyphs.put(cp, new Glyph(pen, rowY, cellW, cellH, x0 - PAD, y0 - PAD,
+                            adv, face.ascent()));
                     pen += cellW;
                     rowH = Math.max(rowH, cellH);
                 } else {
                     // Whitespace — no bitmap, just advance.
-                    glyphs.put(cp, new Glyph(0, 0, 0, 0, 0, 0, adv));
+                    glyphs.put(cp, new Glyph(0, 0, 0, 0, 0, 0, adv, face.ascent()));
                 }
             }
             return img;

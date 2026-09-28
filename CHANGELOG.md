@@ -3,7 +3,12 @@
 ## 1.6.0 — clean text, responsive HUDs, and local intelligence
 
 - Added a bundled clean font with light antialiasing and no shadows, plus a
-  live Clean font / Minecraft font toggle under HUD settings.
+  live Clean font / Minecraft font toggle under HUD settings. The clean stack
+  uses Noto Sans Medium with Noto symbol/math companion fonts, under the SIL
+  Open Font License.
+- Added the OpenIntel mark — a black O with a joined eye — as a small
+  resolution-aware HUD element in the bottom-right corner, toggleable under
+  HUD settings, with standalone SVG/PNG artwork in the assets.
 - Applied font selection to chat and its input field, actionbar messages,
   titles, OpenIntel HUDs, and OpenIntel-owned map labels only. Other menus,
   text fields, map-mod UI, and explicit server icon fonts keep their fonts.

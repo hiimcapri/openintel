@@ -259,7 +259,7 @@ public class Tracker {
                 .equalsIgnoreCase(from);
         if (!self) {
             String action = msg.has("action") ? msg.get("action").getAsString() : "tripped a snitch";
-            String text = "📡 " + who + " " + action;
+            String text = "Snitch: " + who + " " + action;
             if (msg.has("x")) {
                 text += " at " + msg.get("x").getAsInt() + ", " + msg.get("z").getAsInt();
             }

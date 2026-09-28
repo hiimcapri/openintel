@@ -13,9 +13,9 @@ import java.util.Set;
 public final class PublicationSafetyTest {
     public static void main(String[] args) throws Exception {
         check(resource("/openintel_token.txt").strip().equals("CHANGE_ME"), "Base artifact must contain only the placeholder token");
-        String license = resource("/assets/openintel/font/LICENSE-DejaVu.txt");
-        check(license.contains("Copyright (c) 2003 by Bitstream") && license.contains("Tavmjong Bah"),
-                "Redistributed font includes its copyright and license notices");
+        String license = resource("/assets/openintel/font/LICENSE-Noto.txt");
+        check(license.contains("SIL OPEN FONT LICENSE") && license.contains("Noto Project Authors"),
+                "Redistributed Noto fonts include their copyright and OFL license notice");
         var fields = new HashSet<>(Set.of("relayUrl", "minecraftServer"));
         var node = new ClassNode();
         try (var stream = PublicationSafetyTest.class.getResourceAsStream("/dev/openintel/config/OIConfig.class")) {
