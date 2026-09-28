@@ -7,7 +7,7 @@
 
 <h1 align="center">OpenIntel</h1>
 
-OpenIntel **1.6.0** is an open-source Fabric intelligence client for
+OpenIntel **1.6.1** is an open-source Fabric intelligence client for
 **Minecraft 1.21.11 / Java 21**. It combines nearby-player radar, responsive
 HUDs, clean text, local snitch/relic tracking, and optional team intelligence
 through a self-hosted relay. It does not add its own minimap, waypoint
@@ -24,7 +24,7 @@ features do not require a relay connection.
 
 - Bundled Noto Sans Medium (with Noto symbol/math companions) provides lightly
   antialiased, shadow-free clean text.
-- Switch live under `/oi settings` → HUD → Text → Font between **Clean font**
+- Switch live under `/oi settings` â†’ HUD â†’ Text â†’ Font between **Clean font**
   and **Minecraft font**. The choice persists, and existing chat rewraps
   without losing history.
 - Clean text covers OpenIntel HUDs, chat messages and the chat input field,
@@ -86,7 +86,7 @@ features do not require a relay connection.
 - Anti-aliased circular radar with player heads, allegiance colors, distance
   labels, compass points, configurable range rings, rotating or north-up
   orientation, and a distance-compression slider that magnifies the inner
-  field linearly while compressing the outer ring — no warping near the
+  field linearly while compressing the outer ring â€” no warping near the
   center.
 - Contact filtering (everyone, players not on the relay, or enemies only)
   plus toggles for dropped-item, boat, and minecart icons, which render as
@@ -109,7 +109,7 @@ features do not require a relay connection.
   relic names. OpenIntel-owned labels follow the font choice without changing
   JourneyMap's own labels. Moving markers and lifecycle removals reconcile automatically.
 - Strictly optional: JourneyMap is never required and nothing changes for
-  clients without it. Toggle under `/oi settings` → Integrations →
+  clients without it. Toggle under `/oi settings` â†’ Integrations â†’
   *JourneyMap fullscreen markers*. OpenIntel's own rendering is untouched.
 
 ### Xaero's World Map integration (optional)
@@ -124,7 +124,7 @@ features do not require a relay connection.
   dimension switcher filters them correctly.
 - Strictly optional: OpenIntel needs neither Xaero's World Map nor the
   bridge to run, and a bridge/Xaero version mismatch simply disables the
-  overlay. Toggle under `/oi settings` → Integrations →
+  overlay. Toggle under `/oi settings` â†’ Integrations â†’
   *Xaero World Map markers*.
 
 ### Movable HUD
@@ -170,16 +170,16 @@ features do not require a relay connection.
   screens open, the mouse unlocks, or the selected hotbar slot changes.
 - Ice-road automation supports 45-degree yaw/pitch snapping, sprint/jump
   movement, auto-eating, and optional low-hunger parking. It keeps running
-  through chat, inventory, and scroll-wheel — only its keybind stops it.
-- `/oi settings` opens a Sodium-style click GUI — sidebar categories, live
+  through chat, inventory, and scroll-wheel â€” only its keybind stops it.
+- `/oi settings` opens a Sodium-style click GUI â€” sidebar categories, live
   search across every option, tooltips, sliders, toggles, and in-place keybind
-  rebinding — covering relay credentials, rendering, markers, radar, HUD,
+  rebinding â€” covering relay credentials, rendering, markers, radar, HUD,
   snitch, pings, integrations, macros, and keybinds. `/oi radar` and
   `/oi macros` open it pre-selected on their categories.
 
 ## Screenshots
 
-These screenshots show an earlier build. Updated 1.6.0 clean-text and local-only
+These screenshots show an earlier build. Updated 1.6.1 clean-text and local-only
 radar screenshots will be added separately.
 
 ![OpenIntel gameplay overview with radar, markers, roster and status HUDs](docs/openintel-overview.png)
@@ -201,7 +201,7 @@ radar screenshots will be added separately.
 
 <p align="center">
   <img src="docs/event-feed.png" alt="OpenIntel event feed showing relayed snitch interactions"/><br/>
-  <strong>Event feed</strong> — relayed presence, alerts, and snitch interactions without chat spam
+  <strong>Event feed</strong> â€” relayed presence, alerts, and snitch interactions without chat spam
 </p>
 
 Off-screen contacts remain readable on independently positioned edge stacks:
@@ -218,7 +218,7 @@ Snitch hits and pings can also be mirrored onto JourneyMap's fullscreen map:
 
 <p align="center">
   <img src="docs/journeymap-bigmap.png" alt="Snitch hits on the JourneyMap fullscreen map"/><br/>
-  <strong>JourneyMap fullscreen map</strong> — allegiance-tinted snitch markers (optional integration)
+  <strong>JourneyMap fullscreen map</strong> â€” allegiance-tinted snitch markers (optional integration)
 </p>
 
 ## Relay roles and focus targets
@@ -237,7 +237,7 @@ pings, and snitch reports are ignored. Operators and above can mark priority
 targets in-game:
 
 ```
-/oi focus <player>    mark a focus target (bright purple ◆ for everyone)
+/oi focus <player>    mark a focus target (bright purple â—† for everyone)
 /oi unfocus <player>  unmark
 /oi focus clear       clear all focus targets
 ```
@@ -248,30 +248,30 @@ each change is announced in both the alerts and admin Discord channels.
 ## How it works
 
 ```
-┌────────────┐   WebSocket    ┌───────────────┐   Webhook POST   ┌──────────────────┐
-│ Client mod │◄──────────────►│  Relay server │─────────────────►│ Discord #alerts  │
-│ (Fabric)   │  positions in/ │  (Node.js)    │  enemy pings     │ (@role ping)     │
-└────────────┘  state out     │               │─────────────────►│ Discord #admin   │
-      ▲                       │  users.json   │  auth/log events │ (audit log)      │
-      └─ every approved user  │  allegiances  │                  └──────────────────┘
-         runs one of these    └───────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   WebSocket    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   Webhook POST   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Client mod â”‚â—„â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–ºâ”‚  Relay server â”‚â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–ºâ”‚ Discord #alerts  â”‚
+â”‚ (Fabric)   â”‚  positions in/ â”‚  (Node.js)    â”‚  enemy pings     â”‚ (@role ping)     â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  state out     â”‚               â”‚â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–ºâ”‚ Discord #admin   â”‚
+      â–²                       â”‚  users.json   â”‚  auth/log events â”‚ (audit log)      â”‚
+      â””â”€ every approved user  â”‚  allegiances  â”‚                  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+         runs one of these    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 
-- **Deduplication** — six people spotting the same enemy = one ping, not six.
-- **Cooldowns** — an enemy standing on your snitch line doesn't spam the channel.
-- **Central auth** — approved-user list lives in one place (`users.json`),
+- **Deduplication** â€” six people spotting the same enemy = one ping, not six.
+- **Cooldowns** â€” an enemy standing on your snitch line doesn't spam the channel.
+- **Central auth** â€” approved-user list lives in one place (`users.json`),
   not baked into the mod, so admins control access without rebuilding.
-- **Server binding** — clients only connect while playing the selected
+- **Server binding** â€” clients only connect while playing the selected
   multiplayer server, and the relay independently rejects mismatched or
   missing Minecraft-server identities during authentication.
 
 
 ## Repo layout
 
-- `mod/` — Fabric client mod (Java 21, Minecraft 1.21.11, Fabric API)
-- `mod/libs/` — vendored JourneyMap API + Xaero bridge jars, compile-time only (optional at runtime)
-- `relay/` — Node.js relay server + webhook integration
+- `mod/` â€” Fabric client mod (Java 21, Minecraft 1.21.11, Fabric API)
+- `mod/libs/` â€” vendored JourneyMap API + Xaero bridge jars, compile-time only (optional at runtime)
+- `relay/` â€” Node.js relay server + webhook integration
 
 ## Quick start
 
@@ -291,16 +291,16 @@ cd mod
 ./gradlew build       # jar lands in build/libs/
 ```
 Drop the jar in `.minecraft/mods` alongside Fabric API. On first launch the
-mod writes `config/openintel.json` — set `relayUrl` (for example,
+mod writes `config/openintel.json` â€” set `relayUrl` (for example,
 `ws://your.server:8765`), `minecraftServer` (the allowed multiplayer address),
 and your personal `token`, then join that Minecraft server. These fields are
 also available under `/oi settings`. If JourneyMap or Xaero's World Map
 (via xaero-world-map-bridge) is installed, snitch hits and shared pings are
-additionally drawn on its fullscreen map — toggleable under `/oi settings` →
+additionally drawn on its fullscreen map â€” toggleable under `/oi settings` â†’
 Integrations.
 
 ### Discord setup
-1. Create two webhooks (Server Settings → Integrations → Webhooks):
+1. Create two webhooks (Server Settings â†’ Integrations â†’ Webhooks):
    one in your alerts channel, one in a private admin channel.
 2. Put both URLs in `relay/config.json`.
 3. For role pings, copy the role ID into `alertRoleId` and make sure the
@@ -318,13 +318,13 @@ marker. The bot runs inside the relay process and is disabled until
 ### Setup
 
 1. **Create the bot:** [discord.com/developers/applications](https://discord.com/developers/applications)
-   → *New Application* (name it e.g. `OpenIntel`) → **Bot** tab → *Reset Token*
-   → copy the token into `config.json` → `discord.botToken`.
+   â†’ *New Application* (name it e.g. `OpenIntel`) â†’ **Bot** tab â†’ *Reset Token*
+   â†’ copy the token into `config.json` â†’ `discord.botToken`.
 2. **Enable reading messages:** still on the Bot tab, turn ON
    **Message Content Intent** under *Privileged Gateway Intents*. Without this
    the bot logs in fine but every message looks empty to it.
-3. **Invite it:** **OAuth2 → URL Generator** → scope `bot` → bot permissions
-   *View Channels*, *Send Messages*, *Embed Links*, *Read Message History* →
+3. **Invite it:** **OAuth2 â†’ URL Generator** â†’ scope `bot` â†’ bot permissions
+   *View Channels*, *Send Messages*, *Embed Links*, *Read Message History* â†’
    open the generated URL and add it to every Discord server you want bridged.
    Admins who create or rotate users must allow DMs from the bot; failed DMs
    never cause tokens to be posted publicly.
@@ -355,7 +355,7 @@ The legacy singular fields `terminalChannelId`, `snitchChannelId`,
 `operatorRoleId`, `captainRoleId`, and `adminRoleId` remain supported and are
 merged with their array equivalents.
 
-The bot token is a secret like everything else in `config.json` — gitignored,
+The bot token is a secret like everything else in `config.json` â€” gitignored,
 never ships in the client jar. If it ever leaks, *Reset Token* in the dev
 portal invalidates the old one.
 
@@ -381,7 +381,7 @@ Type these in the terminal channel:
 | `!user rotate-token <name>` | rotate token, revoke sessions, and DM the new token | admin |
 | `!user info <name>` | safe status, token fingerprint, and session count | admin |
 
-Positions still travel over the relay's own WebSocket — Discord rate limits
+Positions still travel over the relay's own WebSocket â€” Discord rate limits
 (~5 msgs/5 s per channel) make it unusable as the position transport, so the
 bot is command/control only.
 
@@ -459,7 +459,7 @@ All controls are rebindable under the OpenIntel keybind category.
 
 ## Fabric mod integration API (v1)
 
-OpenIntel **1.6.0** provides the public v1 Java API under `dev.openintel.api`.
+OpenIntel **1.6.1** provides the public v1 Java API under `dev.openintel.api`.
 Use `OpenIntelApi` as the entry point; do not link against `tracker`, `net`,
 `render`, or `api.internal` implementation classes. This is a client-side
 Fabric API for Minecraft **1.21.11**, not the Discord/admin REST API.
@@ -481,7 +481,7 @@ repositories {
 }
 
 dependencies {
-    modImplementation "dev.openintel:openintel:1.6.0"
+    modImplementation "dev.openintel:openintel:1.6.1"
 }
 ```
 
@@ -489,9 +489,9 @@ Use matching Minecraft/Yarn versions. OpenIntel is installed separately in
 `mods/`; do not nest a personalized/token-bearing jar in your mod. No public
 Maven repository is provisioned by this project. Alternatively, place the
 neutral remapped jar in your project's `libs/` and use
-`modImplementation files("libs/openintel-1.6.0.jar")`.
+`modImplementation files("libs/openintel-1.6.1.jar")`.
 
-For a required integration, add `"openintel": ">=1.6.0"` to your mod's
+For a required integration, add `"openintel": ">=1.6.1"` to your mod's
 `fabric.mod.json` `depends` object. Declare this entrypoint:
 
 ```json
@@ -575,7 +575,7 @@ alert with unknown dimension; it is not a guarantee that a marker exists.
 
 Callbacks run on the Minecraft client thread. Keep them short; offload
 expensive work using snapshots, not game objects. Subscribe before the event
-you need—subscriptions do not replay history. `Subscription.close()` is
+you needâ€”subscriptions do not replay history. `Subscription.close()` is
 idempotent. A listener that throws a nonfatal exception is logged once and
 automatically unsubscribed; register it again to retry. Other listeners
 continue running. Recursive event chains are capped at 256 events per dispatch
@@ -642,7 +642,7 @@ var handle = OpenIntelApi.hud().register(
 ```
 
 The sixth argument is an optional **preview renderer**; omit it to show only
-a labeled box in the editor. Callbacks draw at local `(0, 0)`—OpenIntel
+a labeled box in the editor. Callbacks draw at local `(0, 0)`â€”OpenIntel
 already translates and clips the context to the element bounds, uniformly
 scaling oversized elements to fit the viewport. The callback still receives
 its original declared size. Use GUI-scaled pixels, not framebuffer pixels. Do not retain the draw context
@@ -693,12 +693,12 @@ a graphical OpenGL session. Actual in-game behavior still requires a smoke test.
 
 This project exists because server admins never requested an open, equal-access
 version of closed intel tools. Before running it on any server, confirm
-position-sharing/radar mods are legal under that server's rules — legality
+position-sharing/radar mods are legal under that server's rules â€” legality
 varies between Civ servers.
 
 ## License
 
-OpenIntel code is MIT-licensed — see `LICENSE`.
+OpenIntel code is MIT-licensed â€” see `LICENSE`.
 
 The bundled Noto fonts are licensed under the SIL Open Font License 1.1;
 see `mod/src/main/resources/assets/openintel/font/LICENSE-Noto.txt`.

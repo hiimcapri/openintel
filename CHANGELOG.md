@@ -1,14 +1,20 @@
 # Changelog
 
-## 1.6.0 — clean text, responsive HUDs, and local intelligence
+## 1.6.1 — OpenIntel branding and Noto Sans
 
-- Added a bundled clean font with light antialiasing and no shadows, plus a
-  live Clean font / Minecraft font toggle under HUD settings. The clean stack
-  uses Noto Sans Medium with Noto symbol/math companion fonts, under the SIL
-  Open Font License.
 - Added the OpenIntel mark — a black O with a joined eye — as a small
   resolution-aware HUD element in the bottom-right corner, toggleable under
   HUD settings, with standalone SVG/PNG artwork in the assets.
+- Replaced the bundled DejaVu Sans clean font with Noto Sans Medium plus Noto
+  Sans Math/Symbols/Symbols2 companions, under the SIL Open Font License.
+  The heavier face removes the shader's artificial coverage boost.
+- Fixed the event-feed prefix showing `??`: unsupported codepoints now fall
+  back once to `?` instead of once per UTF-16 surrogate half.
+
+## 1.6.0 — clean text, responsive HUDs, and local intelligence
+
+- Added a bundled clean font with light antialiasing and no shadows, plus a
+  live Clean font / Minecraft font toggle under HUD settings.
 - Applied font selection to chat and its input field, actionbar messages,
   titles, OpenIntel HUDs, and OpenIntel-owned map labels only. Other menus,
   text fields, map-mod UI, and explicit server icon fonts keep their fonts.
