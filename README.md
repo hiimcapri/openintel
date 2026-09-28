@@ -20,19 +20,6 @@ features do not require a relay connection.
 
 ## Features
 
-### Clean text, with a Minecraft-font toggle
-
-- Bundled Noto Sans Medium (with Noto symbol/math companions) provides lightly
-  antialiased, shadow-free clean text.
-- Switch live under `/oi settings` → HUD → Text → Font between **Clean font**
-  and **Minecraft font**. The choice persists, and existing chat rewraps
-  without losing history.
-- Clean text covers OpenIntel HUDs, chat messages and the chat input field,
-  actionbar notifications, titles/subtitles, and OpenIntel-owned map labels.
-  Inventories, other menus, other text fields, and other mods' map UI retain
-  their own fonts. Explicit server-supplied icon fonts are preserved.
-- Text batching and style reuse reduce per-character rendering allocations.
-
 ### Shared player intelligence
 
 - **Live player markers** use dynamic-FOV-safe projection and hand off to the
@@ -162,6 +149,19 @@ features do not require a relay connection.
   surfaces offline; map integrations have separate visibility toggles.
 - Allegiance-based filters use the available relay classification data. A
   fresh disconnected session has no enemy/friend roster to classify from.
+
+### Clean text, with a Minecraft-font toggle
+
+- Bundled Noto Sans Medium (with Noto symbol/math companions) provides lightly
+  antialiased, shadow-free clean text.
+- Switch live under `/oi settings` → HUD → Text → Font between **Clean font**
+  and **Minecraft font**. The choice persists, and existing chat rewraps
+  without losing history.
+- Clean text covers OpenIntel HUDs, chat messages and the chat input field,
+  actionbar notifications, titles/subtitles, and OpenIntel-owned map labels.
+  Inventories, other menus, other text fields, and other mods' map UI retain
+  their own fonts. Explicit server-supplied icon fonts are preserved.
+- Text batching and style reuse reduce per-character rendering allocations.
 
 ### Macros and configuration
 
