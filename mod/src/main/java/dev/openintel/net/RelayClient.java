@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import dev.openintel.OpenIntelClient;
 import dev.openintel.api.Snapshots.ConnectionState;
 import dev.openintel.api.internal.ApiBridge;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,12 +53,12 @@ public class RelayClient implements WebSocket.Listener {
     }
 
     public void connect(String url, String token, String minecraftServer) {
-        Minecraft client = Minecraft.getInstance();
-        if (!client.isSameThread()) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
             long expectedGeneration = generation.get();
-            var expectedWorld = client.level;
+            var expectedWorld = client.world;
             client.execute(() -> {
-                if (generation.get() == expectedGeneration && client.level == expectedWorld) connect(url, token, minecraftServer);
+                if (generation.get() == expectedGeneration && client.world == expectedWorld) connect(url, token, minecraftServer);
             });
             return;
         }
@@ -76,8 +76,8 @@ public class RelayClient implements WebSocket.Listener {
     }
 
     public void disconnect() {
-        Minecraft client = Minecraft.getInstance();
-        if (!client.isSameThread()) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
             long expectedGeneration = generation.get();
             client.execute(() -> { if (generation.get() == expectedGeneration) disconnect(); });
             return;
@@ -102,8 +102,8 @@ public class RelayClient implements WebSocket.Listener {
 
     /** Call from the client tick loop; reconnects with backoff if dropped. */
     public void tick() {
-        Minecraft client = Minecraft.getInstance();
-        if (!client.isSameThread()) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
             client.execute(this::tick);
             return;
         }
@@ -118,8 +118,8 @@ public class RelayClient implements WebSocket.Listener {
     }
 
     public void send(JsonObject message) {
-        Minecraft client = Minecraft.getInstance();
-        if (!client.isSameThread()) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
             long expected = generation.get();
             WebSocket expectedSocket = socket.get();
             JsonObject copy = message.deepCopy();
@@ -135,7 +135,7 @@ public class RelayClient implements WebSocket.Listener {
     }
 
     public boolean trySend(JsonObject message) {
-        if (!Minecraft.getInstance().isSameThread()) return false;
+        if (!MinecraftClient.getInstance().isOnThread()) return false;
         WebSocket ws = socket.get();
         if (ws == null || !authenticated || !selectedServerMatches()) return false;
         try {
@@ -166,7 +166,7 @@ public class RelayClient implements WebSocket.Listener {
         try {
             HTTP.newWebSocketBuilder()
                     .buildAsync(URI.create(attemptUrl), this)
-                    .whenComplete((ws, err) -> Minecraft.getInstance().execute(() -> {
+                    .whenComplete((ws, err) -> MinecraftClient.getInstance().execute(() -> {
                         inFlightGeneration.compareAndSet(attemptGeneration, -1);
                         if (!isCurrentSession(attemptGeneration) || socket.get() != null) {
                             if (ws != null) ws.abort();
@@ -232,15 +232,15 @@ public class RelayClient implements WebSocket.Listener {
     }
 
     private boolean selectedServerMatches() {
-        var client = Minecraft.getInstance();
+        var client = MinecraftClient.getInstance();
         var config = OpenIntelClient.config();
-        return config != null && client.player != null && client.level != null && !client.hasSingleplayerServer()
+        return config != null && client.player != null && client.world != null && !client.isInSingleplayer()
                 && minecraftServer != null && minecraftServer.equals(OpenIntelClient.currentMinecraftServer(client))
                 && minecraftServer.equals(OpenIntelClient.normalizeMinecraftServer(config.minecraftServer));
     }
 
     private void dispatch(WebSocket ws, long expectedGeneration, Runnable delivery) {
-        Minecraft.getInstance().execute(() -> {
+        MinecraftClient.getInstance().execute(() -> {
             if (socket.get() != ws || generation.get() != expectedGeneration || !wantConnected) return;
             if (!selectedServerMatches()) {
                 disconnect();

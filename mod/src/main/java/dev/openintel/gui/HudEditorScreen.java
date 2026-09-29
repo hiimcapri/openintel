@@ -5,13 +5,14 @@ import dev.openintel.api.hud.HudApi;
 import dev.openintel.api.hud.HudElementDescriptor;
 import dev.openintel.api.hud.HudPosition;
 import dev.openintel.config.OIConfig;
-import dev.openintel.render.ArmorHud;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import dev.openintel.render.HudLayout;
+import dev.openintel.render.HudLayouts;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,21 +43,26 @@ public class HudEditorScreen extends Screen {
     }
 
     public HudEditorScreen(Screen parent) {
-        super(Component.literal("OpenIntel HUD Editor"));
+        super(Text.literal("OpenIntel HUD Editor"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
         finishDrag();
-        addRenderableWidget(Button.builder(Component.literal("Reset layout"), b -> reset())
-                .bounds(width / 2 - 104, height - 26, 100, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose())
-                .bounds(width / 2 + 4, height - 26, 100, 20).build());
+        if (width <= 0 || height <= 0) return;
+        HudLayouts.scale(OpenIntelClient.config(), width, height);
+        int buttonWidth = Math.min(100, Math.max(1, (width - 12) / 2));
+        int buttonHeight = Math.min(20, Math.max(1, height - 8));
+        int y = Math.max(0, height - buttonHeight - 4);
+        addDrawableChild(ButtonWidget.builder(Text.literal("Reset layout"), b -> reset())
+                .dimensions(Math.max(0, width / 2 - buttonWidth - 4), y, buttonWidth, buttonHeight).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Done"), b -> close())
+                .dimensions(Math.min(width - buttonWidth, width / 2 + 4), y, buttonWidth, buttonHeight).build());
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
+    public boolean mouseClicked(Click click, boolean doubled) {
         if (super.mouseClicked(click, doubled)) return true;
         if (click.button() != 0 && click.button() != 1) return false;
         finishDrag();
@@ -93,7 +99,7 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent click, double offsetX, double offsetY) {
+    public boolean mouseDragged(Click click, double offsetX, double offsetY) {
         if (click.button() != 0) return super.mouseDragged(click, offsetX, offsetY);
         if (draggingExternalId != null) {
             HudElementDescriptor descriptor = HudApi.getInstance().element(draggingExternalId).orElse(null);
@@ -102,9 +108,11 @@ public class HudEditorScreen extends Screen {
                 selectedExternalId = null;
                 return true;
             }
+            var frame = HudLayout.pixels(descriptor.position().x(), descriptor.position().y(),
+                    descriptor.size().width(), descriptor.size().height(), width, height);
             HudPosition position = new HudPosition(
-                    snappedExternal(click.x() - grabX, descriptor.size().width(), width),
-                    snappedExternal(click.y() - grabY, descriptor.size().height(), height));
+                    snappedExternal(click.x() - grabX, frame.width(), width),
+                    snappedExternal(click.y() - grabY, frame.height(), height));
             try {
                 HudApi.getInstance().setPosition(draggingExternalId, position, false);
             } catch (IllegalArgumentException ignored) {
@@ -119,7 +127,7 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent click) {
+    public boolean mouseReleased(Click click) {
         if (click.button() == 0 && (dragging != null || draggingExternalId != null)) {
             finishDrag();
             return true;
@@ -135,10 +143,10 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public void onClose() {
+    public void close() {
         finishDrag();
         HudApi.getInstance().saveLayout();
-        minecraft.setScreenAndShow(parent);
+        client.setScreen(parent);
     }
 
     @Override
@@ -148,176 +156,149 @@ public class HudEditorScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
-        extractTransparentBackground(ctx);
-        ctx.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
-        ctx.centeredText(font,
-                Component.literal("Drag to move; right-click external HUDs to toggle. Markers stay on their edge."),
-                width / 2, 21, 0xFFAAAAAA);
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        renderInGameBackground(ctx);
+        if (height >= textRenderer.fontHeight + 8) {
+            ctx.drawCenteredTextWithShadow(textRenderer, textRenderer.trimToWidth(title.getString(), Math.max(0, width - 8)),
+                    width / 2, 4, 0xFFFFFFFF);
+        }
+        if (height >= textRenderer.fontHeight * 2 + 12) {
+            String help = "Drag to move; right-click external HUDs to toggle. Markers stay on their edge.";
+            ctx.drawCenteredTextWithShadow(textRenderer, textRenderer.trimToWidth(help, Math.max(0, width - 8)),
+                    width / 2, textRenderer.fontHeight + 7, 0xFFAAAAAA);
+        }
 
-        ctx.fill(width / 2, 34, width / 2 + 1, height - 34, 0x35FFFFFF);
+        ctx.fill(width / 2, 0, width / 2 + 1, height, 0x35FFFFFF);
         ctx.fill(0, height / 2, width, height / 2 + 1, 0x35FFFFFF);
 
         for (Box box : boxes()) drawBox(ctx, box, mouseX, mouseY);
         for (ExternalBox box : externalBoxes()) drawExternalBox(ctx, box, mouseX, mouseY, delta);
-        super.extractRenderState(ctx, mouseX, mouseY, delta);
+        super.render(ctx, mouseX, mouseY, delta);
     }
 
-    private void drawBox(GuiGraphicsExtractor ctx, Box box, int mouseX, int mouseY) {
+    private void drawBox(DrawContext ctx, Box box, int mouseX, int mouseY) {
         boolean active = box.element == dragging || box.contains(mouseX, mouseY);
         int bg = active ? 0xD02B3545 : 0xB018202C;
         ctx.fill(box.x, box.y, box.x + box.w, box.y + box.h, bg);
-        ctx.outline(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : box.color);
-        drawBoxLabel(ctx, box);
+        ctx.drawStrokedRectangle(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : box.color);
+        ctx.enableScissor(box.x, box.y, box.x + box.w, box.y + box.h);
+        try {
+            drawBoxLabel(ctx, box);
+        } finally {
+            ctx.disableScissor();
+        }
     }
 
     /** Single line when it fits; one word per line inside narrow boxes. */
-    private void drawBoxLabel(GuiGraphicsExtractor ctx, Box box) {
-        int maxW = box.w - 4;
-        if (font.width(box.label) <= maxW || !box.label.contains(" ")) {
-            ctx.centeredText(font, box.label,
-                    box.x + box.w / 2, box.y + (box.h - font.lineHeight) / 2, box.color);
-            return;
-        }
-        String[] words = box.label.split(" ");
-        int blockH = words.length * (font.lineHeight + 2) - 2;
-        int ty = box.y + (box.h - blockH) / 2;
+    private void drawBoxLabel(DrawContext ctx, Box box) {
+        String[] words = textRenderer.getWidth(box.label) <= box.w - 4 || !box.label.contains(" ")
+                ? new String[]{box.label} : box.label.split(" ");
+        int blockW = 1;
+        for (String word : words) blockW = Math.max(blockW, textRenderer.getWidth(word));
+        int blockH = words.length * (textRenderer.fontHeight + 2) - 2;
+        float scale = Math.min(1f, Math.min(Math.max(1, box.w - 4) / (float) blockW,
+                Math.max(1, box.h - 4) / (float) blockH));
+        var pose = ctx.getMatrices();
+        pose.pushMatrix();
+        pose.translate(box.x + box.w / 2f, box.y + (box.h - blockH * scale) / 2f);
+        pose.scale(scale, scale);
+        int ty = 0;
         for (String word : words) {
-            ctx.centeredText(font, word, box.x + box.w / 2, ty, box.color);
-            ty += font.lineHeight + 2;
+            ctx.drawCenteredTextWithShadow(textRenderer, word, 0, ty, box.color);
+            ty += textRenderer.fontHeight + 2;
         }
+        pose.popMatrix();
     }
 
     private List<ExternalBox> externalBoxes() {
         List<ExternalBox> boxes = new ArrayList<>();
         if (width <= 0 || height <= 0) return boxes;
         for (HudElementDescriptor descriptor : HudApi.getInstance().elements()) {
-            HudPosition position = descriptor.position().clamp(descriptor.size(), width, height);
-            boxes.add(new ExternalBox(descriptor, position.x(), position.y(),
-                    Math.min(descriptor.size().width(), width), Math.min(descriptor.size().height(), height)));
+            var frame = HudLayout.pixels(descriptor.position().x(), descriptor.position().y(),
+                    descriptor.size().width(), descriptor.size().height(), width, height);
+            boxes.add(new ExternalBox(descriptor, frame.x(), frame.y(), frame.width(), frame.height()));
         }
         return boxes;
     }
 
-    private void drawExternalBox(GuiGraphicsExtractor ctx, ExternalBox box, int mouseX, int mouseY, float delta) {
+    private void drawExternalBox(DrawContext ctx, ExternalBox box, int mouseX, int mouseY, float delta) {
         HudElementDescriptor descriptor = box.descriptor;
         boolean active = descriptor.id().equals(selectedExternalId) || box.contains(mouseX, mouseY);
         int color = descriptor.runtimeFailed() ? 0xFFFF5555 : descriptor.enabled() ? 0xFF55FFFF : 0xFF888888;
         ctx.fill(box.x, box.y, box.x + box.w, box.y + box.h, active ? 0xD02B3545 : 0xB018202C);
         HudApi.getInstance().renderPreview(descriptor.id(), ctx, width, height, delta);
-        ctx.outline(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : color);
+        ctx.drawStrokedRectangle(box.x, box.y, box.w, box.h, active ? 0xFFFFFFFF : color);
         String label = descriptor.name() + (descriptor.runtimeFailed() ? " [error: reset]" : descriptor.enabled() ? "" : " [off]");
         ctx.enableScissor(box.x, box.y, box.x + box.w, box.y + box.h);
         try {
-            ctx.text(font, label, box.x + 3, box.y + 3, color, true);
+            ctx.drawTextWithShadow(textRenderer, label, box.x + 3, box.y + 3, color);
         } finally {
             ctx.disableScissor();
         }
         if (box.contains(mouseX, mouseY)) {
-            ctx.setComponentTooltipForNextFrame(font, List.of(Component.literal(label), Component.literal(descriptor.id().toString()),
-                    Component.literal("Left-drag to move; right-click to toggle")), mouseX, mouseY);
+            ctx.drawTooltip(textRenderer, List.of(Text.literal(label), Text.literal(descriptor.id().toString()),
+                    Text.literal("Left-drag to move; right-click to toggle")), mouseX, mouseY);
         }
     }
 
     private static int snappedExternal(double raw, int size, int viewport) {
-        int edge = Math.max(0, viewport - size);
-        int value = (int) Math.max(0, Math.min(edge, Math.round(raw)));
-        if (value <= SNAP) return 0;
-        if (edge - value <= SNAP) return edge;
-        int center = edge / 2;
-        if (Math.abs(value - center) <= SNAP) return center;
-        return value;
+        return HudLayout.snap(raw, size, viewport, SNAP);
     }
 
     private List<Box> boxes() {
         OIConfig c = OpenIntelClient.config();
         List<Box> boxes = new ArrayList<>();
-        int radarD = c.radarSize * 2 + 6;
-        boxes.add(new Box(Element.RADAR, "Radar", clampX(c.radarX, radarD), clampY(c.radarY, radarD), radarD, radarD, 0xFF55FFFF));
-        boxes.add(new Box(Element.RELAY, "Relay roster", resolveX(c.presenceX, 132), clampY(c.presenceY, 58), 132, 58, 0xFF55FF55));
-        boxes.add(new Box(Element.EVENTS, "Event feed", resolveX(c.eventFeedX, 180), clampY(c.eventFeedY, 58), 180, 58, 0xFFFFAA00));
-        int armorW = ArmorHud.boxW(c);
-        int armorH = ArmorHud.boxH(c);
-        boxes.add(new Box(Element.ARMOR, "Armor HUD", resolveX(c.armorHudX, armorW), clampY(c.armorHudY, armorH), armorW, armorH, 0xFF55AAFF));
-        boxes.add(new Box(Element.POTIONS, "Potion effects", resolveX(c.potionHudX, 140), clampY(c.potionHudY, 48), 140, 48, 0xFFAA55FF));
-        boxes.add(new Box(Element.TOP, "Top markers", pctX(c.edgeTopXPct, 74), c.edgeRowInset, 74, 18, 0xFFFF5555));
-        boxes.add(new Box(Element.BOTTOM, "Bottom markers", pctX(c.edgeBottomXPct, 88), height - c.edgeRowInset - 18, 88, 18, 0xFFFF5555));
-        boxes.add(new Box(Element.LEFT, "Left", c.edgeColumnInset, pctY(c.edgeLeftYPct, 18), 48, 18, 0xFFFF5555));
-        boxes.add(new Box(Element.RIGHT, "Right", width - c.edgeColumnInset - 52, pctY(c.edgeRightYPct, 18), 52, 18, 0xFFFF5555));
+        if (width <= 0 || height <= 0) return boxes;
+        addBuiltin(boxes, Element.RADAR, "Radar", 0xFF55FFFF);
+        addBuiltin(boxes, Element.RELAY, "Relay roster", 0xFF55FF55);
+        addBuiltin(boxes, Element.EVENTS, "Event feed", 0xFFFFAA00);
+        addBuiltin(boxes, Element.ARMOR, "Armor HUD", 0xFF55AAFF);
+        addBuiltin(boxes, Element.POTIONS, "Potion effects", 0xFFAA55FF);
+        float scale = HudLayouts.scale(c, width, height);
+        addEdge(boxes, Element.TOP, "Top markers", 74, c.edgeTopXPct, c.edgeRowInset, scale);
+        addEdge(boxes, Element.BOTTOM, "Bottom markers", 88, c.edgeBottomXPct, c.edgeRowInset, scale);
+        addEdge(boxes, Element.LEFT, "Left", 48, c.edgeLeftYPct, c.edgeColumnInset, scale);
+        addEdge(boxes, Element.RIGHT, "Right", 52, c.edgeRightYPct, c.edgeColumnInset, scale);
         return boxes;
+    }
+
+    private void addBuiltin(List<Box> boxes, Element element, String label, int color) {
+        var frame = HudLayouts.bounds(HudLayouts.Element.valueOf(element.name()), client,
+                OpenIntelClient.config(), width, height);
+        boxes.add(new Box(element, label, frame.x(), frame.y(), frame.width(), frame.height(), color));
+    }
+
+    private void addEdge(List<Box> boxes, Element element, String label, int nominalWidth, int pct, int inset, float scale) {
+        int w = Math.min(width, Math.max(1, (int) Math.ceil(nominalWidth * scale)));
+        int h = Math.min(height, Math.max(1, (int) Math.ceil(18 * scale)));
+        boolean horizontal = element == Element.TOP || element == Element.BOTTOM;
+        int x = horizontal ? Math.round(width * pct / 100f - w / 2f)
+                : element == Element.LEFT ? Math.round((inset - 5) * scale) : Math.round(width - (inset - 5) * scale - w);
+        int y = !horizontal ? Math.round(height * pct / 100f - h / 2f)
+                : element == Element.TOP ? Math.round((inset - 5) * scale) : Math.round(height - (inset - 5) * scale - h);
+        boxes.add(new Box(element, label, Math.clamp(x, 0, width - w), Math.clamp(y, 0, height - h), w, h, 0xFFFF5555));
     }
 
     private void move(Element element, double rawX, double rawY) {
         OIConfig c = OpenIntelClient.config();
+        if (element.ordinal() <= Element.POTIONS.ordinal()) {
+            HudLayouts.move(HudLayouts.Element.valueOf(element.name()), client, c, rawX, rawY, width, height);
+            return;
+        }
+        Box box = boxes().stream().filter(b -> b.element == element).findFirst().orElseThrow();
+        int x = HudLayout.snap(rawX, box.w, width, SNAP);
+        int y = HudLayout.snap(rawY, box.h, height, SNAP);
         switch (element) {
-            case RADAR -> {
-                int d = c.radarSize * 2 + 6;
-                c.radarX = snappedX(rawX, d);
-                c.radarY = snappedY(rawY, d);
-            }
-            case RELAY -> {
-                c.presenceX = snappedX(rawX, 132);
-                c.presenceY = snappedY(rawY, 58);
-            }
-            case EVENTS -> {
-                c.eventFeedX = snappedX(rawX, 180);
-                c.eventFeedY = snappedY(rawY, 58);
-            }
-            case ARMOR -> {
-                c.armorHudX = snappedX(rawX, ArmorHud.boxW(c));
-                c.armorHudY = snappedY(rawY, ArmorHud.boxH(c));
-            }
-            case POTIONS -> {
-                c.potionHudX = snappedX(rawX, 140);
-                c.potionHudY = snappedY(rawY, 48);
-            }
-            case TOP -> c.edgeTopXPct = percent(rawX + 37, width);
-            case BOTTOM -> c.edgeBottomXPct = percent(rawX + 44, width);
-            case LEFT -> c.edgeLeftYPct = percent(rawY + 9, height);
-            case RIGHT -> c.edgeRightYPct = percent(rawY + 9, height);
+            case TOP -> c.edgeTopXPct = percent(x + box.w / 2.0, width);
+            case BOTTOM -> c.edgeBottomXPct = percent(x + box.w / 2.0, width);
+            case LEFT -> c.edgeLeftYPct = percent(y + box.h / 2.0, height);
+            case RIGHT -> c.edgeRightYPct = percent(y + box.h / 2.0, height);
+            default -> { }
         }
     }
 
-    private int snappedX(double x, int w) {
-        int right = Math.max(4, width - w - 4);
-        int value = Math.max(4, Math.min(right, (int) Math.round(x)));
-        if (value <= SNAP) return 4;
-        if (right - value <= SNAP) return right;
-        if (Math.abs(value + w / 2 - width / 2) <= SNAP) return width / 2 - w / 2;
-        return value;
-    }
-
-    private int snappedY(double y, int h) {
-        int bottom = Math.max(34, height - h - 32);
-        int value = Math.max(34, Math.min(bottom, (int) Math.round(y)));
-        if (value - 34 <= SNAP) return 34;
-        if (bottom - value <= SNAP) return bottom;
-        if (Math.abs(value + h / 2 - height / 2) <= SNAP) return height / 2 - h / 2;
-        return value;
-    }
-
-    private int resolveX(int x, int w) {
-        return clampX(x >= 0 ? x : width + x - w, w);
-    }
-
-    private int clampX(int x, int w) {
-        return Math.max(4, Math.min(Math.max(4, width - w - 4), x));
-    }
-
-    private int clampY(int y, int h) {
-        return Math.max(34, Math.min(Math.max(34, height - h - 32), y));
-    }
-
-    private int pctX(int pct, int w) {
-        return clampX(width * pct / 100 - w / 2, w);
-    }
-
-    private int pctY(int pct, int h) {
-        return clampY(height * pct / 100 - h / 2, h);
-    }
-
     private static int percent(double value, int total) {
-        return Math.max(3, Math.min(97, (int) Math.round(value * 100 / total)));
+        return Math.clamp((int) Math.round(value * 100 / Math.max(1, total)), 0, 100);
     }
 
     private void reset() {
@@ -341,6 +322,7 @@ public class HudEditorScreen extends Screen {
         c.edgeRightYPct = 50;
         c.edgeRowInset = 5;
         c.edgeColumnInset = 5;
+        HudLayouts.reset(c, width, height);
         HudApi.getInstance().resetAll();
     }
 }

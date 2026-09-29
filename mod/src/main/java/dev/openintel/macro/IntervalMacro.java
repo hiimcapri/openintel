@@ -2,8 +2,8 @@ package dev.openintel.macro;
 
 import dev.openintel.OpenIntelClient;
 import dev.openintel.mixin.KeyBindingAccessor;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.KeyMapping;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
 
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
@@ -17,13 +17,13 @@ import java.util.function.Supplier;
  * releases it.
  */
 public class IntervalMacro extends InputMacro {
-    private final Supplier<KeyMapping> target;
+    private final Supplier<KeyBinding> target;
     private final IntSupplier intervalMs;
     private final String label;
     private long lastPress;
     private boolean pressedThisCycle;
 
-    public IntervalMacro(KeyMapping toggle, Supplier<KeyMapping> target,
+    public IntervalMacro(KeyBinding toggle, Supplier<KeyBinding> target,
                          IntSupplier intervalMs, String label) {
         super(toggle);
         this.target = target;
@@ -32,7 +32,7 @@ public class IntervalMacro extends InputMacro {
     }
 
     @Override
-    protected void tickActive(Minecraft mc) {
+    protected void tickActive(MinecraftClient mc) {
         if (pressedThisCycle) {
             pressedThisCycle = false;
             return;

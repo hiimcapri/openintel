@@ -2,12 +2,12 @@ package dev.openintel;
 
 import com.google.gson.JsonObject;
 import dev.openintel.render.EventFeed;
-import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TextColor;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,10 +60,10 @@ public final class SnitchRelay {
     private static final Map<String, Long> recent = new HashMap<>();
 
     /** Wired to ClientReceiveMessageEvents.GAME — game/system chat only. */
-    public static void onGameMessage(Component message, boolean overlay) {
+    public static void onGameMessage(Text message, boolean overlay) {
         if (overlay) return;
         var cfg = OpenIntelClient.config();
-        if (cfg == null || !cfg.snitchRelay) return;
+        if (cfg == null) return;
 
         String text = message.getString();
         if (text == null || text.isEmpty()) return;
@@ -85,7 +85,7 @@ public final class SnitchRelay {
         msg.addProperty("type", "snitch");
         msg.addProperty("message", text);
 
-        Minecraft client = Minecraft.getInstance();
+        MinecraftClient client = MinecraftClient.getInstance();
         if (client.player != null) {
             msg.addProperty("reporter", client.player.getGameProfile().name());
         }
@@ -169,8 +169,9 @@ public final class SnitchRelay {
                     snitchName, player, me, x, y, z, world, System.currentTimeMillis());
         }
 
-        OpenIntelClient.relay().send(msg);
-        EventFeed.add("📡 Snitch: " + compact(text), 0xFFFFAA00);
+        if (cfg.snitchRelay) OpenIntelClient.relay().send(msg);
+        else dev.openintel.api.internal.ApiBridge.relaySnitch(msg);
+        EventFeed.add("Snitch: " + compact(text), 0xFFFFAA00);
     }
 
     /**
@@ -179,7 +180,7 @@ public final class SnitchRelay {
      * color (focus/friend/ally/enemy/neutral). Everything else passes
      * through untouched; click/hover styling on every segment is kept.
      */
-    public static Component restyleForChat(Component message, boolean overlay) {
+    public static Text restyleForChat(Text message, boolean overlay) {
         if (overlay) return message;
         var cfg = OpenIntelClient.config();
         if (cfg == null) return message;
@@ -200,7 +201,7 @@ public final class SnitchRelay {
 
         // Rebuild as flat styled segments; visit() yields leaves in order so
         // the concatenation reproduces the line exactly, minus the recolor.
-        MutableComponent out = Component.empty();
+        MutableText out = Text.empty();
         int[] pos = {0};
         message.visit((style, content) -> {
             int start = pos[0], end = start + content.length();
@@ -208,12 +209,12 @@ public final class SnitchRelay {
             int a = Math.max(0, span[0] - start);
             int b = Math.min(content.length(), span[1] - start);
             if (a >= b) {
-                out.append(Component.literal(content).setStyle(style));
+                out.append(Text.literal(content).setStyle(style));
             } else {
-                if (a > 0) out.append(Component.literal(content.substring(0, a)).setStyle(style));
-                out.append(Component.literal(content.substring(a, b))
+                if (a > 0) out.append(Text.literal(content.substring(0, a)).setStyle(style));
+                out.append(Text.literal(content.substring(a, b))
                         .setStyle(style.withColor(TextColor.fromRgb(color))));
-                if (b < content.length()) out.append(Component.literal(content.substring(b)).setStyle(style));
+                if (b < content.length()) out.append(Text.literal(content.substring(b)).setStyle(style));
             }
             return Optional.empty();
         }, Style.EMPTY);
@@ -230,7 +231,7 @@ public final class SnitchRelay {
         return null;
     }
 
-    static String hoverWorld(Component message) {
+    static String hoverWorld(Text message) {
         Set<String> worlds = new HashSet<>();
         message.visit((style, content) -> {
             if (style.getHoverEvent() instanceof HoverEvent.ShowText hover) {
@@ -240,6 +241,10 @@ public final class SnitchRelay {
             return Optional.empty();
         }, Style.EMPTY);
         return worlds.isEmpty() ? null : worlds.size() == 1 ? worlds.iterator().next() : "openintel:unknown";
+    }
+
+    public static void reset() {
+        recent.clear();
     }
 
     private static boolean dedupe(String text) {

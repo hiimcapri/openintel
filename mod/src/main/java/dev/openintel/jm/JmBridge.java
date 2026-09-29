@@ -5,17 +5,17 @@ import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.ping.PingManager;
 import dev.openintel.tracker.Tracker;
 import journeymap.api.v2.client.IClientAPI;
-import journeymap.api.v2.common.Context;
+import journeymap.api.v2.client.display.Context;
 import journeymap.api.v2.client.display.MarkerOverlay;
 import journeymap.api.v2.client.model.MapImage;
 import journeymap.api.v2.client.model.TextProperties;
-import net.minecraft.client.Minecraft;
-import com.mojang.blaze3d.platform.NativeImage;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.Level;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.texture.NativeImage;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -61,39 +61,54 @@ final class JmBridge implements Runnable {
         Map<String, Desired> want = new HashMap<>();
 
         if (cfg != null && cfg.jmMarkers && tracker != null) {
-            String myName = Minecraft.getInstance().getUser().getName();
+            String myName = MinecraftClient.getInstance().getSession().getUsername();
             // JM's own entity radar already draws players in render distance —
             // a relay marker on top is just a duplicate label.
-            var world = Minecraft.getInstance().level;
+            var world = MinecraftClient.getInstance().world;
             java.util.Set<String> local = new java.util.HashSet<>();
             if (world != null) {
-                for (var e : world.players()) local.add(e.getGameProfile().name().toLowerCase());
+                for (var e : world.getPlayers()) local.add(e.getGameProfile().name().toLowerCase());
             }
             for (Tracker.RemotePlayer p : tracker.all()) {
                 if (p.name.equalsIgnoreCase(myName) || local.contains(p.name.toLowerCase())) continue;
                 Allegiance a = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
                 int rgb = a.argb & 0xFFFFFF;
+                // Position lives in the signature — a move means a new
+                // overlay, or the marker freezes at first sight forever.
                 // No "(via reporter)" — the reporter flaps as nearby clients
                 // hand off coverage, and the flicker reads worse than it helps.
+                BlockPos pos = BlockPos.ofFloored(p.x, p.y, p.z);
                 want.put("player:" + p.name,
-                        new Desired("player|" + rgb,
-                                BlockPos.containing(p.x, p.y, p.z), p.dimension, rgb,
-                                p.name, p.name));
+                        new Desired("player|" + rgb + "|" + pos + "|" + p.dimension,
+                                pos, p.dimension, rgb, p.name, p.name));
             }
             for (Tracker.SnitchHit h : tracker.snitchHits()) {
                 int rgb = OpenIntelClient.allegiances().of(h.player).argb & 0xFFFFFF;
                 String label = h.snitch + " | " + h.player;
+                // Position in the signature here too — a re-hit at new
+                // coords must move the marker, same as player tracking.
+                BlockPos pos = BlockPos.ofFloored(h.x, h.y, h.z);
                 want.put("snitch:" + h.player + "@" + h.snitch,
-                        new Desired("snitch|" + rgb + "|" + label,
-                                BlockPos.containing(h.x, h.y, h.z), h.dimension, rgb,
+                        new Desired("snitch|" + rgb + "|" + label + "|" + pos
+                                        + "|" + h.dimension,
+                                pos, h.dimension, rgb,
                                 "Snitch: " + h.snitch, label));
             }
             for (PingManager.Ping p : PingManager.active()) {
                 int rgb = p.color & 0xFFFFFF;
+                BlockPos pos = BlockPos.ofFloored(p.x, p.y, p.z);
                 want.put("ping:" + p.id,
-                        new Desired("ping|" + rgb + "|" + p.label,
-                                BlockPos.containing(p.x, p.y, p.z), p.dimension, rgb,
+                        new Desired("ping|" + rgb + "|" + p.label + "|" + pos
+                                        + "|" + p.dimension,
+                                pos, p.dimension, rgb,
                                 "Ping: " + p.label, p.sender));
+            }
+            for (var r : dev.openintel.relic.RelicMaps.all()) {
+                String label = r.name();
+                BlockPos pos = new BlockPos(r.x(), 64, r.z());
+                want.put("relic:" + r.x() + "," + r.z(),
+                        new Desired("relic|" + pos + "|" + r.dimension() + "|" + label,
+                                pos, r.dimension(), 0xFFAA00, label, label));
             }
         }
 
@@ -123,9 +138,9 @@ final class JmBridge implements Runnable {
     }
 
     private MarkerOverlay show(Desired d) {
-        ResourceKey<Level> dim;
+        RegistryKey<World> dim;
         try {
-            dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(d.dimension));
+            dim = RegistryKey.of(RegistryKeys.WORLD, Identifier.of(d.dimension));
         } catch (Exception e) {
             return null;   // "openintel:unknown" or a custom world id — skip
         }
@@ -138,7 +153,7 @@ final class JmBridge implements Runnable {
         overlay.setActiveMapTypes(Context.MapType.all());
         overlay.setTextProperties(new TextProperties()
                 .setColor(d.rgb)
-                .setFontShadow(true)
+                .setFontShadow(false)
                 .setBackgroundColor(0x101014)
                 .setBackgroundOpacity(0.6f)
                 .setScale(1.0f)
@@ -167,7 +182,7 @@ final class JmBridge implements Runnable {
                     int d = Math.abs(x - 7) + Math.abs(y - 7);
                     // Write every pixel — unwritten corners are garbage
                     // memory that shows through as speckled noise.
-                    icon.setPixel(x, y,
+                    icon.setColorArgb(x, y,
                             d <= 6 ? (d >= 5 ? 0xFF202020 : 0xFFFFFFFF) : 0);
                 }
             }

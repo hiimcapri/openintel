@@ -44,8 +44,8 @@ function consumeRateLimit(entries, key, now, cooldown) {
 }
 function runSelfTest() {
   const assert = require("assert");
-  assert.equal(normalizeMinecraftServer("PLAY.CIV.PLUS:25565"), "play.civ.plus");
-  assert.equal(normalizeMinecraftServer("minecraft://play.civ.plus/"), "play.civ.plus");
+  assert.equal(normalizeMinecraftServer("PLAY.EXAMPLE.NET:25565"), "play.example.net");
+  assert.equal(normalizeMinecraftServer("minecraft://play.example.net/"), "play.example.net");
   assert(validName("Player_123"));
   assert(!validName("ab"));
   assert(!validName("bad-name"));

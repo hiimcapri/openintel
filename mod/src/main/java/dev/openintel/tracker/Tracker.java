@@ -9,11 +9,11 @@ import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.ping.PingManager;
 import dev.openintel.render.EventFeed;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.network.chat.Component;
-import net.minecraft.ChatFormatting;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 import java.util.Locale;
 import java.util.Map;
@@ -65,7 +65,8 @@ public class Tracker {
     }
 
     private final Map<String, RemotePlayer> players = new ConcurrentHashMap<>();
-    private final Map<String, SnitchHit> snitchHits = new ConcurrentHashMap<>();
+    private final LocalRelayStore<String, SnitchHit> snitchHits = new LocalRelayStore<>(
+            (local, relay) -> local.t >= relay.t ? local : relay);
     private java.util.Set<String> knownUsers = java.util.Set.of();
     private long lastReport = 0;
     private long lastAlertSweep = 0;
@@ -80,25 +81,38 @@ public class Tracker {
 
     /** Drop all intel (called on disconnect). */
     public void clear() {
-        Minecraft client = Minecraft.getInstance();
-        if (!client.isSameThread()) {
-            client.execute(this::clear);
+        clear(true);
+    }
+
+    public void clearRelay() {
+        clear(false);
+    }
+
+    private void clear(boolean includeLocal) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            client.execute(() -> clear(includeLocal));
             return;
         }
+        clearData(includeLocal);
+        ApiBridge.trackerChanged(ApiEvent.Cause.CLEAR);
+    }
+
+    private void clearData(boolean includeLocal) {
         players.clear();
-        snitchHits.clear();
+        if (includeLocal) snitchHits.clear();
+        else snitchHits.clearRelay();
         knownUsers = java.util.Set.of();
         lastReport = 0;
         lastAlertSweep = 0;
-        ApiBridge.trackerChanged(ApiEvent.Cause.CLEAR);
     }
 
     // ------------------------------------------------------------------ //
     //  Outbound: what do *I* see right now?                               //
     // ------------------------------------------------------------------ //
 
-    public void tick(Minecraft client) {
-        if (!client.isSameThread()) {
+    public void tick(MinecraftClient client) {
+        if (!client.isOnThread()) {
             client.execute(() -> tick(client));
             return;
         }
@@ -110,20 +124,20 @@ public class Tracker {
             if (now - p.lastSeen <= cfg.staleAfterMs) return false;
             if (p.allegiance == Allegiance.FRIEND || p.allegiance == Allegiance.ALLY
                     || p.allegiance == Allegiance.FOCUS) {
-                EventFeed.add(p.name + " went dark", 0xFFAAAAAA);
+                EventFeed.addRelay(p.name + " went dark", 0xFFAAAAAA);
             }
             return true;
         });
         // Snitch-hit markers live on their own 2-minute clock.
-        boolean expiredSnitches = snitchHits.values().removeIf(h -> now - h.t > cfg.snitchMarkerSeconds * 1000L);
+        boolean expiredSnitches = snitchHits.removeIf(h -> now - h.t > cfg.snitchMarkerSeconds * 1000L);
         if (expiredPlayers || expiredSnitches) ApiBridge.trackerChanged(ApiEvent.Cause.EXPIRED);
 
-        if (client.player == null || client.level == null) return;
+        if (client.player == null || client.world == null) return;
         if (!OpenIntelClient.relay().isConnected()) return;
         if (now - lastReport < cfg.reportIntervalMs) return;
         lastReport = now;
 
-        String dim = client.level.dimension().identifier().toString();
+        String dim = client.world.getRegistryKey().getValue().toString();
         JsonArray reports = new JsonArray();
 
         // Myself.
@@ -133,7 +147,7 @@ public class Tracker {
         // Everyone the vanilla client is rendering near me — mod user or not.
         // Relay users report themselves, so re-reporting them here only
         // flaps the "via" reporter and doubles traffic for zero intel gain.
-        for (AbstractClientPlayer p : client.level.players()) {
+        for (AbstractClientPlayerEntity p : client.world.getPlayers()) {
             if (p == client.player) continue;
             String name = p.getGameProfile().name();
             if (OpenIntelClient.allegiances().isRelayUser(name)) continue;
@@ -160,11 +174,11 @@ public class Tracker {
     //  Inbound: merged network state from the relay                       //
     // ------------------------------------------------------------------ //
 
-    public void handleMessage(JsonObject msg, Minecraft client) {
-        if (!client.isSameThread()) {
+    public void handleMessage(JsonObject msg, MinecraftClient client) {
+        if (!client.isOnThread()) {
             JsonObject copy = msg.deepCopy();
-            var world = client.level;
-            client.execute(() -> { if (client.level == world) handleMessage(copy, client); });
+            var world = client.world;
+            client.execute(() -> { if (client.world == world) handleMessage(copy, client); });
             return;
         }
         String type = msg.has("type") ? msg.get("type").getAsString() : "";
@@ -172,16 +186,16 @@ public class Tracker {
             case "welcome", "allegiances" -> applyAllegiances(msg);
             case "state" -> applyState(msg, client);
             case "intel_reset" -> {
-                clear();
-                PingManager.clear();
-                EventFeed.clear();
+                clearRelay();
+                PingManager.clearRelay();
+                EventFeed.clearRelay();
             }
             case "ping" -> PingManager.receive(msg);
             case "snitch" -> applySnitch(msg);
             case "notice" -> {
                 String text = msg.has("msg") ? msg.get("msg").getAsString() : "";
                 OpenIntelClient.status(text);
-                if (text.startsWith("[Broadcast]")) EventFeed.add(text, 0xFFFFAA00);
+                if (text.startsWith("[Broadcast]")) EventFeed.addRelay(text, 0xFFFFAA00);
                 else ApiBridge.notification(text, 0xFFAAAAAA, "relay");
             }
             case "deny" -> {
@@ -207,12 +221,12 @@ public class Tracker {
         if (!knownUsers.isEmpty()) {
             for (String n : now) {
                 if (!knownUsers.contains(n)) {
-                    EventFeed.add(n + " joined the relay", 0xFF55FF55);
+                    EventFeed.addRelay(n + " joined the relay", 0xFF55FF55);
                 }
             }
             for (String n : knownUsers) {
                 if (!now.contains(n)) {
-                    EventFeed.add(n + " left the relay", 0xFFFFAA00);
+                    EventFeed.addRelay(n + " left the relay", 0xFFFFAA00);
                 }
             }
         }
@@ -240,17 +254,17 @@ public class Tracker {
 
         // Our own forward echoes back through the relay — we already fed it
         // locally in SnitchRelay, so skip the noise but keep the marker.
-        Minecraft mc = Minecraft.getInstance();
+        MinecraftClient mc = MinecraftClient.getInstance();
         boolean self = mc.player != null && mc.player.getGameProfile().name()
                 .equalsIgnoreCase(from);
         if (!self) {
             String action = msg.has("action") ? msg.get("action").getAsString() : "tripped a snitch";
-            String text = "📡 " + who + " " + action;
+            String text = "Snitch: " + who + " " + action;
             if (msg.has("x")) {
                 text += " at " + msg.get("x").getAsInt() + ", " + msg.get("z").getAsInt();
             }
             text += " (" + from + ")";
-            EventFeed.add(text, 0xFFFFAA00);
+            EventFeed.addRelay(text, 0xFFFFAA00);
         }
 
         if (msg.has("x") && msg.has("y") && msg.has("z")
@@ -274,7 +288,7 @@ public class Tracker {
             // One marker per tripper — a new hit updates their location, no
             // ghost trail through a snitch field. Unknown trippers key on the
             // hit itself so they don't collapse onto each other.
-            snitchHits.put(who.equals("?") ? snitch + "@" + msg.get("x").getAsInt()
+            snitchHits.putRelay(who.equals("?") ? snitch + "@" + msg.get("x").getAsInt()
                             + "," + msg.get("z").getAsInt() : who,
                     new SnitchHit(snitch, who, from,
                             msg.get("x").getAsDouble(), msg.get("y").getAsDouble(),
@@ -291,16 +305,15 @@ public class Tracker {
                              double x, double y, double z, String world, long t) {
         String dim = bindDim(world);
         if (dim == null || dim.equals("openintel:unknown")) return;
-        Minecraft client = Minecraft.getInstance();
-        if (!client.isSameThread()) {
-            var currentWorld = client.level;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            var currentWorld = client.world;
             client.execute(() -> {
-                if (client.level == currentWorld) addSnitchHit(snitch, player, reporter, x, y, z, world, t);
+                if (client.world == currentWorld) addSnitchHit(snitch, player, reporter, x, y, z, world, t);
             });
             return;
         }
-        if (OpenIntelClient.allegiances().of(player) == Allegiance.FRIEND) return;
-        snitchHits.put(player.equals("?") ? snitch + "@" + (int) x + "," + (int) z : player,
+        snitchHits.putLocal(player.equals("?") ? snitch + "@" + (int) x + "," + (int) z : player,
                 new SnitchHit(snitch, player, reporter, x, y, z, dim, t));
         ApiBridge.trackerChanged(ApiEvent.Cause.UPDATE);
     }
@@ -355,7 +368,7 @@ public class Tracker {
         return out;
     }
 
-    private void applyState(JsonObject msg, Minecraft client) {
+    private void applyState(JsonObject msg, MinecraftClient client) {
         if (client.player == null) return;
         String self = client.player.getGameProfile().name().toLowerCase(Locale.ROOT);
         long now = System.currentTimeMillis();
@@ -395,20 +408,20 @@ public class Tracker {
         }
     }
 
-    private void localEnemyAlert(Minecraft client, RemotePlayer rp, long now) {
+    private void localEnemyAlert(MinecraftClient client, RemotePlayer rp, long now) {
         if (!OpenIntelClient.config().localEnemyAlert) return;
         if (now - lastAlertSweep < 3000) return; // don't stack sounds during a raid
         lastAlertSweep = now;
 
         client.execute(() -> {
             if (client.player == null) return;
-            client.player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0f, 0.6f);
-            client.player.sendSystemMessage(Component.literal("[OpenIntel] ")
-                    .withStyle(ChatFormatting.GOLD)
-                    .append(Component.literal("⚠ Enemy " + rp.name + " spotted at "
+            client.player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 1.0f, 0.6f);
+            client.player.sendMessage(Text.literal("[OpenIntel] ")
+                    .formatted(Formatting.GOLD)
+                    .append(Text.literal("⚠ Enemy " + rp.name + " spotted at "
                                     + (int) rp.x + ", " + (int) rp.z
                                     + " (by " + rp.reporter + ")")
-                            .withStyle(ChatFormatting.RED)));
+                            .formatted(Formatting.RED)), false);
         });
     }
 }

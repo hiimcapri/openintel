@@ -3,17 +3,17 @@ package dev.openintel.gui;
 import dev.openintel.OpenIntelClient;
 import dev.openintel.radar.RadarHud;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.KeyMapping;
-import com.mojang.blaze3d.platform.InputConstants;
-import net.minecraft.network.chat.Component;
-import net.minecraft.ChatFormatting;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.input.KeyInput;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -74,8 +74,8 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     private final Screen parent;
     private final List<ClickGui.Category> categories;
     private final String version;
-    private final EditBox searchField;
-    private Button doneButton;
+    private final TextFieldWidget searchField;
+    private ButtonWidget doneButton;
 
     private int selected;
     private List<ClickGui.Item> rows = List.of();
@@ -83,14 +83,14 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     private double scrollOffset;
 
     /** Non-null while a keybind row is capturing the next input. */
-    private KeyMapping listeningFor;
+    private KeyBinding listeningFor;
 
     public ClickGuiScreen(Screen parent) {
         this(parent, null);
     }
 
     public ClickGuiScreen(Screen parent, String categoryId) {
-        super(Component.literal("OpenIntel"));
+        super(Text.literal("OpenIntel"));
         this.parent = parent;
         this.categories = ClickGui.build(this, this);
 
@@ -109,11 +109,11 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
                 .map(m -> m.getMetadata().getVersion().getFriendlyString())
                 .orElse("dev");
 
-        searchField = new EditBox(
-                net.minecraft.client.Minecraft.getInstance().font,
-                0, 0, 134, 16, Component.literal("Search"));
-        searchField.setHint(Component.literal("Search…"));
-        searchField.setResponder(q -> {
+        searchField = new TextFieldWidget(
+                net.minecraft.client.MinecraftClient.getInstance().textRenderer,
+                0, 0, 134, 16, Text.literal("Search"));
+        searchField.setPlaceholder(Text.literal("Search…"));
+        searchField.setChangedListener(q -> {
             viewDirty = true;
             scrollOffset = 0;
             blurOptionFocus();
@@ -128,11 +128,11 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
         searchField.setY(MARGIN + 40);
         searchField.setWidth(SIDEBAR_W - 16);
         searchField.setHeight(16);
-        addRenderableWidget(searchField);
+        addDrawableChild(searchField);
 
-        doneButton = addRenderableWidget(Button.builder(Component.literal("Done"),
-                        b -> onClose())
-                .bounds(width - 116, height - 30, 100, 20).build());
+        doneButton = addDrawableChild(ButtonWidget.builder(Text.literal("Done"),
+                        b -> close())
+                .dimensions(width - 116, height - 30, 100, 20).build());
 
         // Every option widget is a real child — vanilla input gives us
         // drags, clicks and text focus. They start hidden; render() turns
@@ -141,8 +141,8 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
         for (ClickGui.Category cat : categories) {
             for (ClickGui.Item item : cat.items()) {
                 if (item instanceof ClickGui.Option opt) {
-                    addRenderableWidget(opt.widget());
-                    if (opt.aux() != null) addRenderableWidget(opt.aux());
+                    addDrawableChild(opt.widget());
+                    if (opt.aux() != null) addDrawableChild(opt.aux());
                 }
             }
         }
@@ -173,7 +173,7 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     // ----------------------------------------------------------- view -----
 
     private boolean searching() {
-        return !searchField.getValue().isBlank();
+        return !searchField.getText().isBlank();
     }
 
     /** Rebuilds the row list for the selected category — or, while the
@@ -183,7 +183,7 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
         viewDirty = false;
         List<ClickGui.Item> out = new ArrayList<>();
         if (searching()) {
-            String q = searchField.getValue().trim().toLowerCase(Locale.ROOT);
+            String q = searchField.getText().trim().toLowerCase(Locale.ROOT);
             for (ClickGui.Category cat : categories) {
                 boolean header = false;
                 for (ClickGui.Item item : cat.items()) {
@@ -225,7 +225,7 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
         if (idx == selected && !searching()) return;
         selected = idx;
         // A pick while searching means "jump to that category".
-        if (searching()) searchField.setValue("");
+        if (searching()) searchField.setText("");
         scrollOffset = 0;
         viewDirty = true;
         blurOptionFocus();
@@ -242,14 +242,14 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     // --------------------------------------------------------- render -----
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         // In-world screens must not call renderBackground — its blur pass can
         // only run once per frame. renderInGameBackground darkens without it.
-        extractTransparentBackground(ctx);
+        renderInGameBackground(ctx);
 
         // Live dial preview behind the translucent UI.
         if ("radar".equals(categories.get(selected).id())
-                && minecraft.level != null && minecraft.player != null) {
+                && client.world != null && client.player != null) {
             RadarHud.render(ctx, delta);
         }
 
@@ -259,34 +259,34 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
         renderSidebar(ctx, mouseX, mouseY, delta);
         ClickGui.Option hovered = renderPane(ctx, mouseX, mouseY, delta);
 
-        if (doneButton != null) doneButton.extractRenderState(ctx, mouseX, mouseY, delta);
+        if (doneButton != null) doneButton.render(ctx, mouseX, mouseY, delta);
 
         // Tooltips ride above everything else.
         if (hovered != null && hovered.tooltip() != null) {
-            ctx.setComponentTooltipForNextFrame(font,
-                    List.of(Component.literal(hovered.tooltip())), mouseX, mouseY);
+            ctx.drawTooltip(textRenderer,
+                    List.of(Text.literal(hovered.tooltip())), mouseX, mouseY);
         }
     }
 
-    private void renderSidebar(GuiGraphicsExtractor ctx, int mouseX, int mouseY,
+    private void renderSidebar(DrawContext ctx, int mouseX, int mouseY,
                                float delta) {
         int sbL = MARGIN, sbT = MARGIN;
         int sbR = sbL + SIDEBAR_W, sbB = height - MARGIN;
 
         ctx.fill(sbL, sbT, sbR, sbB, SIDEBAR_BG);
-        ctx.outline(sbL, sbT, SIDEBAR_W, sbB - sbT, PANEL_BORDER);
+        ctx.drawStrokedRectangle(sbL, sbT, SIDEBAR_W, sbB - sbT, PANEL_BORDER);
 
         // Mod title — scaled up for weight — over a dim version line.
-        var pose = ctx.pose();
+        var pose = ctx.getMatrices();
         pose.pushMatrix();
         pose.translate(sbL + 10, sbT + 8);
         pose.scale(1.4f, 1.4f);
-        ctx.text(font, "OpenIntel", 0, 0, ACCENT, true);
+        ctx.drawTextWithShadow(textRenderer, "OpenIntel", 0, 0, ACCENT);
         pose.popMatrix();
-        ctx.text(font, "v" + version,
-                sbL + 10, sbT + 26, TEXT_DIM, true);
+        ctx.drawTextWithShadow(textRenderer, "v" + version,
+                sbL + 10, sbT + 26, TEXT_DIM);
 
-        searchField.extractRenderState(ctx, mouseX, mouseY, delta);
+        searchField.render(ctx, mouseX, mouseY, delta);
 
         int listTop = sbT + 64;
         for (int i = 0; i < categories.size(); i++) {
@@ -303,15 +303,15 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
                 ctx.fill(sbL + 4, rowTop, sbR - 4, rowTop + CAT_ROW_H,
                         CAT_HOVER);
             }
-            ctx.text(font, categories.get(i).title(),
-                    sbL + 12, rowTop + (CAT_ROW_H - font.lineHeight) / 2,
+            ctx.drawTextWithShadow(textRenderer, categories.get(i).title(),
+                    sbL + 12, rowTop + (CAT_ROW_H - textRenderer.fontHeight) / 2,
                     sel ? TEXT_BRIGHT : TEXT_MAIN);
         }
     }
 
     /** Draws the options pane and returns the Option row under the mouse
      *  (for tooltip duty), or null. */
-    private ClickGui.Option renderPane(GuiGraphicsExtractor ctx, int mouseX, int mouseY,
+    private ClickGui.Option renderPane(DrawContext ctx, int mouseX, int mouseY,
                                        float delta) {
         int pL = paneLeft(), pT = paneTop();
         int pR = paneRight(), pB = paneBottom();
@@ -334,15 +334,15 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
 
             if (item instanceof ClickGui.Group group) {
                 if (intersects) {
-                    ctx.text(font, group.title(),
-                            cL + 4, rowTop + 6, ACCENT, true);
+                    ctx.drawTextWithShadow(textRenderer, group.title(),
+                            cL + 4, rowTop + 6, ACCENT);
                     ctx.fill(cL + 4, rowTop + GROUP_H - 4, cR - 4,
                             rowTop + GROUP_H - 3, DIVIDER);
                 }
             } else if (item instanceof ClickGui.Option opt) {
                 int wy = rowTop + (OPTION_H - WIDGET_H) / 2;
-                AbstractWidget widget = opt.widget();
-                AbstractWidget aux = opt.aux();
+                ClickableWidget widget = opt.widget();
+                ClickableWidget aux = opt.aux();
 
                 // Widgets sit in a fixed column near the label rather than
                 // hugging the pane's right edge — clamped so narrow windows
@@ -367,18 +367,18 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
                         ctx.fill(cL, rowTop, cR, rowTop + rowH, ROW_HOVER);
                         hovered = opt;
                     }
-                    ctx.text(font, opt.label(), cL + 4,
-                            rowTop + (OPTION_H - font.lineHeight) / 2,
-                            TEXT_MAIN, true);
-                    widget.extractRenderState(ctx, mouseX, mouseY, delta);
-                    if (aux != null) aux.extractRenderState(ctx, mouseX, mouseY, delta);
+                    ctx.drawTextWithShadow(textRenderer, opt.label(), cL + 4,
+                            rowTop + (OPTION_H - textRenderer.fontHeight) / 2,
+                            TEXT_MAIN);
+                    widget.render(ctx, mouseX, mouseY, delta);
+                    if (aux != null) aux.render(ctx, mouseX, mouseY, delta);
                 }
             }
             y += rowH;
         }
         ctx.disableScissor();
 
-        ctx.outline(pL, pT, pR - pL, pB - pT, PANEL_BORDER);
+        ctx.drawStrokedRectangle(pL, pT, pR - pL, pB - pT, PANEL_BORDER);
 
         // Slim accent thumb on the pane's inner right edge — only when the
         // content overflows the viewport.
@@ -392,7 +392,7 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
         }
 
         if (rows.isEmpty() && searching()) {
-            ctx.centeredText(font, "No matching options",
+            ctx.drawCenteredTextWithShadow(textRenderer, "No matching options",
                     (pL + pR) / 2, pT + 24, TEXT_DIM);
         }
         return hovered;
@@ -401,10 +401,10 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     // ---------------------------------------------------------- input -----
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
+    public boolean mouseClicked(Click click, boolean doubled) {
         if (listeningFor != null) {
-            listeningFor.setKey(
-                    InputConstants.Type.MOUSE.getOrCreate(click.button()));
+            listeningFor.setBoundKey(
+                    InputUtil.Type.MOUSE.createFromCode(click.button()));
             finishRebind();
             return true;
         }
@@ -445,10 +445,10 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent input) {
+    public boolean keyPressed(KeyInput input) {
         if (listeningFor != null) {
-            if (input.key() != GLFW.GLFW_KEY_ESCAPE) {
-                listeningFor.setKey(InputConstants.getKey(input));
+            if (input.getKeycode() != GLFW.GLFW_KEY_ESCAPE) {
+                listeningFor.setBoundKey(InputUtil.fromKeyCode(input));
             }
             finishRebind();
             return true;
@@ -459,39 +459,39 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     // --------------------------------------------------------- rebind -----
 
     @Override
-    public void begin(KeyMapping kb) {
+    public void begin(KeyBinding kb) {
         listeningFor = kb;
         ClickGui.Option opt = findOption(kb);
         if (opt != null) {
-            opt.widget().setMessage(Component.literal("> ")
-                    .append(kb.getTranslatedKeyMessage())
+            opt.widget().setMessage(Text.literal("> ")
+                    .append(kb.getBoundKeyLocalizedText())
                     .append(" <")
-                    .withStyle(ChatFormatting.YELLOW));
+                    .formatted(Formatting.YELLOW));
         }
     }
 
     @Override
-    public void reset(KeyMapping kb) {
-        kb.setKey(kb.getDefaultKey());
+    public void reset(KeyBinding kb) {
+        kb.setBoundKey(kb.getDefaultKey());
         commitRebind(kb);
     }
 
     private void finishRebind() {
-        KeyMapping kb = listeningFor;
+        KeyBinding kb = listeningFor;
         listeningFor = null;
         if (kb != null) commitRebind(kb);
     }
 
-    private void commitRebind(KeyMapping kb) {
-        KeyMapping.resetMapping();
-        if (minecraft != null) minecraft.options.save();
+    private void commitRebind(KeyBinding kb) {
+        KeyBinding.updateKeysByCode();
+        if (client != null) client.options.write();
         ClickGui.Option opt = findOption(kb);
         if (opt != null) {
-            opt.widget().setMessage(kb.getTranslatedKeyMessage());
+            opt.widget().setMessage(kb.getBoundKeyLocalizedText());
         }
     }
 
-    private ClickGui.Option findOption(KeyMapping kb) {
+    private ClickGui.Option findOption(KeyBinding kb) {
         for (ClickGui.Category cat : categories) {
             for (ClickGui.Item item : cat.items()) {
                 if (item instanceof ClickGui.Option opt && opt.keybind() == kb) {
@@ -505,8 +505,8 @@ public class ClickGuiScreen extends Screen implements ClickGui.RebindHandler {
     // ------------------------------------------------------ lifecycle -----
 
     @Override
-    public void onClose() {
-        minecraft.setScreenAndShow(parent);
+    public void close() {
+        client.setScreen(parent);
     }
 
     @Override

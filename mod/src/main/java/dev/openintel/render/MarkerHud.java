@@ -6,11 +6,11 @@ import dev.openintel.config.OIConfig;
 import dev.openintel.mixin.DrawContextAccessor;
 import dev.openintel.ping.PingManager;
 import dev.openintel.tracker.Tracker.RemotePlayer;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.navigation.ScreenRectangle;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.ScreenRect;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix3x2fc;
 import org.joml.Quaternionf;
@@ -31,7 +31,7 @@ import java.util.List;
  *
  * All geometry is emitted as a single ColoredQuadsElement — triangle fans
  * with transparent corner vertices, so every shape has a real gradient
- * edge instead of a bitmap glyph. Component labels draw after the element so
+ * edge instead of a bitmap glyph. Text labels draw after the element so
  * they sit on top.
  *
  * Two multipliers ride on every alpha: `relayOpacity` (user slider) and a
@@ -43,37 +43,50 @@ public final class MarkerHud {
 
     /** A shared thing to mark: relay player, ping, or snitch hit.
      *  kind: 0 = down-chevron (player), 1 = diamond (focus/ping), 2 = up-triangle (snitch). */
-    private record Target(String label, int color, int kind,
+    private record Target(String key, String label, int color, int kind,
                           double x, double y, double z) { }
     /** A soft vector shape in screen space. */
     private record Shape(float x, float y, int color, int kind) { }
     /** Edge arrowhead: dir 0=left, 1=right, 2=up, 3=down. */
     private record Arrow(float x, float y, int color, int dir) { }
     /** scale: user marker-scale for over-head labels; edge labels stay 1f. */
-    private record Label(float x, float y, String text, int color, float scale) { }
+    private record Label(float x, float y, String text, int color, float scale, String key) {
+        private Label(float x, float y, String text, int color, float scale) {
+            this(x, y, text, color, scale, text);
+        }
+    }
     private record Glyph(float x, float y, String text, int color) { }
     private record EdgeEntry(String label, int color, double dist) { }
 
-    public static void render(GuiGraphicsExtractor ctx) {
+    public static void render(DrawContext ctx) {
         OIConfig cfg = OpenIntelClient.config();
         if (!cfg.relayRendering) return;
 
-        Minecraft client = Minecraft.getInstance();
-        if (client.player == null || client.level == null || client.gui.hud.isHidden()) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null || client.world == null || client.options.hudHidden) return;
 
-        String myDim = client.level.dimension().identifier().toString();
+        String myDim = client.world.getRegistryKey().getValue().toString();
         long now = System.currentTimeMillis();
         float opacity = cfg.relayOpacity / 255f;
-        float scale = cfg.markerScale;
-        int lineH = client.font.lineHeight + 2;
-        float tickDelta = client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        int w = ctx.getScaledWindowWidth(), h = ctx.getScaledWindowHeight();
+        if (w <= 0 || h <= 0) return;
+        if (w != lastViewportWidth || h != lastViewportHeight) {
+            renderY.clear();
+            lastViewportWidth = w;
+            lastViewportHeight = h;
+        }
+        float hudScale = HudLayouts.scale(cfg, w, h);
+        float edgeScale = Math.min(hudScale, Math.min(w / 10f, h / 10f));
+        float scale = cfg.markerScale * hudScale;
+        int lineH = client.textRenderer.fontHeight + 2;
+        float tickDelta = client.getRenderTickCounter().getTickProgress(false);
 
         // ---- gather every target -------------------------------------------
         // Live handoff: when the subject is actually loaded, the marker anchors
         // to the entity's lerped position (frame-rate tracking) and the local
         // nameplate does the talking — relay position is only a fallback.
-        var localPlayers = new java.util.HashMap<String, net.minecraft.client.player.AbstractClientPlayer>();
-        for (var e : client.level.players()) localPlayers.put(e.getGameProfile().name(), e);
+        var localPlayers = new java.util.HashMap<String, net.minecraft.client.network.AbstractClientPlayerEntity>();
+        for (var e : client.world.getPlayers()) localPlayers.put(e.getGameProfile().name(), e);
 
         List<Target> targets = new ArrayList<>();
         for (RemotePlayer p : OpenIntelClient.tracker().all()) {
@@ -84,7 +97,7 @@ public final class MarkerHud {
             double tx, ty, tz;
             float alpha;
             if (local != null) {
-                Vec3 lp = local.getPosition(tickDelta);
+                Vec3d lp = local.getLerpedPos(tickDelta);
                 tx = lp.x; ty = lp.y + 2.4; tz = lp.z;
                 alpha = opacity;                         // live: never stale
             } else {
@@ -94,13 +107,13 @@ public final class MarkerHud {
             if (alpha < 0.03f) continue;
             Allegiance allegiance = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
             int color = scaleAlpha(allegiance.argb, alpha);
-            targets.add(new Target(p.name, color, allegiance == Allegiance.FOCUS ? 1 : 0,
+            targets.add(new Target("player|" + myDim + "|" + p.name, p.name, color, allegiance == Allegiance.FOCUS ? 1 : 0,
                     tx, ty, tz));
         }
         for (PingManager.Ping ping : PingManager.active()) {
             if (ping.dimension == null || !ping.dimension.equals(myDim)) continue;
             float life = Math.min(1f, (ping.expiresAt - now) / 4000f);
-            targets.add(new Target("⚑ " + ping.label, scaleAlpha(ping.color, opacity * life),
+            targets.add(new Target("ping|" + myDim + "|" + ping.id, "⚑ " + ping.label, scaleAlpha(ping.color, opacity * life),
                     1, ping.x, ping.y, ping.z));
         }
         // Snitch hits: "snitch | tripper | 42s", fading to nothing over
@@ -116,20 +129,30 @@ public final class MarkerHud {
             int argb = (cfg.snitchMarkerColorAuto || cfg.snitchMarkerColor == -1)
                     ? a.argb : cfg.snitchMarkerColor;
             targets.add(new Target(
+                    "snitch|" + myDim + "|" + hit.x + "|" + hit.y + "|" + hit.z + "|" + hit.player,
                     hit.snitch + " | " + hit.player + " | " + ago(age),
                     scaleAlpha(argb, opacity * fade), 2,
                     hit.x, hit.y + 2.4, hit.z));
         }
-        if (targets.isEmpty()) return;
+        // Relic points: X/Z only, so the diamond rides at eye level —
+        // close enough to read, far ones live on the edge as direction.
+        for (var r : dev.openintel.relic.RelicMaps.all()) {
+            if (!r.dimension().equals(myDim)) continue;
+            targets.add(new Target("relic|" + myDim + "|" + r.x() + "|" + r.z(), r.name(),
+                    scaleAlpha(0xFFFFAA00, opacity), 1,
+                    r.x() + 0.5, client.player.getY() + 1.5, r.z() + 0.5));
+        }
+        if (targets.isEmpty()) {
+            renderY.clear();
+            return;
+        }
 
         // ---- project + classify --------------------------------------------
-        int w = ctx.guiWidth();
-        int h = ctx.guiHeight();
         float cx = w / 2f, cy = h / 2f;
 
-        var camera = client.gameRenderer.mainCamera();
-        Vec3 camPos = camera.position();
-        Quaternionf worldToCam = new Quaternionf(camera.rotation()).conjugate();
+        var camera = client.gameRenderer.getCamera();
+        Vec3d camPos = camera.getCameraPos();
+        Quaternionf worldToCam = new Quaternionf(camera.getRotation()).conjugate();
 
         List<Shape> shapes = new ArrayList<>();
         List<Arrow> arrows = new ArrayList<>();
@@ -154,7 +177,7 @@ public final class MarkerHud {
 
             // Full vanilla projection: real aspect + dynamic FOV (sprint,
             // speed effects, use-item zoom) → NDC in [-1,1].
-            Vec3 ndc = client.gameRenderer.projectPointToScreen(new Vec3(t.x, t.y, t.z));
+            Vec3d ndc = client.gameRenderer.project(new Vec3d(t.x, t.y, t.z));
             float nx = (float) ndc.x, ny = (float) ndc.y;
             // Behind the camera the perspective divide mirrors NDC — un-mirror
             // so the edge still reads as "the direction you'd turn".
@@ -170,10 +193,10 @@ public final class MarkerHud {
                 if (t.kind == 2) {
                     // Snitch: ⚠ glyph floats above the name line.
                     glyphs.add(new Glyph(sx, sy - 4f * scale, "⚠", t.color));
-                    projectedLabels.add(new Label(sx, sy + 5f * scale, text, t.color, scale));
+                    projectedLabels.add(new Label(sx, sy + 5f * scale, text, t.color, scale, t.key));
                 } else {
                     shapes.add(new Shape(sx, sy, t.color, t.kind));
-                    projectedLabels.add(new Label(sx, sy - (lineH + 9f) * scale, text, t.color, scale));
+                    projectedLabels.add(new Label(sx, sy - (lineH + 9f) * scale, text, t.color, scale, t.key));
                 }
                 continue;
             }
@@ -209,17 +232,19 @@ public final class MarkerHud {
         float leftAnchorY = h * cfg.edgeLeftYPct / 100f;
         float rightAnchorY = h * cfg.edgeRightYPct / 100f;
 
-        queueVerticalEdge(client, left, false, cfg.edgeColumnInset, leftAnchorY, arrows, labels);
-        queueVerticalEdge(client, right, true, w - cfg.edgeColumnInset, rightAnchorY, arrows, labels);
+        float columnInset = Math.clamp(cfg.edgeColumnInset * edgeScale, 5 * edgeScale, w / 2f);
+        float rowInset = Math.clamp(cfg.edgeRowInset * edgeScale, 5 * edgeScale, h / 2f);
+        queueVerticalEdge(client, left, false, columnInset, leftAnchorY, arrows, labels, edgeScale, w, h);
+        queueVerticalEdge(client, right, true, w - columnInset, rightAnchorY, arrows, labels, edgeScale, w, h);
         // Top/bottom: one direction chevron at the screen edge, entries
         // stacked vertically inward — like the left/right columns.
-        queueColumnEdge(client, top, 2, topAnchorX, cfg.edgeRowInset, true, arrows, labels);
-        queueColumnEdge(client, bottom, 3, bottomAnchorX, h - cfg.edgeRowInset, false, arrows, labels);
+        queueColumnEdge(client, top, 2, topAnchorX, rowInset, true, arrows, labels, edgeScale, w, h);
+        queueColumnEdge(client, bottom, 3, bottomAnchorX, h - rowInset, false, arrows, labels, edgeScale, w, h);
 
         // ---- one geometry pass, then text on top ----------------------------
         if (!shapes.isEmpty() || !arrows.isEmpty()) {
-            Matrix3x2f pose = new Matrix3x2f(ctx.pose());
-            ((DrawContextAccessor) ctx).openintel$state().addGuiElement(new ColoredQuadsElement(
+            Matrix3x2f pose = new Matrix3x2f(ctx.getMatrices());
+            ((DrawContextAccessor) ctx).openintel$state().addSimpleElement(new ColoredQuadsElement(
                     pose, vc -> {
                         for (Shape s : shapes) {
                             // Scale around each marker's own anchor — edges
@@ -229,32 +254,40 @@ public final class MarkerHud {
                                     .translate(-s.x, -s.y);
                             emitShape(vc, sp, s);
                         }
-                        for (Arrow a : arrows) emitArrow(vc, pose, a);
+                        for (Arrow a : arrows) {
+                            Matrix3x2f ap = new Matrix3x2f(pose).translate(a.x, a.y).scale(edgeScale, edgeScale).translate(-a.x, -a.y);
+                            emitArrow(vc, ap, a);
+                        }
                     },
-                    new ScreenRectangle(0, 0, w, h).transformMaxBounds(pose)));
+                    new ScreenRect(0, 0, w, h).transformEachVertex(pose)));
         }
 
-        var tr = client.font;
+        var tr = client.textRenderer;
+        boolean cf = cleanFont();
         for (Glyph g : glyphs) {
-            var pose = ctx.pose();
+            var pose = ctx.getMatrices();
             pose.pushMatrix();
             pose.translate(g.x, g.y);
             pose.scale(1.05f * scale, 1.05f * scale);
-            ctx.centeredText(tr, g.text, 0, -tr.lineHeight / 2, g.color);
+            if (cf) CleanFont.drawCentered(ctx, g.text, 0, -tr.fontHeight / 2, g.color);
+            else ctx.drawCenteredTextWithShadow(tr, g.text, 0, -tr.fontHeight / 2, g.color);
             pose.popMatrix();
         }
         for (Label l : labels) {
-            int tw = tr.width(l.text);
-            if (l.scale == 1f) {
-                ctx.text(tr, l.text, Math.round(l.x - tw / 2f), Math.round(l.y), l.color, true);
-            } else {
-                var pose = ctx.pose();
-                pose.pushMatrix();
-                pose.translate(l.x, l.y);
-                pose.scale(l.scale, l.scale);
-                ctx.text(tr, l.text, Math.round(-tw / 2f), 0, l.color, true);
-                pose.popMatrix();
-            }
+            if (l.text.isEmpty()) continue;
+            float tw = cf ? CleanFont.width(l.text) : tr.getWidth(l.text);
+            float fitted = Math.min(l.scale, Math.min(w / Math.max(1f, tw), h / (float) tr.fontHeight));
+            if (!(fitted > 0)) continue;
+            float half = tw * fitted / 2;
+            float x = half + Math.clamp(l.x - half, 0, Math.max(0, w - tw * fitted));
+            float y = Math.clamp(l.y, 0, Math.max(0, h - tr.fontHeight * fitted));
+            var pose = ctx.getMatrices();
+            pose.pushMatrix();
+            pose.translate(x, y);
+            pose.scale(fitted, fitted);
+            if (cf) CleanFont.draw(ctx, l.text, -tw / 2f, 0, l.color, true);
+            else ctx.drawText(tr, l.text, Math.round(-tw / 2f), 0, l.color, true);
+            pose.popMatrix();
         }
     }
 
@@ -262,50 +295,66 @@ public final class MarkerHud {
 
     /** Rendered y per label text — glides toward the resolved target. */
     private static final java.util.Map<String, Float> renderY = new java.util.HashMap<>();
+    private static int lastViewportWidth;
+    private static int lastViewportHeight;
 
-    private static List<Label> stackProjectedLabels(Minecraft client,
+    private static List<Label> stackProjectedLabels(MinecraftClient client,
                                                     List<Label> source, float scale) {
-        source.sort(Comparator.comparing((Label l) -> l.text)
+        source.sort(Comparator.comparing((Label l) -> l.key)
                 .thenComparingDouble(l -> l.x));
         List<Label> resolved = new ArrayList<>();
         List<Label> placed = new ArrayList<>();
-        float lineH = (client.font.lineHeight + 2) * scale;
+        float lineH = (client.textRenderer.fontHeight + 2) * scale;
         java.util.Set<String> seen = new java.util.HashSet<>();
 
         for (Label label : source) {
-            seen.add(label.text);
+            seen.add(label.key);
             // Continuous upward stacking: sit just above whatever overlaps,
             // never below the anchor. The target tracks the blocker's own
             // position, so it slides smoothly instead of popping between
             // discrete levels.
             float y = label.y;
             for (int iter = 0; iter <= resolved.size(); iter++) {
-                Label b = blocker(client, new Label(label.x, y, label.text, label.color, scale),
+                Label b = blocker(client, new Label(label.x, y, label.text, label.color, scale, label.key),
                         resolved, lineH, scale);
                 if (b == null) break;
                 y = b.y - lineH - 0.5f;
             }
             if (y < 2) y = label.y;
-            resolved.add(new Label(label.x, y, label.text, label.color, scale));
+            resolved.add(new Label(label.x, y, label.text, label.color, scale, label.key));
 
-            Float prev = renderY.get(label.text);
-            float ry = prev != null ? prev + (y - prev) * 0.4f : y;
-            renderY.put(label.text, ry);
-            placed.add(new Label(label.x, ry, label.text, label.color, scale));
+            float ry = smoothY(label, y);
+            placed.add(new Label(label.x, ry, label.text, label.color, scale, label.key));
         }
         renderY.keySet().retainAll(seen);
         return placed;
     }
 
+    /** Config-aware text renderer check for clean vs vanilla fonts. */
+    private static boolean cleanFont() {
+        return CleanFont.active();
+    }
+
+    private static float smoothY(Label label, float y) {
+        Float prev = renderY.get(label.key);
+        float ry = prev != null ? prev + (y - prev) * 0.4f : y;
+        renderY.put(label.key, ry);
+        return ry;
+    }
+
+    private static float textW(MinecraftClient client, String s) {
+        return cleanFont() ? CleanFont.width(s) : client.textRenderer.getWidth(s);
+    }
+
     /** The highest already-placed label the candidate collides with, or null. */
-    private static Label blocker(Minecraft client, Label candidate,
+    private static Label blocker(MinecraftClient client, Label candidate,
                                  List<Label> placed, float lineH, float scale) {
-        float half = client.font.width(candidate.text) * scale / 2f;
+        float half = textW(client, candidate.text) * scale / 2f;
         float left = candidate.x - half - 2;
         float right = candidate.x + half + 2;
         Label top = null;
         for (Label other : placed) {
-            float otherHalf = client.font.width(other.text) * scale / 2f;
+            float otherHalf = textW(client, other.text) * scale / 2f;
             if (left < other.x + otherHalf + 2 && right > other.x - otherHalf - 2
                     && candidate.y < other.y + lineH && candidate.y + lineH > other.y
                     && (top == null || other.y < top.y)) {
@@ -322,24 +371,21 @@ public final class MarkerHud {
     }
 
     /** Left/right edge column: entries stacked vertically, nearest first. */
-    private static void queueVerticalEdge(Minecraft client, List<EdgeEntry> entries,
+    private static void queueVerticalEdge(MinecraftClient client, List<EdgeEntry> entries,
                                           boolean rightSide, float arrowX, float anchorY,
-                                          List<Arrow> arrows, List<Label> labels) {
-        if (entries.isEmpty()) return;
+                                          List<Arrow> arrows, List<Label> labels, float scale, int width, int height) {
+        if (entries.isEmpty() || !(scale > 0)) return;
         entries.sort(Comparator.comparingDouble(EdgeEntry::dist));
-
-        var tr = client.font;
-        int lineH = tr.lineHeight + 2;
-        float y = anchorY - (entries.size() * lineH) / 2f;
-
-        for (EdgeEntry e : entries) {
+        float lineH = (client.textRenderer.fontHeight + 2) * scale;
+        var visible = edgeRows(entries, Math.max(1, (int) (height / lineH)));
+        float y = Math.clamp(anchorY - visible.size() * lineH / 2f, 0, Math.max(0, height - visible.size() * lineH));
+        float available = Math.max(0, (rightSide ? arrowX : width - arrowX) - 7 * scale);
+        for (EdgeEntry e : visible) {
             float midY = y + lineH / 2f;
-            int tw = tr.width(e.label);
-            if (rightSide) {
-                labels.add(new Label(arrowX - 7f - tw / 2f, y, e.label, e.color, 1f));
-            } else {
-                labels.add(new Label(arrowX + 7f + tw / 2f, y, e.label, e.color, 1f));
-            }
+            String text = HudLayout.ellipsize(e.label, available / scale, s -> textW(client, s));
+            float tw = textW(client, text) * scale;
+            float x = rightSide ? arrowX - 7 * scale - tw / 2 : arrowX + 7 * scale + tw / 2;
+            labels.add(new Label(x, y, text, e.color, scale));
             arrows.add(new Arrow(arrowX, midY, e.color, rightSide ? 1 : 0));
             y += lineH;
         }
@@ -350,21 +396,32 @@ public final class MarkerHud {
      * (nearest target's color), entries stacked vertically inward,
      * nearest first.
      */
-    private static void queueColumnEdge(Minecraft client, List<EdgeEntry> entries,
+    private static void queueColumnEdge(MinecraftClient client, List<EdgeEntry> entries,
                                         int dir, float cx, float arrowY, boolean inward,
-                                        List<Arrow> arrows, List<Label> labels) {
-        if (entries.isEmpty()) return;
+                                        List<Arrow> arrows, List<Label> labels, float scale, int width, int height) {
+        if (entries.isEmpty() || !(scale > 0)) return;
         entries.sort(Comparator.comparingDouble(EdgeEntry::dist));
-
-        var tr = client.font;
-        int lineH = tr.lineHeight + 2;
+        float lineH = (client.textRenderer.fontHeight + 2) * scale;
+        float available = Math.max(0, (inward ? height - arrowY : arrowY) - 6 * scale);
+        var visible = edgeRows(entries, Math.max(1, (int) (available / lineH)));
+        cx = Math.clamp(cx, 5 * scale, width - 5 * scale);
         arrows.add(new Arrow(cx, arrowY, entries.get(0).color, dir));
-
-        float y = inward ? arrowY + 6f : arrowY - 6f - entries.size() * lineH;
-        for (EdgeEntry e : entries) {
-            labels.add(new Label(cx, y, e.label, e.color, 1f));
+        float y = inward ? arrowY + 6 * scale : arrowY - 6 * scale - visible.size() * lineH;
+        y = Math.clamp(y, 0, Math.max(0, height - visible.size() * lineH));
+        for (EdgeEntry e : visible) {
+            String text = HudLayout.ellipsize(e.label, Math.max(0, width / scale - 2), s -> textW(client, s));
+            labels.add(new Label(cx, y, text, e.color, scale));
             y += lineH;
         }
+    }
+
+    private static List<EdgeEntry> edgeRows(List<EdgeEntry> entries, int capacity) {
+        capacity = Math.clamp(capacity, 1, 256);
+        if (entries.size() <= capacity) return entries;
+        var visible = new ArrayList<>(entries.subList(0, capacity - 1));
+        visible.add(new EdgeEntry("+" + (entries.size() - visible.size()) + " more",
+                entries.get(0).color, entries.get(0).dist));
+        return visible;
     }
 
     // -------------------------------------------------------- geometry ----
@@ -436,10 +493,10 @@ public final class MarkerHud {
             float ty = y1; y1 = y2; y2 = ty;
             int tc = c1; c1 = c2; c2 = tc;
         }
-        vc.addVertexWith2DPose(pose, x0, y0).setColor(c0);
-        vc.addVertexWith2DPose(pose, x1, y1).setColor(c1);
-        vc.addVertexWith2DPose(pose, x2, y2).setColor(c2);
-        vc.addVertexWith2DPose(pose, x2, y2).setColor(c2);
+        vc.vertex(pose, x0, y0).color(c0);
+        vc.vertex(pose, x1, y1).color(c1);
+        vc.vertex(pose, x2, y2).color(c2);
+        vc.vertex(pose, x2, y2).color(c2);
     }
 
     /** Live "time since" for snitch labels: 8s, 47s, 1m 05s, 2m+ gone by fade. */

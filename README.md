@@ -1,10 +1,22 @@
-# OpenIntel
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/icon-dark.png">
+    <img src="mod/src/main/resources/assets/openintel/icon.png" alt="OpenIntel logo" width="128">
+  </picture>
+</p>
 
-OpenIntel is a Fabric intelligence client for Minecraft 1.21.11. Approved
-players continuously share themselves and everyone in their render distance
-through a small relay server. The client turns that shared state into a modern,
-configurable HUD without adding a minimap, waypoint database, or navigation
-system.
+<h1 align="center">OpenIntel</h1>
+
+OpenIntel **1.6.1** is an open-source Fabric intelligence client for
+**Minecraft 1.21.11 / Java 21**. It combines nearby-player radar, responsive
+HUDs, clean text, local snitch/relic tracking, and optional team intelligence
+through a self-hosted relay. It does not add its own minimap, waypoint
+database, or navigation system.
+
+Public source and base jars are token-neutral. No deployment-specific relay
+address, Minecraft-server address, Discord configuration, or user database is
+included. Configure your own relay if you want shared intelligence; local
+features do not require a relay connection.
 
 ## Features
 
@@ -20,7 +32,7 @@ system.
   neutral players, and a bright-purple diamond for focus targets.
 - **Tinted nameplates**, configurable relay opacity, optional visible-player
   markers, unlimited or capped marker range, and stale-intel fading.
-- **Focus targets** can be managed in-game by Captains or through the Discord
+- **Focus targets** can be managed in-game by Operators or higher, or through the Discord
   terminal and update live for every connected client.
 
 ### Snitch intelligence
@@ -34,10 +46,27 @@ system.
 - Markers are dimension-aware, show snitch name, player, age, and distance,
   and have configurable color, lifetime, range, and fade.
 - Semantically identical alerts are deduplicated across in-game and Discord
-  sources. Approved relay users do not receive redundant snitch markers when
-  their live position is already available.
+  sources. Locally observed hits are retained even for relay friends.
+- **Forward snitch alerts** controls transmission only: local detection, feed
+  entries, and markers continue when forwarding is off or the relay is down.
+- Marker placement requires a recognized dimension and complete player,
+  snitch-name, and coordinate data. Unknown-dimension alerts stay feed-only.
 - Player names in snitch alert chat lines are recolored by allegiance, so a
   hostile tripper reads red and a neutral one grey at a glance.
+
+### Relic-map tracking
+
+- Compatible filled maps carrying a `minecraft:target_x` decoration are detected
+  from inventory data; no relay or world/loot scanning is involved.
+- Gold markers appear in-world and on the optional JourneyMap/Xaero overlays.
+  Labels use the first nonblank map lore line, then the item title as a fallback;
+  the world HUD also shows distance rather than exposing coordinates in the name.
+- Markers disappear when the map leaves your inventory. A compatible
+  `found a relic` actionbar message removes the nearest active relic in the
+  current dimension within 96 blocks and prevents its reappearance that session.
+- Tracking is session-scoped and uses overlays, not persistent map waypoints.
+  This requires a server supplying the compatible map data/claim message; it
+  is not a generic treasure finder for arbitrary servers.
 
 ### Radar and shared pings
 
@@ -49,19 +78,23 @@ system.
 - Contact filtering (everyone, players not on the relay, or enemies only)
   plus toggles for dropped-item, boat, and minecart icons, which render as
   their real item sprites.
-- Relay players outside render distance and shared pings pin to the radar rim,
-  preserving their bearing at any distance.
+- Player contacts are limited to locally loaded Minecraft entities within the
+  configured radar range. Distant relay-only players remain available on world
+  markers and map integrations, but do not crowd the radar rim.
+- Nearby contact names have transparent backgrounds and bounded, blip-relative
+  collision placement. Crowded extras use a `+N more` indicator while blips remain visible.
+- Shared pings can still pin to the radar rim, preserving their bearing.
 - Hold the configurable ping key to open a radial wheel and broadcast a
   temporary, dimension-aware location marker.
 
 ### JourneyMap integration (optional)
 
-- When JourneyMap is installed, relay player positions, snitch hits, and
-  shared pings also appear on its fullscreen map (the `J` key) as
-  allegiance-tinted diamonds — enemy red, focus purple, neutral grey.
-- Each marker shows the player name, tripper and reporter (or ping label
-  and sender) on a shadowed, backed label, and expires alongside its HUD
-  marker.
+- When JourneyMap is installed, relay player positions, snitch hits, shared
+  pings, and compatible relic-map targets appear on its fullscreen map
+  (the `J` key). Relics are gold; other markers use their allegiance/ping colors.
+- Labels show player names, snitch/tripper details, ping labels/senders, or
+  relic names. OpenIntel-owned labels follow the font choice without changing
+  JourneyMap's own labels. Moving markers and lifecycle removals reconcile automatically.
 - Strictly optional: JourneyMap is never required and nothing changes for
   clients without it. Toggle under `/oi settings` → Integrations →
   *JourneyMap fullscreen markers*. OpenIntel's own rendering is untouched.
@@ -70,9 +103,10 @@ system.
 
 - With [xaero-world-map-bridge](https://github.com/billstark001/xaero-world-map-bridge)
   installed alongside Xaero's World Map, relay player positions, snitch
-  hits, and shared pings draw onto the fullscreen map (the `M` key) as
-  allegiance-tinted markers with shadowed labels — players are small dots,
-  focus targets, snitches and pings are diamonds.
+  hits, shared pings, and compatible relic targets draw onto the fullscreen
+  map (the `M` key). Players are small dots; focus targets, snitches, pings,
+  and gold relic targets are diamonds. Only OpenIntel-owned labels follow
+  the clean-font selection.
 - Markers fade and expire with their HUD counterparts, and the map's
   dimension switcher filters them correctly.
 - Strictly optional: OpenIntel needs neither Xaero's World Map nor the
@@ -84,8 +118,11 @@ system.
 
 - `/oi hud` opens a visual editor: click and drag the radar, relay roster,
   event feed, armor HUD, potion HUD, and all four marker anchors.
-- Elements snap to screen edges and center guides; positions persist in
-  `config/openintel.json` and can be reset from the editor.
+- Elements snap to screen edges and center guides, including the actual top
+  edge (`Y=0`). Positions persist in `config/openintel.json` and can be reset.
+- Built-in HUDs retain viewport-relative placement and scale from their saved
+  reference viewport across window-size and GUI-scale changes. Oversized
+  elements fit inside smaller viewports, and editor boxes share runtime bounds.
 - **Relay roster** shows connected/tracked players, allegiance, dimension,
   distance, and freshness.
 - **Event feed** reports relay presence, teammate deaths, enemy sightings,
@@ -93,6 +130,38 @@ system.
 - **Armor HUD** shows equipped pieces in a horizontal row or vertical stack, with
   durability as a percentage, a health bar, or exact points left.
 - **Potion HUD** shows active effect names, amplifier levels, and timers.
+
+### Relay-independent local features
+
+- Nearby radar contacts, armor/potion HUDs, fonts, settings, the HUD editor,
+  macros, compatible relic tracking, and locally received snitch alerts work
+  without a relay connection while you are in a Minecraft world.
+- Ping-wheel markers are created locally first; sharing requires the relay.
+  Remote player positions, other users' forwarded alerts, roster updates,
+  and focus/cut actions still depend on the relay and its permissions.
+- Local observations are stored separately from received relay intel.
+  Reconnects and relay visibility resets remove shared data without deleting
+  local snitches, your own pings, or local feed entries. Expiry still applies;
+  joining/leaving a Minecraft server clears the session. Offline observations
+  are not queued for later transmission.
+- The **Relay rendering** master switch still gates world markers, including
+  local snitches/relics, and radar ping markers. Keep it enabled to see those
+  surfaces offline; map integrations have separate visibility toggles.
+- Allegiance-based filters use the available relay classification data. A
+  fresh disconnected session has no enemy/friend roster to classify from.
+
+### Clean text, with a Minecraft-font toggle
+
+- Bundled Noto Sans Medium (with Noto symbol/math companions) provides lightly
+  antialiased, shadow-free clean text.
+- Switch live under `/oi settings` → HUD → Text → Font between **Clean font**
+  and **Minecraft font**. The choice persists, and existing chat rewraps
+  without losing history.
+- Clean text covers OpenIntel HUDs, chat messages and the chat input field,
+  actionbar notifications, titles/subtitles, and OpenIntel-owned map labels.
+  Inventories, other menus, other text fields, and other mods' map UI retain
+  their own fonts. Explicit server-supplied icon fonts are preserved.
+- Text batching and style reuse reduce per-character rendering allocations.
 
 ### Macros and configuration
 
@@ -109,6 +178,9 @@ system.
   `/oi macros` open it pre-selected on their categories.
 
 ## Screenshots
+
+These screenshots show an earlier build. Updated 1.6.1 clean-text and local-only
+radar screenshots will be added separately.
 
 ![OpenIntel gameplay overview with radar, markers, roster and status HUDs](docs/openintel-overview.png)
 
@@ -151,8 +223,9 @@ Snitch hits and pings can also be mirrored onto JourneyMap's fullscreen map:
 
 ## Relay roles and focus targets
 
-Users in `users.json` have one of four backward-compatible tiers:
+Users in `users.json` have one of five backward-compatible tiers:
 
+- `trial`: send-only participation; can submit reports but does not receive shared intel.
 - `member` (default): authenticate and read relay intel.
 - `operator`: member access plus focus management and admin broadcasts.
 - `captain`: operator access plus allegiance management, quarantine, and session kicks.
@@ -205,7 +278,7 @@ each change is announced in both the alerts and admin Discord channels.
 ### Relay server
 ```bash
 cd relay
-npm install
+npm ci
 cp config.example.json config.json   # set port, admin token, webhook URLs
 cp users.example.json users.json     # approved users + their tokens
 cp allegiances.example.json allegiances.json
@@ -269,12 +342,12 @@ marker. The bot runs inside the relay process and is disabled until
 ```jsonc
 // config.json
 "discord": {
-  "botToken": "MTIz...",
-  "terminalChannelIds": ["1513...", "2846..."],
-  "snitchChannelIds": ["3927...", "4018..."],
-  "operatorRoleIds": ["321..."],
-  "captainRoleIds": ["987...", "654..."],
-  "adminRoleIds": ["765..."]
+  "botToken": "YOUR_DISCORD_BOT_TOKEN",
+  "terminalChannelIds": ["TERMINAL_CHANNEL_ID"],
+  "snitchChannelIds": ["SNITCH_CHANNEL_ID"],
+  "operatorRoleIds": ["OPERATOR_ROLE_ID"],
+  "captainRoleIds": ["CAPTAIN_ROLE_ID"],
+  "adminRoleIds": ["ADMIN_ROLE_ID"]
 }
 ```
 
@@ -304,7 +377,7 @@ Type these in the terminal channel:
 | `!quarantine <user>` / `!unquarantine <user>` | block or restore a user's submissions | captain |
 | `!user add <name> [role]` | create a user and DM the token to the invoking admin | admin |
 | `!user remove\|disable\|enable <name>` | manage user access and revoke affected sessions | admin |
-| `!user role <name> <member\|operator\|captain\|admin>` | change relay role | admin |
+| `!user role <name> <trial\|member\|operator\|captain\|admin>` | change relay role | admin |
 | `!user rotate-token <name>` | rotate token, revoke sessions, and DM the new token | admin |
 | `!user info <name>` | safe status, token fingerprint, and session count | admin |
 
@@ -359,7 +432,7 @@ sharing of that admin's outgoing player reports, snitch alerts, and pings:
 
 The relay enforces the restriction using the authenticated account, not a
 client-supplied role or player name. Cut persists across reconnects/restarts.
-Focus commands issued while cut use a separate admins-only focus list.
+In-game focus commands remain public shared focus even while the caller is cut.
 Public Discord enemy alerts are not generated from cut reports. `!where`
 respects the caller's Discord tier. Discord admin broadcasts/administration
 remain independent of the in-game account's cut switch.
@@ -386,7 +459,7 @@ All controls are rebindable under the OpenIntel keybind category.
 
 ## Fabric mod integration API (v1)
 
-OpenIntel **1.3.0** introduces a public Java API under `dev.openintel.api`.
+OpenIntel **1.6.1** provides the public v1 Java API under `dev.openintel.api`.
 Use `OpenIntelApi` as the entry point; do not link against `tracker`, `net`,
 `render`, or `api.internal` implementation classes. This is a client-side
 Fabric API for Minecraft **1.21.11**, not the Discord/admin REST API.
@@ -408,7 +481,7 @@ repositories {
 }
 
 dependencies {
-    modImplementation "dev.openintel:openintel:1.3.0"
+    modImplementation "dev.openintel:openintel:1.6.1"
 }
 ```
 
@@ -416,9 +489,9 @@ Use matching Minecraft/Yarn versions. OpenIntel is installed separately in
 `mods/`; do not nest a personalized/token-bearing jar in your mod. No public
 Maven repository is provisioned by this project. Alternatively, place the
 neutral remapped jar in your project's `libs/` and use
-`modImplementation files("libs/openintel-1.3.0.jar")`.
+`modImplementation files("libs/openintel-1.6.1.jar")`.
 
-For a required integration, add `"openintel": ">=1.3.0"` to your mod's
+For a required integration, add `"openintel": ">=1.6.1"` to your mod's
 `fabric.mod.json` `depends` object. Declare this entrypoint:
 
 ```json
@@ -570,14 +643,17 @@ var handle = OpenIntelApi.hud().register(
 
 The sixth argument is an optional **preview renderer**; omit it to show only
 a labeled box in the editor. Callbacks draw at local `(0, 0)`—OpenIntel
-already translates and clips the context to the element bounds. Use
-GUI-scaled pixels, not framebuffer pixels. Do not retain the draw context
+already translates and clips the context to the element bounds, uniformly
+scaling oversized elements to fit the viewport. The callback still receives
+its original declared size. Use GUI-scaled pixels, not framebuffer pixels. Do not retain the draw context
 or reset global GUI layers. Balance your own matrix/scissor operations.
 
 The element appears automatically in `/oi hud`: drag to move, right-click
 to toggle visibility, and Reset layout restores registered defaults.
 Position and enabled preference are saved by ID in `config/openintel.json`.
-Resizing clamps the displayed element without destroying its saved position.
+Resizing clamps the displayed element and fits oversized content without
+destroying its saved pixel position. Built-in OpenIntel HUDs additionally
+use viewport-relative anchors and a persisted reference viewport for scaling.
 Use your own mod namespace; duplicate IDs and the `openintel` namespace are
 rejected. `handle.close()` unregisters without deleting the saved layout.
 
@@ -597,10 +673,21 @@ changes require a new API version; additive modules can be introduced
 without changing v1. This does not promise binary compatibility across
 Minecraft versions. Build output includes the remapped mod and source jar.
 
-`gradlew build` runs the standalone snitch-dimension and API contract checks
-without adding a test-library dependency. Tests cover immutable payloads,
-pre-initialization reads/actions, subscription cleanup, and listener failure
-isolation. Actual in-game rendering still requires a runtime smoke test.
+`gradlew build` runs standalone checks for API contracts, snitch dimensions,
+relic naming, offline data ownership, font metrics/scoping, map-font ownership,
+radar label placement, and responsive HUD layouts. These do not require a live
+relay. `gradlew cleanFontShaderTest` separately validates both font shaders in
+a graphical OpenGL session. Actual in-game behavior still requires a smoke test.
+
+### Publication safety
+
+- Keep `mod/src/main/resources/openintel_token.txt` equal to `CHANGE_ME`.
+- Commit only example relay JSON files, never live `config.json`, `users.json`,
+  `allegiances.json`, audit logs, personal Minecraft configs, or profiling captures.
+- Public artifacts must be built from neutral source, never by copying a
+  personalized user jar. Review both source and jar contents before release.
+- Scrubbing a current file does not remove values from Git history. Audit all
+  relevant branches, tags, and existing release assets before publishing.
 
 ## Fair-play notes
 
@@ -611,4 +698,8 @@ varies between Civ servers.
 
 ## License
 
-MIT — see `LICENSE`.
+OpenIntel code is MIT-licensed — see `LICENSE`.
+
+The bundled Noto fonts are licensed under the SIL Open Font License 1.1;
+see `mod/src/main/resources/assets/openintel/font/LICENSE-Noto.txt`.
+Third-party integration API jars retain their respective licenses.

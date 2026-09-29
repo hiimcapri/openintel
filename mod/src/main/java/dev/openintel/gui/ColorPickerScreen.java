@@ -1,16 +1,16 @@
 package dev.openintel.gui;
 
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import com.mojang.blaze3d.platform.NativeImage;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.texture.NativeImage;
+import net.minecraft.client.texture.NativeImageBackedTexture;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
 import java.util.function.IntConsumer;
 
@@ -40,9 +40,9 @@ public class ColorPickerScreen extends Screen {
     private int sx, sy, hx, ay;               // control origins
     private int dragging;                     // 0 none / 1 sv / 2 hue / 3 alpha
 
-    private DynamicTexture svTex, hueTex;
+    private NativeImageBackedTexture svTex, hueTex;
     private Identifier svId, hueId;
-    private EditBox hexField;
+    private TextFieldWidget hexField;
 
     public ColorPickerScreen(Screen parent, String title, int argb,
                              IntConsumer onPick) {
@@ -51,7 +51,7 @@ public class ColorPickerScreen extends Screen {
 
     public ColorPickerScreen(Screen parent, String title, int argb,
                              IntConsumer onPick, String autoLabel, Runnable autoAction) {
-        super(Component.literal(title));
+        super(Text.literal(title));
         this.parent = parent;
         this.onPick = onPick;
         this.autoLabel = autoLabel;
@@ -78,21 +78,21 @@ public class ColorPickerScreen extends Screen {
         hx = sx + SV + 10;
         ay = sy + SV + 12;
 
-        var tm = Minecraft.getInstance().getTextureManager();
-        svId = Identifier.fromNamespaceAndPath("openintel", "colorpicker_sv");
-        hueId = Identifier.fromNamespaceAndPath("openintel", "colorpicker_hue");
-        svTex = new DynamicTexture(() -> "sv", TEX, TEX, false);
-        hueTex = new DynamicTexture(() -> "hue", HUE_W, TEX, false);
-        tm.register(svId, svTex);
-        tm.register(hueId, hueTex);
+        var tm = MinecraftClient.getInstance().getTextureManager();
+        svId = Identifier.of("openintel", "colorpicker_sv");
+        hueId = Identifier.of("openintel", "colorpicker_hue");
+        svTex = new NativeImageBackedTexture(() -> "sv", TEX, TEX, false);
+        hueTex = new NativeImageBackedTexture(() -> "hue", HUE_W, TEX, false);
+        tm.registerTexture(svId, svTex);
+        tm.registerTexture(hueId, hueTex);
         rebuildHue();
         rebuildSv();
 
-        hexField = new EditBox(minecraft.font, sx, ay + ALPHA_H + 12,
-                SV + 10 + HUE_W, 20, Component.literal("hex"));
+        hexField = new TextFieldWidget(client.textRenderer, sx, ay + ALPHA_H + 12,
+                SV + 10 + HUE_W, 20, Text.literal("hex"));
         hexField.setMaxLength(10);
-        hexField.setValue(hexText());
-        hexField.setResponder(s -> {
+        hexField.setText(hexText());
+        hexField.setChangedListener(s -> {
             try {
                 String t = s.replace("#", "").trim();
                 if (t.length() == 6) {
@@ -105,17 +105,17 @@ public class ColorPickerScreen extends Screen {
                 }
             } catch (NumberFormatException ignored) { }
         });
-        addRenderableWidget(hexField);
+        addDrawableChild(hexField);
 
         int bw = (SV + 10 + HUE_W - 8) / 2;
         int by = ay + ALPHA_H + 12 + 24;
-        addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose())
-                .bounds(sx, by, autoLabel != null ? bw : SV + 10 + HUE_W, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Done"), b -> close())
+                .dimensions(sx, by, autoLabel != null ? bw : SV + 10 + HUE_W, 20).build());
         if (autoLabel != null) {
-            addRenderableWidget(Button.builder(Component.literal(autoLabel), b -> {
+            addDrawableChild(ButtonWidget.builder(Text.literal(autoLabel), b -> {
                         if (autoAction != null) autoAction.run();
-                        onClose();
-                    }).bounds(sx + bw + 8, by, bw, 20).build());
+                        close();
+                    }).dimensions(sx + bw + 8, by, bw, 20).build());
         }
     }
 
@@ -125,12 +125,12 @@ public class ColorPickerScreen extends Screen {
 
     /** Rebuild the SV gradient for the current hue. */
     private void rebuildSv() {
-        NativeImage img = svTex.getPixels();
+        NativeImage img = svTex.getImage();
         for (int y = 0; y < TEX; y++) {
             for (int x = 0; x < TEX; x++) {
                 float s = x / (float) (TEX - 1);
                 float v = 1f - y / (float) (TEX - 1);
-                img.setPixel(x, y, 0xFF000000 | (java.awt.Color.HSBtoRGB(hue, s, v) & 0xFFFFFF));
+                img.setColorArgb(x, y, 0xFF000000 | (java.awt.Color.HSBtoRGB(hue, s, v) & 0xFFFFFF));
             }
         }
         svTex.upload();
@@ -138,10 +138,10 @@ public class ColorPickerScreen extends Screen {
 
     /** One-time rainbow strip, hue 1 (top) → 0 (bottom). */
     private void rebuildHue() {
-        NativeImage img = hueTex.getPixels();
+        NativeImage img = hueTex.getImage();
         for (int y = 0; y < TEX; y++) {
             int rgb = java.awt.Color.HSBtoRGB(1f - y / (float) (TEX - 1), 1f, 1f);
-            for (int x = 0; x < HUE_W; x++) img.setPixel(x, y, 0xFF000000 | (rgb & 0xFFFFFF));
+            for (int x = 0; x < HUE_W; x++) img.setColorArgb(x, y, 0xFF000000 | (rgb & 0xFFFFFF));
         }
         hueTex.upload();
     }
@@ -167,7 +167,7 @@ public class ColorPickerScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
+    public boolean mouseClicked(Click click, boolean doubled) {
         double mx = click.x(), my = click.y();
         if (mx >= sx && mx < sx + SV && my >= sy && my < sy + SV) dragging = 1;
         else if (mx >= hx && mx < hx + HUE_W && my >= sy && my < sy + SV) dragging = 2;
@@ -177,38 +177,38 @@ public class ColorPickerScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent click, double offsetX, double offsetY) {
+    public boolean mouseDragged(Click click, double offsetX, double offsetY) {
         if (dragging != 0) { applyMouse(click.x(), click.y()); return true; }
         return super.mouseDragged(click, offsetX, offsetY);
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent click) {
+    public boolean mouseReleased(Click click) {
         dragging = 0;
         return super.mouseReleased(click);
     }
 
     @Override
-    public void onClose() {
-        minecraft.setScreenAndShow(parent);
+    public void close() {
+        client.setScreen(parent);
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         // In-world screens must not call renderBackground — its blur pass can
         // only run once per frame. renderInGameBackground darkens without it.
-        extractTransparentBackground(ctx);
+        renderInGameBackground(ctx);
         ctx.fill(sx - 8, sy - 24, hx + HUE_W + 8, ay + ALPHA_H + 12 + 24 + 24, 0xC0101015);
-        ctx.centeredText(minecraft.font, title, width / 2, sy - 16, 0xFFFFFFFF);
+        ctx.drawCenteredTextWithShadow(client.textRenderer, title, width / 2, sy - 16, 0xFFFFFFFF);
 
         // SV square + hue bar.
-        ctx.blit(RenderPipelines.GUI_TEXTURED, svId, sx, sy, 0, 0, SV, SV, SV, SV);
-        ctx.blit(RenderPipelines.GUI_TEXTURED, hueId, hx, sy, 0, 0, HUE_W, SV, HUE_W, SV);
+        ctx.drawTexture(RenderPipelines.GUI_TEXTURED, svId, sx, sy, 0, 0, SV, SV, SV, SV);
+        ctx.drawTexture(RenderPipelines.GUI_TEXTURED, hueId, hx, sy, 0, 0, HUE_W, SV, HUE_W, SV);
 
         // Selection markers: ring on the SV square, bars on the strips.
         int px = sx + Math.round(sat * SV);
         int py = sy + Math.round((1f - val) * SV);
-        ctx.outline(px - 3, py - 3, 6, 6, 0xFFFFFFFF);
+        ctx.drawStrokedRectangle(px - 3, py - 3, 6, 6, 0xFFFFFFFF);
         int hy = sy + Math.round((1f - hue) * SV);
         ctx.fill(hx - 2, hy, hx + HUE_W + 2, hy + 1, 0xFFFFFFFF);
 
@@ -230,15 +230,15 @@ public class ColorPickerScreen extends Screen {
         // Preview swatch next to the hex field.
         int pw = 24;
         ctx.fill(hx + HUE_W - pw, ay + ALPHA_H + 14, hx + HUE_W, ay + ALPHA_H + 14 + 16, argb());
-        ctx.outline(hx + HUE_W - pw, ay + ALPHA_H + 14, pw, 16, 0xFFFFFFFF);
+        ctx.drawStrokedRectangle(hx + HUE_W - pw, ay + ALPHA_H + 14, pw, 16, 0xFFFFFFFF);
 
-        super.extractRenderState(ctx, mouseX, mouseY, delta);
+        super.render(ctx, mouseX, mouseY, delta);
     }
 
     @Override
     public void removed() {
-        var tm = Minecraft.getInstance().getTextureManager();
-        tm.release(svId);
-        tm.release(hueId);
+        var tm = MinecraftClient.getInstance().getTextureManager();
+        tm.destroyTexture(svId);
+        tm.destroyTexture(hueId);
     }
 }

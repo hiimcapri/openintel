@@ -4,9 +4,10 @@ import dev.openintel.OpenIntelClient;
 import dev.openintel.config.OIConfig;
 import dev.openintel.gui.HudEditorScreen;
 import dev.openintel.mixin.DrawContextAccessor;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.resources.Identifier;
+import dev.openintel.render.HudLayout;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,13 +20,14 @@ import java.util.Optional;
 
 public final class HudApi {
     public static final String COORDINATE_CONTRACT = "Positions are nonnegative top-left GUI-scaled pixels. "
-            + "Stored positions are clamped against the current viewport and declared size at draw/hit-test time; "
-            + "resizing does not rewrite them. Callbacks draw from local (0, 0), with the matrix already translated "
+            + "Stored positions are clamped against the current viewport at draw/hit-test time; oversized elements "
+            + "are uniformly fitted without changing their declared size or saved position. Callbacks draw from local (0, 0), "
+            + "with the matrix already translated and scaled "
             + "and clipping restricted to the element and viewport. Do not add the stored position again.";
     public static final String THREADING_CONTRACT = "register, registration.close, elements, element, isEnabled and getPosition are thread-safe. "
             + "Off-thread reads return immutable last-synchronized snapshots. Registration may precede OpenIntel initialization. "
             + "All setters, reset, saveLayout and rendering require the Minecraft client thread, otherwise IllegalStateException. "
-            + "Use Minecraft.execute to marshal mutations. setPosition saves unless persistImmediately is false; "
+            + "Use MinecraftClient.execute to marshal mutations. setPosition saves unless persistImmediately is false; "
             + "call saveLayout at the end of a drag. Other mutations save automatically.";
     public static final String CALLBACK_CONTRACT = "Callbacks run on the client thread and must not retain the context. "
             + "Balance your own matrix/scissor pushes and pops; never remove the API's base clip. "
@@ -153,10 +155,10 @@ public final class HudApi {
         else config.save();
     }
 
-    public void renderAll(GuiGraphicsExtractor context, float tickDelta) {
-        Minecraft client = requireClientThread();
+    public void renderAll(DrawContext context, float tickDelta) {
+        MinecraftClient client = requireClientThread();
         Objects.requireNonNull(context, "context");
-        if (rendering || client.gui.screen() instanceof HudEditorScreen || client.gui.hud.isHidden()) return;
+        if (rendering || client.currentScreen instanceof HudEditorScreen || client.options.hudHidden) return;
         List<RenderJob> jobs = new ArrayList<>();
         synchronized (this) {
             synchronizeConfigIfClientThread();
@@ -165,11 +167,11 @@ public final class HudApi {
             }
         }
         for (RenderJob job : jobs) {
-            invoke(job, context, context.guiWidth(), context.guiHeight(), tickDelta);
+            invoke(job, context, context.getScaledWindowWidth(), context.getScaledWindowHeight(), tickDelta);
         }
     }
 
-    public void renderPreview(Identifier id, GuiGraphicsExtractor context, int viewportWidth, int viewportHeight, float tickDelta) {
+    public void renderPreview(Identifier id, DrawContext context, int viewportWidth, int viewportHeight, float tickDelta) {
         requireClientThread();
         validateId(id);
         Objects.requireNonNull(context, "context");
@@ -185,16 +187,18 @@ public final class HudApi {
         invoke(job, context, viewportWidth, viewportHeight, tickDelta);
     }
 
-    private void invoke(RenderJob job, GuiGraphicsExtractor context, int viewportWidth, int viewportHeight, float tickDelta) {
+    private void invoke(RenderJob job, DrawContext context, int viewportWidth, int viewportHeight, float tickDelta) {
         synchronized (this) {
             if (entries.get(job.entry.id) != job.entry || job.entry.failed) return;
             if (!job.preview && !job.entry.enabled) return;
         }
         if (viewportWidth <= 0 || viewportHeight <= 0) return;
-        HudPosition origin = job.descriptor.position().clamp(job.descriptor.size(), viewportWidth, viewportHeight);
+        var frame = HudLayout.pixels(job.descriptor.position().x(), job.descriptor.position().y(),
+                job.descriptor.size().width(), job.descriptor.size().height(), viewportWidth, viewportHeight);
         rendering = true;
-        try (ElementDrawContext local = new ElementDrawContext(context, origin, job.descriptor.size(), viewportWidth, viewportHeight)) {
+        try (ElementDrawContext local = new ElementDrawContext(context, frame, job.descriptor.size())) {
             job.renderer.render(local, job.descriptor.size(), tickDelta);
+            local.drawDeferredElements();
         } catch (VirtualMachineError | ThreadDeath fatal) {
             throw fatal;
         } catch (Throwable failure) {
@@ -210,8 +214,8 @@ public final class HudApi {
     }
 
     private void synchronizeConfigIfClientThread() {
-        Minecraft client = Minecraft.getInstance();
-        if (client == null || !client.isSameThread()) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || !client.isOnThread()) return;
         OIConfig config = OpenIntelClient.config();
         if (config == null) return;
         if (config.externalHudElements == null) config.repairExternalHudElements();
@@ -268,10 +272,10 @@ public final class HudApi {
         if (id.getPath().isEmpty()) throw new IllegalArgumentException("HUD ID path must not be empty");
     }
 
-    private static Minecraft requireClientThread() {
-        Minecraft client = Minecraft.getInstance();
-        if (client == null || !client.isSameThread()) {
-            throw new IllegalStateException("HUD mutation/rendering requires the Minecraft client thread; use Minecraft.execute");
+    private static MinecraftClient requireClientThread() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || !client.isOnThread()) {
+            throw new IllegalStateException("HUD mutation/rendering requires the Minecraft client thread; use MinecraftClient.execute");
         }
         return client;
     }
@@ -309,16 +313,16 @@ public final class HudApi {
         }
     }
 
-    private static final class ElementDrawContext extends GuiGraphicsExtractor implements AutoCloseable {
+    private static final class ElementDrawContext extends DrawContext implements AutoCloseable {
         private int scissorDepth;
 
-        private ElementDrawContext(GuiGraphicsExtractor parent, HudPosition origin, HudSize size, int viewportWidth, int viewportHeight) {
-            super(Minecraft.getInstance(), ((DrawContextAccessor) parent).openintel$state(), -1, -1);
-            pose().set(parent.pose());
-            pose().pushMatrix();
-            pose().translate((float) origin.x(), (float) origin.y());
-            enableScissor(0, 0, Math.min(size.width(), viewportWidth - origin.x()),
-                    Math.min(size.height(), viewportHeight - origin.y()));
+        private ElementDrawContext(DrawContext parent, HudLayout.Frame frame, HudSize size) {
+            super(MinecraftClient.getInstance(), ((DrawContextAccessor) parent).openintel$state(), -1, -1);
+            getMatrices().set(parent.getMatrices());
+            getMatrices().pushMatrix();
+            getMatrices().translate((float) frame.x(), (float) frame.y());
+            getMatrices().scale(frame.scale(), frame.scale());
+            enableScissor(0, 0, size.width(), size.height());
         }
 
         @Override
@@ -335,12 +339,12 @@ public final class HudApi {
         }
 
         @Override
-        public void nextStratum() {
-            throw new UnsupportedOperationException("HUD callbacks cannot change the global GUI stratum");
+        public void createNewRootLayer() {
+            throw new UnsupportedOperationException("HUD callbacks cannot change the global GUI layer");
         }
 
         @Override
-        public void blurBeforeThisStratum() {
+        public void applyBlur() {
             throw new UnsupportedOperationException("HUD callbacks cannot blur the global GUI layer");
         }
 
@@ -351,9 +355,9 @@ public final class HudApi {
                 scissorDepth--;
             }
             try {
-                pose().popMatrix();
+                getMatrices().popMatrix();
             } finally {
-                pose().clear();
+                getMatrices().clear();
             }
         }
     }

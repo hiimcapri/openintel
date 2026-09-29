@@ -26,11 +26,11 @@ public class OIConfig {
     private static final String DEFAULT_SNITCH_PATTERN = OLD_SNITCH_PATTERN
             + "|opened container|logged in at|logged out at|damaged sanctuary|broke block|placed block";
 
-    /** WebSocket URL of the relay server, e.g. ws://51.222.24.116:8765 */
-    public String relayUrl = "ws://51.222.24.116:8765";
+    /** WebSocket URL of the relay server, e.g. ws://relay.example.com:8765 */
+    public String relayUrl = "";
 
     /** Minecraft multiplayer server allowed to use this relay. */
-    public String minecraftServer = "play.civ.plus";
+    public String minecraftServer = "";
 
     /** Personal auth token issued by the relay admin (matches users.json on the relay).
      *  Default comes from a bundled resource so token-specific builds can be
@@ -92,6 +92,10 @@ public class OIConfig {
 
     /** Scale of over-head markers — chevron/diamond and the name label together. */
     public float markerScale = 1.0f;
+
+    /** Clean TTF text on OpenIntel surfaces instead of the vanilla bitmap font. */
+    public boolean cleanFont = true;
+    public boolean logoHudEnabled = true;
 
     // ---------------------------------------------------------- presence ----
 
@@ -239,7 +243,7 @@ public class OIConfig {
     public boolean radarShowVehicles = true;
 
     /** Relay-reported players beyond render distance shown as rim dots. */
-    public boolean radarShowRelay = true;
+    public boolean radarShowRelay = false;
 
     /** Who counts as a radar contact. */
     public enum RadarBlipFilter {
@@ -288,6 +292,12 @@ public class OIConfig {
     /** Park the ice road macro at <=6 hunger until you can eat again. */
     public boolean iceRoadStopAtHunger = false;
 
+    public int hudReferenceWidth;
+    public int hudReferenceHeight;
+    public Map<String, HudAnchorState> hudAnchors = new LinkedHashMap<>();
+
+    public record HudAnchorState(int sourceX, int sourceY, dev.openintel.render.HudLayout.Anchor anchor) { }
+
     public Map<String, ExternalHudState> externalHudElements = new LinkedHashMap<>();
 
     public static final class ExternalHudState {
@@ -323,6 +333,9 @@ public class OIConfig {
                 JsonObject raw = GSON.fromJson(json, JsonObject.class);
                 if (c == null || raw == null) return new OIConfig();
                 c.repairExternalHudElements();
+                if (c.hudAnchors == null) c.hudAnchors = new LinkedHashMap<>();
+                c.hudAnchors.entrySet().removeIf(e -> e.getKey() == null || e.getValue() == null
+                        || e.getValue().anchor() == null || !e.getValue().anchor().valid());
                 if (c.radarPlayerFilter == null) c.radarPlayerFilter = RadarBlipFilter.EVERYONE;
                 if (c.armorHudLayout == null) c.armorHudLayout = ArmorHudLayout.HORIZONTAL;
                 if (c.armorHudMode == null) c.armorHudMode = ArmorHudMode.PERCENT;

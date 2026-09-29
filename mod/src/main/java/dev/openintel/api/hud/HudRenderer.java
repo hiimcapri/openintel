@@ -1,8 +1,8 @@
 package dev.openintel.api.hud;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.DrawContext;
 
 @FunctionalInterface
 public interface HudRenderer {
-    void render(GuiGraphicsExtractor localOriginContext, HudSize size, float tickDelta);
+    void render(DrawContext localOriginContext, HudSize size, float tickDelta);
 }

@@ -1,5 +1,55 @@
 # Changelog
 
+## 1.6.1 — OpenIntel branding and Noto Sans
+
+- Added the OpenIntel mark — a black O with a joined eye — as a small
+  resolution-aware HUD element in the bottom-right corner, toggleable under
+  HUD settings, with standalone SVG/PNG artwork in the assets.
+- Replaced the bundled DejaVu Sans clean font with Noto Sans Medium plus Noto
+  Sans Math/Symbols/Symbols2 companions, under the SIL Open Font License.
+  The heavier face removes the shader's artificial coverage boost.
+- Fixed the event-feed prefix showing `??`: unsupported codepoints now fall
+  back once to `?` instead of once per UTF-16 surrogate half.
+
+## 1.6.0 — clean text, responsive HUDs, and local intelligence
+
+- Added a bundled clean font with light antialiasing and no shadows, plus a
+  live Clean font / Minecraft font toggle under HUD settings.
+- Applied font selection to chat and its input field, actionbar messages,
+  titles, OpenIntel HUDs, and OpenIntel-owned map labels only. Other menus,
+  text fields, map-mod UI, and explicit server icon fonts keep their fonts.
+- Batched custom text by label and reused font styles/atlas identifiers to
+  reduce per-character GUI submission and allocation overhead.
+- Added responsive HUD scaling, relative anchors, consistent editor/runtime
+  bounds, small-window fitting, and true top-edge snapping at Y=0.
+- Radar player contacts are now local Minecraft entities within radar range;
+  distant relay-only contacts remain in world/map intel, not on the radar rim.
+- Added bounded, identity-stable radar label placement, transparent labels,
+  and explicit overflow counts without compass collision reservations.
+- Added compatible relic-map tracking using item decorations, lore-based
+  names, gold world/map overlays, and map-away/claim cleanup without permanent
+  waypoints or a relay dependency.
+- Snitch forwarding can be disabled without stopping local detection. Local
+  hits on relay friends are retained, and reconnect/visibility resets preserve
+  local observations while removing received relay data.
+- Kept normal expiry and full Minecraft-session cleanup, including local
+  ping/feed data and snitch deduplication state.
+- Added regression coverage for font rendering, input metrics, map ownership,
+  radar rotation/layout, viewport resizing, relic names, and offline data ownership.
+- Public source/base builds contain a placeholder token and no configured
+  deployment endpoints; live relay configuration and personalized artifacts
+  remain outside version control.
+- Updated the relay's Express/Discord.js dependencies and affected transitive
+  packages; the verified lockfile has no reported npm audit vulnerabilities.
+
+## 1.5.0 — marker scaling and public focus
+
+- Added a Marker scale slider (50–200%) sizing over-head relay markers —
+  chevron/diamond, snitch glyph, and name label together — with scaled
+  label stacking. Edge-of-screen indicators keep their fixed size.
+- Focus targets are now shared with every relay rank; `/oi focus` no longer
+  becomes admin-only intel when the caller is relay-cut.
+
 ## 1.3.0 — public integration API
 
 - Added admin-only `/oi cut [on|off|status]`: outgoing relay intel can be

@@ -1,6 +1,6 @@
 package dev.openintel.api.hud;
 
-import net.minecraft.resources.Identifier;
+import net.minecraft.util.Identifier;
 
 import java.util.Objects;
 

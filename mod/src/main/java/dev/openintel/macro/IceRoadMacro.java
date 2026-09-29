@@ -2,11 +2,11 @@ package dev.openintel.macro;
 
 import dev.openintel.OpenIntelClient;
 import dev.openintel.config.OIConfig;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.KeyMapping;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.food.FoodProperties;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.FoodComponent;
+import net.minecraft.item.ItemStack;
 
 /**
  * Ice road runner (CivModern parity): engages sprint + forward and
@@ -20,38 +20,38 @@ public final class IceRoadMacro extends InputMacro {
     private boolean waitingForFood;
     private ItemStack eating;
 
-    public IceRoadMacro(KeyMapping toggle) {
+    public IceRoadMacro(KeyBinding toggle) {
         super(toggle);
     }
 
     @Override
-    protected void onEngage(Minecraft mc) {
+    protected void onEngage(MinecraftClient mc) {
         OIConfig cfg = OpenIntelClient.config();
         if (cfg.iceRoadSnapYaw) {
-            mc.player.setYRot(Math.round(mc.player.getYRot() / 45f) * 45f);
+            mc.player.setYaw(Math.round(mc.player.getYaw() / 45f) * 45f);
         }
         if (cfg.iceRoadSnapPitch) {
-            mc.player.setXRot(Math.round(mc.player.getXRot() / 45f) * 45f);
+            mc.player.setPitch(Math.round(mc.player.getPitch() / 45f) * 45f);
         }
     }
 
     @Override
-    protected void onRelease(Minecraft mc) {
-        mc.options.keySprint.setDown(false);
-        mc.options.keyUp.setDown(false);
+    protected void onRelease(MinecraftClient mc) {
+        mc.options.sprintKey.setPressed(false);
+        mc.options.forwardKey.setPressed(false);
         if (jump) {
             jump = false;
-            if (!mc.player.isPassenger()) {
-                mc.options.keyJump.setDown(false);
+            if (!mc.player.hasVehicle()) {
+                mc.options.jumpKey.setPressed(false);
             }
         }
-        mc.options.keyUse.setDown(false);
+        mc.options.useKey.setPressed(false);
         waitingForFood = false;
         eating = null;
     }
 
     @Override
-    protected void tickActive(Minecraft mc) {
+    protected void tickActive(MinecraftClient mc) {
         OIConfig cfg = OpenIntelClient.config();
 
         if (!jump) {
@@ -59,48 +59,48 @@ public final class IceRoadMacro extends InputMacro {
                 if (eating != null
                         && (!mc.player.isUsingItem() || !eating.equals(mc.player.getActiveItem()))) {
                     eating = null;
-                    mc.options.keyUse.setDown(false);
+                    mc.options.useKey.setPressed(false);
                 }
                 if (eating == null) {
-                    ItemStack hand = mc.player.getMainHandItem();
+                    ItemStack hand = mc.player.getMainHandStack();
                     if (tryEat(mc, hand)) {
                         eating = hand;
-                        mc.options.keyUse.setDown(true);
+                        mc.options.useKey.setPressed(true);
                         return;
                     }
                 }
             }
 
             if (cfg.iceRoadStopAtHunger
-                    && mc.player.getFoodData().getFoodLevel() <= 6) {
+                    && mc.player.getHungerManager().getFoodLevel() <= 6) {
                 waitingForFood = true;
-                mc.options.keyUp.setDown(false);
+                mc.options.forwardKey.setPressed(false);
                 return;
             }
             waitingForFood = false;
 
-            if (!mc.player.isPassenger()) {
-                mc.options.keyJump.setDown(true);
+            if (!mc.player.hasVehicle()) {
+                mc.options.jumpKey.setPressed(true);
             }
             jump = true;
         } else {
-            if (!mc.player.isPassenger()) {
-                mc.options.keyJump.setDown(false);
+            if (!mc.player.hasVehicle()) {
+                mc.options.jumpKey.setPressed(false);
             }
             jump = false;
         }
-        mc.options.keySprint.setDown(true);
-        mc.options.keyUp.setDown(true);
+        mc.options.sprintKey.setPressed(true);
+        mc.options.forwardKey.setPressed(true);
     }
 
-    private static boolean tryEat(Minecraft mc, ItemStack stack) {
-        FoodProperties food = stack.get(DataComponents.FOOD);
+    private static boolean tryEat(MinecraftClient mc, ItemStack stack) {
+        FoodComponent food = stack.get(DataComponentTypes.FOOD);
         return food != null && food.nutrition() > 0
-                && mc.player.getFoodData().getFoodLevel() + food.nutrition() <= 20;
+                && mc.player.getHungerManager().getFoodLevel() + food.nutrition() <= 20;
     }
 
     @Override
-    protected boolean losesInputCustody(Minecraft mc, int slot) {
+    protected boolean losesInputCustody(MinecraftClient mc, int slot) {
         // CivModern parity: chat, inventory and scroll-wheel don't stop the
         // road — the macro keeps re-pressing movement inputs so the boat
         // keeps going while screens are open. Only the toggle key stops it.

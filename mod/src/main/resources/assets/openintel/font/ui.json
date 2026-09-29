@@ -1,0 +1,36 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "openintel:noto_sans_medium.ttf",
+      "size": 9.0,
+      "oversample": 4.0,
+      "shift": [0.0, 0.0]
+    },
+    {
+      "type": "ttf",
+      "file": "openintel:noto_sans_math.ttf",
+      "size": 9.0,
+      "oversample": 4.0,
+      "shift": [0.0, 0.0]
+    },
+    {
+      "type": "ttf",
+      "file": "openintel:noto_sans_symbols.ttf",
+      "size": 9.0,
+      "oversample": 4.0,
+      "shift": [0.0, 0.0]
+    },
+    {
+      "type": "ttf",
+      "file": "openintel:noto_sans_symbols2.ttf",
+      "size": 9.0,
+      "oversample": 4.0,
+      "shift": [0.0, 0.0]
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:default"
+    }
+  ]
+}

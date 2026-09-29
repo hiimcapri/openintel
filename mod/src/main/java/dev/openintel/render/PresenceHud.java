@@ -1,11 +1,12 @@
 package dev.openintel.render;
 
 import dev.openintel.OpenIntelClient;
+import dev.openintel.api.hud.HudSize;
 import dev.openintel.config.OIConfig;
 import dev.openintel.tracker.Tracker.RemotePlayer;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,80 +31,97 @@ public final class PresenceHud {
     private record Row(String name, int color, String dim, double dist,
                        float age, float alpha, boolean sameDim) { }
 
-    public static void render(GuiGraphicsExtractor ctx) {
+    public static HudSize size(MinecraftClient mc, OIConfig cfg) {
+        return measure(mc, rows(mc, cfg));
+    }
+
+    public static void render(DrawContext ctx) {
         OIConfig cfg = OpenIntelClient.config();
         if (!cfg.presenceEnabled || !cfg.relayRendering) return;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.player == null || mc.world == null || mc.options.hudHidden) return;
+        List<Row> rows = rows(mc, cfg);
+        if (rows.isEmpty()) return;
+        HudSize size = measure(mc, rows);
+        var frame = HudLayouts.place(HudLayouts.Element.RELAY, cfg, size,
+                ctx.getScaledWindowWidth(), ctx.getScaledWindowHeight());
+        if (frame.scale() <= 0) return;
+        try (var ignored = HudLayouts.apply(ctx, frame)) {
+            drawPanel(ctx, mc, cfg, rows, size);
+        }
+    }
 
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.level == null || mc.gui.hud.isHidden()) return;
-
-        String myDim = mc.level.dimension().identifier().toString();
-        Vec3 self = mc.player.position();
+    private static List<Row> rows(MinecraftClient mc, OIConfig cfg) {
+        if (mc.player == null || mc.world == null || OpenIntelClient.tracker() == null) return List.of();
+        String myDim = mc.world.getRegistryKey().getValue().toString();
+        Vec3d self = mc.player.getEntityPos();
         long now = System.currentTimeMillis();
-
         List<Row> rows = new ArrayList<>();
         for (RemotePlayer p : OpenIntelClient.tracker().all()) {
             if (p.dimension == null) continue;
-
             boolean same = p.dimension.equals(myDim);
             if (!same && !cfg.presenceShowAllDims) continue;
-
             double dist = same ? Math.hypot(self.x - p.x, self.z - p.z) : Double.MAX_VALUE;
             int color = p.allegiance != null ? p.allegiance.argb : 0xFFAAAAAA;
-
             // Fade with intel age, but never below ~25% — expired entries
             // are removed by Tracker anyway.
-            float age = Math.min(1f, (now - p.lastSeen) / (float) cfg.staleAfterMs);
+            float age = Math.min(1f, (now - p.lastSeen) / (float) Math.max(1, cfg.staleAfterMs));
             float alpha = cfg.staleDecay ? 1f - 0.75f * age : 1f;
-
             rows.add(new Row(p.name, color, dimShort(p.dimension), dist, age, alpha, same));
         }
-        if (rows.isEmpty()) return;
-
         rows.sort(Comparator.comparingInt((Row r) -> r.sameDim ? 0 : 1)
                 .thenComparingDouble(r -> r.dist)
                 .thenComparing(r -> r.name.toLowerCase(Locale.ROOT)));
-        if (rows.size() > cfg.presenceMaxRows) {
-            rows = new ArrayList<>(rows.subList(0, cfg.presenceMaxRows));
-        }
+        int limit = Math.clamp(cfg.presenceMaxRows, 1, 256);
+        if (rows.size() > limit) rows.subList(limit, rows.size()).clear();
+        return rows;
+    }
 
-        var tr = mc.font;
-        int lineH = tr.lineHeight + 2;
-        int padX = 4, padY = 4, dot = 4;
-
-        int panelW = 0;
+    private static HudSize measure(MinecraftClient mc, List<Row> rows) {
+        if (rows.isEmpty()) return new HudSize(132, 58);
+        var tr = mc.textRenderer;
+        boolean cf = CleanFont.active();
+        int panelW = 96;
         for (Row r : rows) {
-            int w = padX + tr.width(r.name) + 8 + tr.width(r.dim)
-                    + 6 + tr.width(distText(r)) + 4 + dot + padX;
-            panelW = Math.max(panelW, w);
+            float w = 4 + tw(tr, cf, r.name) + 8 + tw(tr, cf, r.dim)
+                    + 6 + tw(tr, cf, distText(r)) + 4 + 4 + 4;
+            panelW = Math.max(panelW, (int) Math.ceil(w));
         }
-        panelW = Math.max(panelW, 96);
-        int panelH = rows.size() * lineH + 2 * padY;
+        return new HudSize(Math.min(32768, panelW), rows.size() * (tr.fontHeight + 2) + 8);
+    }
 
-        int left = cfg.presenceX >= 0
-                ? cfg.presenceX
-                : ctx.guiWidth() + cfg.presenceX - panelW;
-        int top = cfg.presenceY;
-
+    private static void drawPanel(DrawContext ctx, MinecraftClient mc, OIConfig cfg, List<Row> rows, HudSize size) {
+        var tr = mc.textRenderer;
+        int lineH = tr.fontHeight + 2;
+        int padX = 4, padY = 4, dot = 4;
+        boolean cf = CleanFont.active();
+        int panelW = size.width(), panelH = size.height();
         float opacity = cfg.relayOpacity / 255f;
-        ctx.fill(left, top, left + panelW, top + panelH, scaleAlpha(BG, opacity));
-        ctx.fill(left, top, left + panelW, top + 1, scaleAlpha(RIM, opacity));
-
-        int y = top + padY;
+        ctx.fill(0, 0, panelW, panelH, scaleAlpha(BG, opacity));
+        ctx.fill(0, 0, panelW, 1, scaleAlpha(RIM, opacity));
+        int y = padY;
         for (Row r : rows) {
             float a = r.alpha * opacity;
-            int dotX = left + panelW - padX - dot;
-            int distX = dotX - 4 - tr.width(distText(r));
-
-            ctx.text(tr, r.name, left + padX, y, scaleAlpha(r.color, a), true);
-            ctx.text(tr, r.dim, left + padX + tr.width(r.name) + 8, y,
-                    scaleAlpha(RIM, a), true);
-            ctx.text(tr, distText(r), distX, y, scaleAlpha(RIM, a), true);
-
+            int dotX = panelW - padX - dot;
+            int distX = (int) (dotX - 4 - tw(tr, cf, distText(r)));
+            draw(ctx, tr, cf, r.name, padX, y, scaleAlpha(r.color, a));
+            draw(ctx, tr, cf, r.dim, padX + tw(tr, cf, r.name) + 8, y, scaleAlpha(RIM, a));
+            draw(ctx, tr, cf, distText(r), distX, y, scaleAlpha(RIM, a));
             int dotY = y + (lineH - dot) / 2;
             ctx.fill(dotX, dotY, dotX + dot, dotY + dot, dotColor(r.age, a));
             y += lineH;
         }
+    }
+
+    private static float tw(net.minecraft.client.font.TextRenderer tr,
+                            boolean cf, String s) {
+        return cf ? CleanFont.width(s) : tr.getWidth(s);
+    }
+
+    private static void draw(DrawContext ctx, net.minecraft.client.font.TextRenderer tr,
+                             boolean cf, String s, float x, int y, int color) {
+        if (cf) CleanFont.draw(ctx, s, x, y, color, true);
+        else ctx.drawText(tr, s, (int) x, y, color, true);
     }
 
     private static String distText(Row r) {
@@ -125,6 +143,6 @@ public final class PresenceHud {
 
     private static int scaleAlpha(int argb, float f) {
         int a = Math.min(255, Math.max(0, Math.round(((argb >>> 24) & 0xFF) * f)));
-        return (argb & 0x00FFFFFF) | (a << 24);
+        return (a << 24) | (argb & 0x00FFFFFF);
     }
 }
