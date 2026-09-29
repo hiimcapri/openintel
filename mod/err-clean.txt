@@ -1,0 +1,435 @@
+﻿.\gradlew.bat : C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\jm\JmBridge.java:8: error:
++ CategoryInfo          : NotSpecified: (C:\Users\cap\De...not find symbol:String) [], RemoteException
+symbol:   class Context
+location: package journeymap.api.v2.client.display
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\jm\JmBridge.java:18: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\jm\OpenIntelJmPlugin.java:6: error: cannot
+symbol:   class JourneyMapPlugin
+location: package journeymap.api.v2.client
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\jm\OpenIntelJmPlugin.java:15: error: cannot
+symbol: class JourneyMapPlugin
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\macro\IceRoadMacro.java:8: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\macro\IceRoadMacro.java:9: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\macro\IceRoadMacro.java:21: error: cannot
+symbol:   class ItemStack
+location: class IceRoadMacro
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\macro\IceRoadMacro.java:96: error: cannot
+symbol:   class ItemStack
+location: class IceRoadMacro
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\ChatHudFontMixin.java:6: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\ChatHudFontMixin.java:28: error: cannot
+symbol:   class DrawnTextConsumer
+location: class ChatHudFontMixin
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\FocusGlowMixin.java:7: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\FocusGlowMixin.java:8: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\FocusGlowMixin.java:23: error: cannot
+symbol:   class Entity
+location: class FocusGlowMixin
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\PlayerNameplateMixin.java:8: error:
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\PlayerNameplateMixin.java:30: error:
+symbol:   class Avatar
+location: class PlayerNameplateMixin
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\TextRendererAccessor.java:10: error:
+symbol:   class GlyphsProvider
+location: class Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\OpenIntelClient.java:44: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\OpenIntelClient.java:45: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\OpenIntelClient.java:46: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\OpenIntelClient.java:48: error: cannot find
+symbol:   class Hand
+location: package net.minecraft.util
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\ping\PingWheelScreen.java:14: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\ping\PingWheelScreen.java:15: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\ping\PingWheelScreen.java:16: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:19: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:20: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:21: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:22: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:23: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:25: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:101: error: cannot find
+symbol:   class Vec3
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:141: error: cannot find
+symbol:   class Vec3
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:164: error: cannot find
+symbol:   class Entity
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:164: error: cannot find
+symbol:   class ItemStack
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:193: error: cannot find
+symbol:   class Vec3
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:234: error: cannot find
+symbol:   class Vec3
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:6: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:7: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:8: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:9: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:14: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:55: error: cannot find
+symbol:   class ItemStack
+location: class RelicMaps
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:61: error: cannot find
+symbol:   class ItemLore
+location: class RelicMaps
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:116: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:121: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\ArmorHud.java:7: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\ArmorHud.java:8: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\ArmorHud.java:11: error: cannot find
+symbol:   class EquipmentSlot
+location: class ArmorHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\ArmorHud.java:75: error: cannot find
+symbol:   class ItemStack
+location: class ArmorHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\CleanFont.java:9: error: cannot find
+symbol:   class TextureFormat
+location: package com.mojang.blaze3d.textures
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:11: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:96: error: cannot find
+symbol:   class Entity
+location: class EventFeed
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:96: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:107: error: cannot find
+symbol:   class Entity
+location: class EventFeed
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:107: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\MarkerHud.java:13: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\PotionHud.java:7: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\PresenceHud.java:9: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\PresenceHud.java:116: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\PresenceHud.java:121: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\UiFont.java:4: error: cannot find
+symbol:   class TextureFormat
+location: package com.mojang.blaze3d.textures
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\UiFont.java:16: error: cannot find
+symbol:   class Font
+location: interface FontDescription
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\UiFont.java:84: error: cannot find
+symbol:   class GlyphsProvider
+location: class Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\UiFont.java:115: error: cannot find
+symbol:   class TextureFormat
+location: class UiFont
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\FocusGlowMixin.java:19: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\hud\HudApi.java:161: error: cannot find
+symbol:   variable screen
+location: variable client of type Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\hud\HudApi.java:161: error: cannot find
+symbol:   variable hideGui
+location: variable options of type Options
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\hud\HudApi.java:201: error: cannot find
+symbol:   method drawDeferredElements()
+location: variable local of type ElementDrawContext
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\internal\ApiBridge.java:59: error: cannot
+symbol:   method of(String)
+location: class Identifier
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\internal\ApiBridge.java:266: error:
+symbol:   method setScreen(editor ? n[...]reen))
+location: variable client of type Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\internal\ApiBridge.java:266: error:
+symbol:   variable screen
+location: variable client of type Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\internal\ApiBridge.java:266: error:
+symbol:   variable screen
+location: variable client of type Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:169: error: cannot find
+symbol:   method setScreen(HudEditorScreen)
+location: class Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:278: error: cannot find
+symbol:   method getId()
+location: variable kb of type KeyMapping
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:306: error: cannot find
+symbol:   method getChatHud()
+location: variable gui of type Gui
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:312: error: no suitable
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:320: error: cannot find
+symbol:   class ValidatingIntSliderCallbacks
+location: class OptionInstance
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:330: error: cannot find
+symbol:   class ValidatingIntSliderCallbacks
+location: class OptionInstance
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:341: error: cannot find
+symbol:   class ValidatingIntSliderCallbacks
+location: class OptionInstance
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:359: error: cannot find
+symbol:   class PotentialValuesBasedCallbacks
+location: class OptionInstance
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:396: error: cannot find
+symbol:   method setScreen(ColorPickerScreen)
+location: class Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:244: error: method
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:252: error: cannot
+symbol:   variable client
+location: class ClickGuiScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:252: error: cannot
+symbol:   variable client
+location: class ClickGuiScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:262: error: cannot
+symbol:   method render(GuiGraphicsExtractor,int,int,float)
+location: variable doneButton of type Button
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:289: error: cannot
+symbol:   method render(GuiGraphicsExtractor,int,int,float)
+location: variable searchField of type EditBox
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:307: error: cannot
+symbol:   variable fontHeight
+location: variable font of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:371: error: cannot
+symbol:   variable fontHeight
+location: variable font of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:373: error: cannot
+symbol:   method render(GuiGraphicsExtractor,int,int,float)
+location: variable widget of type AbstractWidget
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:374: error: cannot
+symbol:   method render(GuiGraphicsExtractor,int,int,float)
+location: variable aux of type AbstractWidget
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:469: error: cannot
+symbol:   method formatted(ChatFormatting)
+location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:487: error: cannot
+symbol:   variable client
+location: class ClickGuiScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:487: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:507: error: method
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:509: error: cannot
+symbol:   variable client
+location: class ClickGuiScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:82: error: cannot
+symbol:   method of(String,String)
+location: class Identifier
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:83: error: cannot
+symbol:   method of(String,String)
+location: class Identifier
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:91: error: cannot
+symbol:   variable client
+location: class ColorPickerScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:128: error: cannot
+symbol:   method getImage()
+location: variable svTex of type DynamicTexture
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:133: error: cannot
+symbol:   method setColorArgb(int,int,int)
+location: variable img of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:141: error: cannot
+symbol:   method getImage()
+location: variable hueTex of type DynamicTexture
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:312: error: no suitable
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\jm\JmBridge.java:8: error: cannot find
+symbol:   class Context
+location: package journeymap.api.v2.client.display
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\jm\OpenIntelJmPlugin.java:6: error: cannot
+symbol:   class JourneyMapPlugin
+location: package journeymap.api.v2.client
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\macro\IceRoadMacro.java:21: error: cannot
+symbol:   class ItemStack
+location: class IceRoadMacro
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\macro\IceRoadMacro.java:96: error: cannot
+symbol:   class ItemStack
+location: class IceRoadMacro
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\ChatHudFontMixin.java:28: error:
+symbol:   class DrawnTextConsumer
+location: class ChatHudFontMixin
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\FocusGlowMixin.java:23: error: cannot
+symbol:   class Entity
+location: class FocusGlowMixin
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\PlayerNameplateMixin.java:30: error:
+symbol:   class Avatar
+location: class PlayerNameplateMixin
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\TextRendererAccessor.java:10: error:
+symbol:   class GlyphsProvider
+location: class Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\OpenIntelClient.java:48: error: cannot find
+symbol:   class Hand
+location: package net.minecraft.util
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:101: error: cannot find
+symbol:   class Vec3
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:141: error: cannot find
+symbol:   class Vec3
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:164: error: cannot find
+symbol:   class Entity
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:164: error: cannot find
+symbol:   class ItemStack
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:193: error: cannot find
+symbol:   class Vec3
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:234: error: cannot find
+symbol:   class Vec3
+location: class RadarHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:55: error: cannot find
+symbol:   class ItemStack
+location: class RelicMaps
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:61: error: cannot find
+symbol:   class ItemLore
+location: class RelicMaps
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\ArmorHud.java:11: error: cannot find
+symbol:   class EquipmentSlot
+location: class ArmorHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\ArmorHud.java:75: error: cannot find
+symbol:   class ItemStack
+location: class ArmorHud
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\CleanFont.java:9: error: cannot find
+symbol:   class TextureFormat
+location: package com.mojang.blaze3d.textures
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:96: error: cannot
+symbol:   class Entity
+location: class EventFeed
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:107: error: cannot
+symbol:   class Entity
+location: class EventFeed
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\UiFont.java:4: error: cannot find
+symbol:   class TextureFormat
+location: package com.mojang.blaze3d.textures
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\UiFont.java:16: error: cannot find
+symbol:   class Font
+location: interface FontDescription
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\UiFont.java:84: error: cannot find
+symbol:   class GlyphsProvider
+location: class Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\UiFont.java:115: error: cannot find
+symbol:   class TextureFormat
+location: class UiFont
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\hud\HudApi.java:161: error: cannot find
+symbol:   variable screen
+location: variable client of type Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\hud\HudApi.java:161: error: cannot find
+symbol:   variable hideGui
+location: variable options of type Options
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\internal\ApiBridge.java:266: error:
+symbol:   variable screen
+location: variable client of type Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\internal\ApiBridge.java:266: error:
+symbol:   variable screen
+location: variable client of type Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:320: error: cannot find
+symbol:   class ValidatingIntSliderCallbacks
+location: class OptionInstance
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:330: error: cannot find
+symbol:   class ValidatingIntSliderCallbacks
+location: class OptionInstance
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:341: error: cannot find
+symbol:   class ValidatingIntSliderCallbacks
+location: class OptionInstance
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:359: error: cannot find
+symbol:   class PotentialValuesBasedCallbacks
+location: class OptionInstance
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:252: error: cannot
+symbol:   variable client
+location: class ClickGuiScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:252: error: cannot
+symbol:   variable client
+location: class ClickGuiScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:307: error: cannot
+symbol:   variable fontHeight
+location: variable font of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:371: error: cannot
+symbol:   variable fontHeight
+location: variable font of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:487: error: cannot
+symbol:   variable client
+location: class ClickGuiScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:509: error: cannot
+symbol:   variable client
+location: class ClickGuiScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:91: error:
+symbol:   variable client
+location: class ColorPickerScreen
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:244: error: method
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:507: error: method
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\jm\OpenIntelJmPlugin.java:15: error: cannot
+symbol: class JourneyMapPlugin
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\hud\HudApi.java:201: error: cannot find
+symbol:   method drawDeferredElements()
+location: variable local of type ElementDrawContext
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\internal\ApiBridge.java:59: error:
+symbol:   method of(String)
+location: class Identifier
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\api\internal\ApiBridge.java:266: error:
+symbol:   method setScreen(editor ? n[...]reen))
+location: variable client of type Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:169: error: cannot find
+symbol:   method setScreen(HudEditorScreen)
+location: class Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:278: error: cannot find
+symbol:   method getId()
+location: variable kb of type KeyMapping
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:306: error: cannot find
+symbol:   method getChatHud()
+location: variable gui of type Gui
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGui.java:396: error: cannot find
+symbol:   method setScreen(ColorPickerScreen)
+location: class Minecraft
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:262: error: cannot
+symbol:   method render(GuiGraphicsExtractor,int,int,float)
+location: variable doneButton of type Button
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:289: error: cannot
+symbol:   method render(GuiGraphicsExtractor,int,int,float)
+location: variable searchField of type EditBox
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:373: error: cannot
+symbol:   method render(GuiGraphicsExtractor,int,int,float)
+location: variable widget of type AbstractWidget
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:374: error: cannot
+symbol:   method render(GuiGraphicsExtractor,int,int,float)
+location: variable aux of type AbstractWidget
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:469: error: cannot
+symbol:   method formatted(ChatFormatting)
+location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:82: error:
+symbol:   method of(String,String)
+location: class Identifier
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:83: error:
+symbol:   method of(String,String)
+location: class Identifier
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:128: error:
+symbol:   method getImage()
+location: variable svTex of type DynamicTexture
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:133: error:
+symbol:   method setColorArgb(int,int,int)
+location: variable img of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ColorPickerScreen.java:141: error:
+symbol:   method getImage()
+location: variable hueTex of type DynamicTexture
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\jm\JmBridge.java:18: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\macro\IceRoadMacro.java:8: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\macro\IceRoadMacro.java:9: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\ChatHudFontMixin.java:6: error:
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\FocusGlowMixin.java:7: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\FocusGlowMixin.java:8: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\PlayerNameplateMixin.java:8: error:
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\OpenIntelClient.java:44: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\OpenIntelClient.java:45: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\OpenIntelClient.java:46: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\ping\PingWheelScreen.java:14: error:
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\ping\PingWheelScreen.java:15: error:
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\ping\PingWheelScreen.java:16: error:
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:19: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:20: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:21: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:22: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:23: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\radar\RadarHud.java:25: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:6: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:7: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:8: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:9: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:14: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:116: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\relic\RelicMaps.java:121: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\ArmorHud.java:7: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\ArmorHud.java:8: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:11: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:96: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\EventFeed.java:107: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\MarkerHud.java:13: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\PotionHud.java:7: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\PresenceHud.java:9: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\PresenceHud.java:116: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\PresenceHud.java:121: error: package
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\mixin\FocusGlowMixin.java:19: error:
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\gui\ClickGuiScreen.java:487: error: package

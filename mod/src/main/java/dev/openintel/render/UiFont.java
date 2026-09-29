@@ -1,25 +1,26 @@
 package dev.openintel.render;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.textures.TextureFormat;
-import net.minecraft.client.font.EffectGlyph;
-import net.minecraft.client.font.GlyphProvider;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.text.StyleSpriteSource;
-import net.minecraft.text.OrderedText;
-import net.minecraft.util.Identifier;
+import com.mojang.blaze3d.GpuFormat;
+import net.minecraft.client.gui.font.glyphs.EffectGlyph;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.resources.Identifier;
 
 public final class UiFont {
-    public static final Identifier FONT_ID = Identifier.of("openintel", "ui");
+    public static final Identifier FONT_ID = Identifier.fromNamespaceAndPath("openintel", "ui");
     private static final String ATLAS_PREFIX = FONT_ID + "/";
-    public static final StyleSpriteSource.Font SOURCE = new StyleSpriteSource.Font(FONT_ID);
-    public static final RenderPipeline PIPELINE = RenderPipeline.builder(RenderPipelines.POSITION_TEX_COLOR_SNIPPET)
-            .withLocation(Identifier.of("openintel", "pipeline/ui_font"))
-            .withVertexFormat(RenderPipelines.GUI_TEXT.getVertexFormat(), RenderPipelines.GUI_TEXT.getVertexFormatMode())
-            .withFragmentShader(Identifier.of("openintel", "core/clean_font"))
+    public static final FontDescription.Resource SOURCE = new FontDescription.Resource(FONT_ID);
+    public static final RenderPipeline PIPELINE = RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath("openintel", "pipeline/ui_font"))
+            .withVertexBinding(0, RenderPipelines.GUI_TEXT.getVertexFormatBinding(0))
+            .withPrimitiveTopology(RenderPipelines.GUI_TEXT.getPrimitiveTopology())
+            .withFragmentShader(Identifier.fromNamespaceAndPath("openintel", "core/clean_font"))
             .withShaderDefine("FONT_INTENSITY")
-            .withDepthWrite(false)
+            .withDepthStencilState(new com.mojang.blaze3d.pipeline.DepthStencilState(
+                    com.mojang.blaze3d.platform.CompareOp.ALWAYS_PASS, false))
             .build();
 
     private static volatile boolean enabled;
@@ -63,41 +64,41 @@ public final class UiFont {
         }
     }
 
-    public static OrderedText capture(OrderedText text) {
+    public static FormattedCharSequence capture(FormattedCharSequence text) {
         if (!enabled || HUD_DEPTH.get() == null) return text;
         return visitor -> {
-            net.minecraft.text.Style[] cached = new net.minecraft.text.Style[2];
+            net.minecraft.network.chat.Style[] cached = new net.minecraft.network.chat.Style[2];
             return text.accept((index, style, codePoint) -> {
                 if (style != cached[0]) {
                     cached[0] = style;
-                    cached[1] = StyleSpriteSource.DEFAULT.equals(style.getFont()) ? style.withFont(SOURCE).withoutShadow() : style;
+                    cached[1] = FontDescription.DEFAULT.equals(style.getFont()) ? style.withFont(SOURCE).withoutShadow() : style;
                 }
                 return visitor.accept(index, cached[1], codePoint);
             });
         };
     }
 
-    public static StyleSpriteSource select(StyleSpriteSource source) {
-        return enabled && HUD_DEPTH.get() != null && StyleSpriteSource.DEFAULT.equals(source) ? SOURCE : source;
+    public static FontDescription select(FontDescription source) {
+        return enabled && HUD_DEPTH.get() != null && FontDescription.DEFAULT.equals(source) ? SOURCE : source;
     }
 
-    public static TextRenderer chatInputRenderer(TextRenderer.GlyphsProvider delegate) {
-        return new TextRenderer(new TextRenderer.GlyphsProvider() {
+    public static Font chatInputRenderer(Font.Provider delegate) {
+        return new Font(new Font.Provider() {
             @Override
-            public GlyphProvider getGlyphs(StyleSpriteSource source) {
-                return delegate.getGlyphs(enabled && StyleSpriteSource.DEFAULT.equals(source) ? SOURCE : source);
+            public net.minecraft.client.gui.GlyphSource glyphs(FontDescription source) {
+                return delegate.glyphs(enabled && FontDescription.DEFAULT.equals(source) ? SOURCE : source);
             }
 
             @Override
-            public EffectGlyph getRectangleGlyph() {
-                return delegate.getRectangleGlyph();
+            public EffectGlyph effect() {
+                return delegate.effect();
             }
         });
     }
 
-    public static int width(TextRenderer renderer, String text) {
-        return enabled ? renderer.getWidth(net.minecraft.text.Text.literal(text)
-                .styled(style -> style.withFont(SOURCE))) : renderer.getWidth(text);
+    public static int width(Font renderer, String text) {
+        return enabled ? renderer.width(net.minecraft.network.chat.Component.literal(text)
+                .withStyle(style -> style.withFont(SOURCE))) : renderer.width(text);
     }
 
     public static int shadowColor(int argb) {
@@ -112,7 +113,7 @@ public final class UiFont {
         return label != null && label.startsWith(ATLAS_PREFIX);
     }
 
-    public static boolean smoothAtlas(String label, TextureFormat format) {
-        return isAtlas(label) && format == TextureFormat.RED8;
+    public static boolean smoothAtlas(String label, GpuFormat format) {
+        return isAtlas(label) && format == GpuFormat.R8_UNORM;
     }
 }

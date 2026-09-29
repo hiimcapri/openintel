@@ -1,21 +1,21 @@
 package dev.openintel.ping;
 
-import dev.openintel.mixin.DrawContextAccessor;
 import dev.openintel.render.ColoredQuadsElement;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.ScreenRect;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.text.Text;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix3x2fc;
+import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -49,29 +49,29 @@ public class PingWheelScreen extends Screen {
     private static final float OUTER = 80f;
     private static final float GAP_DEG = 3f;
 
-    private final KeyBinding key;
+    private final KeyMapping key;
     private final boolean holdMode;
     private int hovered = -1;
 
-    public PingWheelScreen(KeyBinding key, boolean holdMode) {
-        super(Text.literal("Ping"));
+    public PingWheelScreen(KeyMapping key, boolean holdMode) {
+        super(Component.literal("Ping"));
         this.key = key;
         this.holdMode = holdMode;
     }
 
     /** Physical held-state of the bound key, queried straight from GLFW. */
-    public static boolean physicallyHeld(KeyBinding key) {
-        var window = MinecraftClient.getInstance().getWindow();
-        InputUtil.Key bound = InputUtil.fromTranslationKey(key.getBoundKeyTranslationKey());
-        if (bound.getCategory() == InputUtil.Type.MOUSE) {
-            return GLFW.glfwGetMouseButton(window.getHandle(), bound.getCode())
+    public static boolean physicallyHeld(KeyMapping key) {
+        var window = Minecraft.getInstance().getWindow();
+        InputConstants.Key bound = InputConstants.getKey(key.saveString());
+        if (bound.getType() == InputConstants.Type.MOUSE) {
+            return GLFW.glfwGetMouseButton(window.handle(), bound.getValue())
                     == GLFW.GLFW_PRESS;
         }
-        return InputUtil.isKeyPressed(window, bound.getCode());
+        return InputConstants.isKeyDown(window, bound.getValue());
     }
 
     @Override
-    public boolean shouldPause() { return false; }
+    public boolean isPauseScreen() { return false; }
 
     @Override
     protected void init() {
@@ -88,17 +88,17 @@ public class PingWheelScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
-        if (input.getKeycode() == GLFW.GLFW_KEY_ESCAPE) {
-            close();
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent input) {
+        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+            onClose();
             return true;
         }
         return super.keyPressed(input);
     }
 
     @Override
-    public boolean keyReleased(net.minecraft.client.input.KeyInput input) {
-        if (holdMode && key.matchesKey(input)) {
+    public boolean keyReleased(net.minecraft.client.input.KeyEvent input) {
+        if (holdMode && key.matches(input)) {
             commit(hovered);
             return true;
         }
@@ -106,7 +106,7 @@ public class PingWheelScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(Click click) {
+    public boolean mouseReleased(MouseButtonEvent click) {
         if (holdMode && key.matchesMouse(click)) {
             commit(hovered);
             return true;
@@ -115,13 +115,13 @@ public class PingWheelScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
+    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
         if (!holdMode) {
             float cx = width / 2f, cy = height / 2f;
             double dx = click.x() - cx, dy = click.y() - cy;
             double len = Math.hypot(dx, dy);
             if (len > OUTER + 6) {          // clicked outside the ring: cancel
-                close();
+                onClose();
                 return true;
             }
             if (hovered >= 0) {             // clicked a wedge: send it
@@ -134,38 +134,38 @@ public class PingWheelScreen extends Screen {
 
     /** Send the selected ping (or just close, when slot < 0). */
     private void commit(int slot) {
-        if (client == null) { close(); return; }
-        if (slot >= 0 && client.player != null && client.world != null) {
+        if (minecraft == null) { onClose(); return; }
+        if (slot >= 0 && minecraft.player != null && minecraft.level != null) {
             Slot s = SLOTS[slot];
-            HitResult hit = client.player.raycast(96, 1.0f, false);
-            Vec3d pos = hit.getType() == HitResult.Type.BLOCK
-                    ? Vec3d.ofCenter(((BlockHitResult) hit).getBlockPos())
-                    : client.player.getEyePos()
-                        .add(client.player.getRotationVector().multiply(24));
-            String dim = client.world.getRegistryKey().getValue().toString();
+            HitResult hit = minecraft.player.pick(96, 1.0f, false);
+            Vec3 pos = hit.getType() == HitResult.Type.BLOCK
+                    ? Vec3.atCenterOf(((BlockHitResult) hit).getBlockPos())
+                    : minecraft.player.getEyePosition()
+                        .add(minecraft.player.getViewVector(1.0f).scale(24));
+            String dim = minecraft.level.dimension().identifier().toString();
             PingManager.send(s.label, s.argb, pos.x, pos.y, pos.z, dim);
         }
-        close();
+        onClose();
     }
 
     // ------------------------------------------------------------ render ---
 
     @Override
-    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractBackground(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         // No dim/blur — the wheel floats over the live world.
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         float cx = width / 2f, cy = height / 2f;
         hovered = slotAt(mouseX - cx, mouseY - cy);
 
-        Matrix3x2f pose = new Matrix3x2f(ctx.getMatrices()).translate(cx, cy);
-        ((DrawContextAccessor) ctx).openintel$state().addSimpleElement(new ColoredQuadsElement(
+        Matrix3x2f pose = new Matrix3x2f(ctx.pose()).translate(cx, cy);
+        ctx.guiRenderState.addGuiElement(new ColoredQuadsElement(
                 pose, vc -> paint(vc, pose),
-                new ScreenRect(-(int) (OUTER + 4), -(int) (OUTER + 4),
+                new ScreenRectangle(-(int) (OUTER + 4), -(int) (OUTER + 4),
                         (int) (OUTER * 2 + 8), (int) (OUTER * 2 + 8))
-                        .transformEachVertex(pose)));
+                        .transformMaxBounds(pose)));
 
         // Wedge labels, then the center readout.
         for (int i = 0; i < SLOTS.length; i++) {
@@ -175,11 +175,11 @@ public class PingWheelScreen extends Screen {
             int ly = Math.round(cy + (float) Math.sin(mid) * r);
             int color = i == hovered ? 0xFFFFFFFF
                     : (SLOTS[i].argb & 0x00FFFFFF) | 0xDD000000;
-            ctx.drawCenteredTextWithShadow(textRenderer, SLOTS[i].label, lx, ly - 4, color);
+            ctx.centeredText(font, SLOTS[i].label, lx, ly - 4, color);
         }
 
         String center = hovered >= 0 ? SLOTS[hovered].label : "—";
-        ctx.drawCenteredTextWithShadow(textRenderer, center,
+        ctx.centeredText(font, center,
                 Math.round(cx), Math.round(cy) - 4, 0xFFDDDDDD);
     }
 
@@ -260,10 +260,15 @@ public class PingWheelScreen extends Screen {
                              float x1, float y1, int c1,
                              float x2, float y2, int c2,
                              float x3, float y3, int c3) {
-        vc.vertex(pose, x0, y0).color(c0);
-        vc.vertex(pose, x1, y1).color(c1);
-        vc.vertex(pose, x2, y2).color(c2);
-        vc.vertex(pose, x3, y3).color(c3);
+        vert(vc, pose, x0, y0, c0);
+        vert(vc, pose, x1, y1, c1);
+        vert(vc, pose, x2, y2, c2);
+        vert(vc, pose, x3, y3, c3);
+    }
+
+    private static void vert(VertexConsumer vc, Matrix3x2fc pose, float x, float y, int c) {
+        Vector2f p = pose.transformPosition(x, y, new Vector2f());
+        vc.addVertex(p.x, p.y, 0).setColor(c);
     }
 
     private static int scaleAlpha(int argb, float f) {

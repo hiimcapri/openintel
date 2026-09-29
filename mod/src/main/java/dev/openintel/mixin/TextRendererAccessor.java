@@ -1,11 +1,11 @@
 package dev.openintel.mixin;
 
-import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.Font;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(TextRenderer.class)
+@Mixin(Font.class)
 public interface TextRendererAccessor {
-    @Accessor("fonts")
-    TextRenderer.GlyphsProvider openintel$getGlyphsProvider();
+    @Accessor("provider")
+    Font.Provider openintel$getGlyphsProvider();
 }

@@ -1,16 +1,16 @@
 package dev.openintel;
 
 import com.google.gson.JsonParser;
-import com.mojang.blaze3d.textures.TextureFormat;
+import com.mojang.blaze3d.GpuFormat;
 import com.mojang.serialization.JsonOps;
 import dev.openintel.render.UiFont;
-import net.minecraft.client.font.FontLoader;
-import net.minecraft.client.font.GlyphBaker;
-import net.minecraft.client.font.TrueTypeFontLoader;
-import net.minecraft.resource.ResourceManager;
-import net.minecraft.text.Style;
-import net.minecraft.text.StyleSpriteSource;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.font.providers.GlyphProviderDefinition;
+import net.minecraft.client.gui.font.GlyphStitcher;
+import net.minecraft.client.gui.font.providers.TrueTypeGlyphProviderDefinition;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.resources.Identifier;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.Proxy;
@@ -19,9 +19,9 @@ import java.nio.charset.StandardCharsets;
 public final class UiFontTest {
     public static void main(String[] args) throws Exception {
         UiFont.initialize(false);
-        check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT, "Disabled clean font preserves vanilla");
+        check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT, "Disabled clean font preserves vanilla");
         check(UiFont.setEnabled(true), "Toggle reports font layout change");
-        check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT,
+        check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
                 "Inventory, menus, and other mods keep their default font outside the HUD scope");
         verifyHudScope();
         verifyCaptureReuse();
@@ -29,33 +29,33 @@ public final class UiFontTest {
         verifyFontToggle();
         check(!UiFont.setEnabled(true), "Unchanged setting does not trigger chat reflow");
         for (String id : new String[]{"server:icons", "minecraft:alt", "minecraft:uniform", "openintel:ui"}) {
-            var custom = new StyleSpriteSource.Font(Identifier.of(id));
+            var custom = new FontDescription.Resource(Identifier.parse(id));
             check(UiFont.select(custom) == custom, "Explicit font remains untouched: " + id);
         }
-        Style styled = Style.EMPTY.withColor(0xFFAA00).withBold(true).withItalic(true).withUnderline(true);
+        Style styled = Style.EMPTY.withColor(0xFFAA00).withBold(true).withItalic(true).withUnderlined(true);
         UiFont.select(styled.getFont());
-        check(styled.getFont().equals(StyleSpriteSource.DEFAULT) && styled.isBold() && styled.isItalic()
-                && styled.isUnderlined() && styled.getColor().getRgb() == 0xFFAA00, "Style is never mutated by font selection");
+        check(styled.getFont().equals(FontDescription.DEFAULT) && styled.isBold() && styled.isItalic()
+                && styled.isUnderlined() && styled.getColor().getValue() == 0xFFAA00, "Style is never mutated by font selection");
         UiFont.setEnabled(false);
-        check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT, "Toggle restores vanilla font");
+        check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT, "Toggle restores vanilla font");
 
-        try (var baker = new GlyphBaker(null, UiFont.FONT_ID)) {
-            var atlasId = GlyphBaker.class.getDeclaredMethod("getAtlasId", int.class);
+        try (var baker = new GlyphStitcher(null, UiFont.FONT_ID)) {
+            var atlasId = GlyphStitcher.class.getDeclaredMethod("textureName", int.class);
             atlasId.setAccessible(true);
             String label = atlasId.invoke(baker, 0).toString();
-            check(UiFont.smoothAtlas(label, TextureFormat.RED8), "Native glyph atlas is recognized for smooth coverage");
-            check(!UiFont.smoothAtlas(label, TextureFormat.RGBA8), "Color glyphs retain their own rendering");
+            check(UiFont.smoothAtlas(label, GpuFormat.R8_UNORM), "Native glyph atlas is recognized for smooth coverage");
+            check(!UiFont.smoothAtlas(label, GpuFormat.RGBA8_UNORM), "Color glyphs retain their own rendering");
         }
-        check(!UiFont.smoothAtlas("minecraft:default/0", TextureFormat.RED8), "Vanilla atlas filtering unchanged");
+        check(!UiFont.smoothAtlas("minecraft:default/0", GpuFormat.R8_UNORM), "Vanilla atlas filtering unchanged");
         check(!UiFont.isAtlas("openintel:ui_other/0") && !UiFont.isAtlas(null), "Atlas matching is scoped precisely");
 
         try (var input = UiFontTest.class.getResourceAsStream("/assets/openintel/font/ui.json")) {
             check(input != null, "Native font definition packaged");
             var providers = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8))
                     .getAsJsonObject().getAsJsonArray("providers");
-            var loader = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(0)).getOrThrow();
-            check(loader instanceof TrueTypeFontLoader, "Uses native TrueType loader");
-            var ttf = (TrueTypeFontLoader) loader;
+            var loader = GlyphProviderDefinition.MAP_CODEC.codec().parse(JsonOps.INSTANCE, providers.get(0)).getOrThrow();
+            check(loader instanceof TrueTypeGlyphProviderDefinition, "Uses native TrueType loader");
+            var ttf = (TrueTypeGlyphProviderDefinition) loader;
             check(ttf.oversample() == 4f && ttf.size() == 9f, "Oversampled text fits standard GUI line height");
             check(providers.size() == 5 && providers.get(4).getAsJsonObject().get("id").getAsString()
                     .equals("minecraft:default"), "Vanilla glyph providers remain as Unicode fallback");
@@ -68,22 +68,22 @@ public final class UiFontTest {
                         return UiFontTest.class.getResourceAsStream("/assets/" + id.getNamespace() + "/" + id.getPath());
                     });
             check(requested.isEmpty(), "Fresh resource proxy");
-            var fonts = new java.util.ArrayList<net.minecraft.client.font.Font>();
+            var fonts = new java.util.ArrayList<com.mojang.blaze3d.font.GlyphProvider>();
             for (int i = 0; i < 4; i++) {
-                var provider = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(i)).getOrThrow();
-                check(provider instanceof TrueTypeFontLoader, "Noto stack uses native TrueType loader");
-                fonts.add(provider.build().left().orElseThrow().load(resources));
+                var provider = GlyphProviderDefinition.MAP_CODEC.codec().parse(JsonOps.INSTANCE, providers.get(i)).getOrThrow();
+                check(provider instanceof TrueTypeGlyphProviderDefinition, "Noto stack uses native TrueType loader");
+                fonts.add(provider.unpack().left().orElseThrow().load(resources));
             }
-            check(requested.get(0).equals(Identifier.of("openintel", "font/noto_sans_medium.ttf")),
+            check(requested.get(0).equals(Identifier.fromNamespaceAndPath("openintel", "font/noto_sans_medium.ttf")),
                     "Primary TTF resolves to bundled Noto Medium");
             try {
                 var medium = fonts.get(0);
                 for (int cp : "Entering The Dog Den [STAFF OUT] Reinforcing White Rabbit's Timepiece 294 0:32".codePoints().toArray()) {
                     var glyph = medium.getGlyph(cp);
                     check(glyph != null, "Sample HUD/chat/title character has a glyph: " + cp);
-                    float width = glyph.getMetrics().getAdvance();
+                    float width = glyph.info().getAdvance();
                     check(width > 0f && width < 12f, "Native font advance stays in logical pixels");
-                    check(glyph.getMetrics().getAdvance(true) >= width, "Bold layout preserves glyph advances");
+                    check(glyph.info().getAdvance(true) >= width, "Bold layout preserves glyph advances");
                 }
                 check(fonts.stream().anyMatch(f -> f.getGlyph(0x221E) != null),
                         "Infinite potion duration glyph supported by Noto stack");
@@ -94,53 +94,53 @@ public final class UiFontTest {
         }
         verifyShadows();
         verifyMixinTargets();
-        check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.gl.RenderPipelines.GUI_TEXT.getVertexFormat()),
+        check(UiFont.PIPELINE.getVertexFormatBinding(0).equals(net.minecraft.client.renderer.RenderPipelines.GUI_TEXT.getVertexFormatBinding(0)),
                 "Native glyph vertex layout is preserved");
         System.out.println("UI font selection and native loading tests passed");
     }
 
     private static void verifyHudScope() {
-        var iconFont = new StyleSpriteSource.Font(Identifier.of("server", "icons"));
-        var click = new net.minecraft.text.ClickEvent.SuggestCommand("/oi");
+        var iconFont = new FontDescription.Resource(Identifier.fromNamespaceAndPath("server", "icons"));
+        var click = new net.minecraft.network.chat.ClickEvent.SuggestCommand("/oi");
         var style = Style.EMPTY.withColor(0xFFAA00).withBold(true).withClickEvent(click);
-        var text = net.minecraft.text.Text.literal("A").setStyle(style)
-                .append(net.minecraft.text.Text.literal("B").styled(s -> s.withFont(iconFont)));
-        var original = text.asOrderedText();
-        var captured = new java.util.concurrent.atomic.AtomicReference<net.minecraft.text.OrderedText>();
+        var text = net.minecraft.network.chat.Component.literal("A").setStyle(style)
+                .append(net.minecraft.network.chat.Component.literal("B").withStyle(s -> s.withFont(iconFont)));
+        var original = text.getVisualOrderText();
+        var captured = new java.util.concurrent.atomic.AtomicReference<net.minecraft.util.FormattedCharSequence>();
         check(UiFont.capture(original) == original, "Unrelated UI text is not wrapped");
         UiFont.withHudFont(() -> {
-            check(UiFont.select(StyleSpriteSource.DEFAULT).equals(UiFont.SOURCE), "HUD measurements use clean font");
+            check(UiFont.select(FontDescription.DEFAULT).equals(UiFont.SOURCE), "HUD measurements use clean font");
             check(UiFont.select(iconFont) == iconFont, "HUD icon fonts remain untouched");
             captured.set(UiFont.capture(original));
             try {
                 UiFont.withHudFont(() -> { throw new IllegalStateException("scope test"); });
             } catch (IllegalStateException expected) { }
-            check(UiFont.select(StyleSpriteSource.DEFAULT).equals(UiFont.SOURCE), "Nested failure restores outer HUD scope");
-            check(java.util.concurrent.CompletableFuture.supplyAsync(() -> UiFont.select(StyleSpriteSource.DEFAULT)).join()
-                    == StyleSpriteSource.DEFAULT, "HUD scope does not leak to other threads");
+            check(UiFont.select(FontDescription.DEFAULT).equals(UiFont.SOURCE), "Nested failure restores outer HUD scope");
+            check(java.util.concurrent.CompletableFuture.supplyAsync(() -> UiFont.select(FontDescription.DEFAULT)).join()
+                    == FontDescription.DEFAULT, "HUD scope does not leak to other threads");
         });
-        check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT, "HUD scope does not leak to other renderers");
+        check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT, "HUD scope does not leak to other renderers");
         captured.get().accept((index, effective, cp) -> {
             if (cp == 'A') {
                 check(effective.getFont().equals(UiFont.SOURCE), "Deferred HUD rendering retains its selected font");
                 check(Integer.valueOf(0).equals(effective.getShadowColor()), "Deferred clean text explicitly disables shadows");
-                check(effective.isBold() && effective.getColor().getRgb() == 0xFFAA00
+                check(effective.isBold() && effective.getColor().getValue() == 0xFFAA00
                         && click.equals(effective.getClickEvent()), "Deferred rendering preserves formatting and click actions");
             } else {
                 check(effective.getFont().equals(iconFont), "Deferred rendering preserves server icon fonts");
             }
             return true;
         });
-        check(text.getStyle().getFont().equals(StyleSpriteSource.DEFAULT), "Original chat message is not mutated");
+        check(text.getStyle().getFont().equals(FontDescription.DEFAULT), "Original chat message is not mutated");
         try {
             UiFont.withHudFont(() -> { throw new IllegalStateException("scope test"); });
         } catch (IllegalStateException expected) { }
-        check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT, "Failed HUD render cannot take over menu fonts");
+        check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT, "Failed HUD render cannot take over menu fonts");
     }
 
     private static void verifyCaptureReuse() throws Exception {
-        var captured = new java.util.concurrent.atomic.AtomicReference<net.minecraft.text.OrderedText>();
-        UiFont.withHudFont(() -> captured.set(UiFont.capture(net.minecraft.text.Text.literal("a".repeat(64)).asOrderedText())));
+        var captured = new java.util.concurrent.atomic.AtomicReference<net.minecraft.util.FormattedCharSequence>();
+        UiFont.withHudFont(() -> captured.set(UiFont.capture(net.minecraft.network.chat.Component.literal("a".repeat(64)).getVisualOrderText())));
         var styles = new java.util.ArrayList<Style>();
         captured.get().accept((index, style, cp) -> { styles.add(style); return true; });
         check(styles.size() == 64 && styles.stream().allMatch(style -> style == styles.get(0)),
@@ -157,71 +157,71 @@ public final class UiFontTest {
     private static void verifyChatInput() throws Exception {
         var vanillaGlyphs = fixedGlyphs(6);
         var cleanGlyphs = fixedGlyphs(4);
-        var selected = new java.util.concurrent.atomic.AtomicReference<StyleSpriteSource>();
-        var delegate = new net.minecraft.client.font.TextRenderer.GlyphsProvider() {
+        var selected = new java.util.concurrent.atomic.AtomicReference<FontDescription>();
+        var delegate = new net.minecraft.client.gui.Font.Provider() {
             @Override
-            public net.minecraft.client.font.GlyphProvider getGlyphs(StyleSpriteSource source) {
+            public net.minecraft.client.gui.GlyphSource glyphs(FontDescription source) {
                 selected.set(source);
                 return source.equals(UiFont.SOURCE) ? cleanGlyphs : vanillaGlyphs;
             }
 
             @Override
-            public net.minecraft.client.font.EffectGlyph getRectangleGlyph() {
+            public net.minecraft.client.gui.font.glyphs.EffectGlyph effect() {
                 return null;
             }
         };
-        var original = new net.minecraft.client.font.TextRenderer(delegate);
+        var original = new net.minecraft.client.gui.Font(delegate);
         var input = UiFont.chatInputRenderer(delegate);
-        check(original.getWidth("abcd") == 24, "Unrelated text renderer keeps vanilla metrics");
-        check(input.getWidth("abcd") == 16, "Chat input uses clean glyph metrics outside HUD render scope");
-        check(input.trimToWidth("abcd", 8).equals("ab"), "Input selection and scrolling use clean text widths");
-        var custom = new StyleSpriteSource.Font(Identifier.of("server", "icons"));
-        check(input.getWidth(net.minecraft.text.Text.literal("ab").styled(s -> s.withFont(custom))) == 12
+        check(original.width("abcd") == 24, "Unrelated text renderer keeps vanilla metrics");
+        check(input.width("abcd") == 16, "Chat input uses clean glyph metrics outside HUD render scope");
+        check(input.plainSubstrByWidth("abcd", 8).equals("ab"), "Input selection and scrolling use clean text widths");
+        var custom = new FontDescription.Resource(Identifier.fromNamespaceAndPath("server", "icons"));
+        check(input.width(net.minecraft.network.chat.Component.literal("ab").withStyle(s -> s.withFont(custom))) == 12
                 && selected.get().equals(custom), "Input preserves explicit custom fonts");
-        var field = new net.minecraft.client.gui.widget.TextFieldWidget(input, 4, 0, 100, 12,
-                net.minecraft.text.Text.literal("Chat input"));
-        field.setDrawsBackground(false);
-        field.setText("abcd");
-        check(field.getCharacterX(2) == 12, "Chat input cursor positions use clean text advances");
-        field.setSelectionStart(1);
-        field.setSelectionEnd(3);
-        check(field.getSelectedText().equals("bc"), "Selection preserves the typed character range");
+        var field = new net.minecraft.client.gui.components.EditBox(input, 4, 0, 100, 12,
+                net.minecraft.network.chat.Component.literal("Chat input"));
+        field.setBordered(false);
+        field.setValue("abcd");
+        check(field.getScreenX(2) == 12, "Chat input cursor positions use clean text advances");
+        field.moveCursorTo(1, false);
+        field.setHighlightPos(3);
+        check(field.getHighlighted().equals("bc"), "Selection preserves the typed character range");
         field.setWidth(12);
-        field.setCursorToEnd(false);
-        var firstCharacter = net.minecraft.client.gui.widget.TextFieldWidget.class.getDeclaredField("firstCharacterIndex");
+        field.moveCursorToEnd(false);
+        var firstCharacter = net.minecraft.client.gui.components.EditBox.class.getDeclaredField("displayPos");
         firstCharacter.setAccessible(true);
         int first = firstCharacter.getInt(field);
-        check(first > 0 && input.getWidth(field.getText().substring(first)) <= field.getInnerWidth(),
+        check(first > 0 && input.width(field.getValue().substring(first)) <= field.getInnerWidth(),
                 "Long input scrolls using the same clean-font measurements");
-        check(original.getWidth("abcd") == 24 && UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT,
+        check(original.width("abcd") == 24 && UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
                 "Input rendering cannot change menu fonts or global selection");
         UiFont.setEnabled(false);
-        check(input.getWidth("abcd") == 24, "Input respects the clean-font toggle");
+        check(input.width("abcd") == 24, "Input respects the clean-font toggle");
         UiFont.setEnabled(true);
-        check(input.getWidth("abcd") == 16, "Input restores clean metrics without rebuilding the field");
+        check(input.width("abcd") == 16, "Input restores clean metrics without rebuilding the field");
     }
 
-    private static net.minecraft.client.font.GlyphProvider fixedGlyphs(float advance) {
-        var glyph = new net.minecraft.client.font.BakedGlyph() {
+    private static net.minecraft.client.gui.GlyphSource fixedGlyphs(float advance) {
+        var glyph = new net.minecraft.client.gui.font.glyphs.BakedGlyph() {
             @Override
-            public net.minecraft.client.font.GlyphMetrics getMetrics() {
-                return net.minecraft.client.font.GlyphMetrics.empty(advance);
+            public com.mojang.blaze3d.font.GlyphInfo info() {
+                return com.mojang.blaze3d.font.GlyphInfo.simple(advance);
             }
 
             @Override
-            public net.minecraft.client.font.TextDrawable.DrawnGlyphRect create(float x, float y, int color,
+            public net.minecraft.client.gui.font.TextRenderable.Styled createGlyph(float x, float y, int color,
                     int shadow, Style style, float boldOffset, float shadowOffset) {
                 throw new UnsupportedOperationException("Measurement-only test glyph");
             }
         };
-        return new net.minecraft.client.font.GlyphProvider() {
+        return new net.minecraft.client.gui.GlyphSource() {
             @Override
-            public net.minecraft.client.font.BakedGlyph get(int codePoint) {
+            public net.minecraft.client.gui.font.glyphs.BakedGlyph getGlyph(int codePoint) {
                 return glyph;
             }
 
             @Override
-            public net.minecraft.client.font.BakedGlyph getObfuscated(net.minecraft.util.math.random.Random random, int width) {
+            public net.minecraft.client.gui.font.glyphs.BakedGlyph getRandomGlyph(net.minecraft.util.RandomSource random, int width) {
                 return glyph;
             }
         };
@@ -238,20 +238,20 @@ public final class UiFontTest {
             UiFont.setEnabled(next);
             changes.incrementAndGet();
         };
-        var button = (net.minecraft.client.gui.widget.ButtonWidget) factory.invoke(null,
+        var button = (net.minecraft.client.gui.components.Button) factory.invoke(null,
                 (java.util.function.BooleanSupplier) value::get, apply);
-        check(button.getMessage().equals(net.minecraft.text.Text.translatable("options.openintel.hud.font.clean")),
+        check(button.getMessage().equals(net.minecraft.network.chat.Component.translatable("options.openintel.hud.font.clean")),
                 "Font toggle displays the loaded clean-font preference");
         button.onPress(null);
-        check(!value.get() && button.getMessage().equals(net.minecraft.text.Text.translatable("options.openintel.hud.font.minecraft")),
+        check(!value.get() && button.getMessage().equals(net.minecraft.network.chat.Component.translatable("options.openintel.hud.font.minecraft")),
                 "First click selects and displays Minecraft font");
-        UiFont.withHudFont(() -> check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT,
+        UiFont.withHudFont(() -> check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
                 "Minecraft font selection takes effect at runtime"));
         button.onPress(null);
         check(value.get() && changes.get() == 2
-                && button.getMessage().equals(net.minecraft.text.Text.translatable("options.openintel.hud.font.clean")),
+                && button.getMessage().equals(net.minecraft.network.chat.Component.translatable("options.openintel.hud.font.clean")),
                 "Second click restores clean font and each click applies once");
-        UiFont.withHudFont(() -> check(UiFont.select(StyleSpriteSource.DEFAULT).equals(UiFont.SOURCE),
+        UiFont.withHudFont(() -> check(UiFont.select(FontDescription.DEFAULT).equals(UiFont.SOURCE),
                 "Clean font selection takes effect at runtime"));
         try (var input = UiFontTest.class.getResourceAsStream("/assets/openintel/lang/en_us.json")) {
             var lang = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
@@ -274,41 +274,42 @@ public final class UiFontTest {
     }
 
     private static void verifyMixinTargets() throws Exception {
-        net.minecraft.client.font.BakedGlyphImpl.class.getDeclaredMethod("create", float.class, float.class,
+        net.minecraft.client.gui.font.glyphs.BakedSheetGlyph.class.getDeclaredMethod("createGlyph", float.class, float.class,
                 int.class, int.class, Style.class, float.class, float.class);
-        net.minecraft.client.font.BakedGlyphImpl.class.getDeclaredMethod("create", float.class, float.class,
+        net.minecraft.client.gui.font.glyphs.BakedSheetGlyph.class.getDeclaredMethod("createEffect", float.class, float.class,
                 float.class, float.class, float.class, int.class, int.class, float.class);
-        check(net.minecraft.client.font.BakedGlyphImpl.class.getDeclaredField("textureView").getType()
+        check(net.minecraft.client.gui.font.glyphs.BakedSheetGlyph.class.getDeclaredField("textureView").getType()
                 == com.mojang.blaze3d.textures.GpuTextureView.class, "Shadow hook can identify the clean-font atlas");
-        var chat = net.minecraft.client.gui.hud.ChatHud.class;
-        chat.getDeclaredMethod("addVisibleMessage", net.minecraft.client.gui.hud.ChatHudLine.class);
-        chat.getDeclaredMethod("render", net.minecraft.client.gui.DrawContext.class,
-                net.minecraft.client.font.TextRenderer.class, int.class, int.class, int.class, boolean.class, boolean.class);
-        chat.getDeclaredMethod("render", net.minecraft.client.font.DrawnTextConsumer.class,
-                int.class, int.class, boolean.class);
-        for (String name : new String[]{"renderOverlayMessage", "renderTitleAndSubtitle"}) {
-            net.minecraft.client.gui.hud.InGameHud.class.getDeclaredMethod(name,
-                    net.minecraft.client.gui.DrawContext.class, net.minecraft.client.render.RenderTickCounter.class);
+        var chat = net.minecraft.client.gui.components.ChatComponent.class;
+        chat.getDeclaredMethod("refreshTrimmedMessages");
+        chat.getDeclaredMethod("extractRenderState", net.minecraft.client.gui.GuiGraphicsExtractor.class,
+                net.minecraft.client.gui.Font.class, int.class, int.class, int.class,
+                net.minecraft.client.gui.components.ChatComponent.DisplayMode.class, boolean.class);
+        chat.getDeclaredMethod("captureClickableText", net.minecraft.client.gui.ActiveTextCollector.class,
+                int.class, int.class, net.minecraft.client.gui.components.ChatComponent.DisplayMode.class);
+        for (String name : new String[]{"extractOverlayMessage", "extractTitle"}) {
+            net.minecraft.client.gui.Hud.class.getDeclaredMethod(name,
+                    net.minecraft.client.gui.GuiGraphicsExtractor.class, net.minecraft.client.DeltaTracker.class);
         }
-        net.minecraft.client.gui.render.state.TextGuiElementRenderState.class.getDeclaredConstructor(
-                net.minecraft.client.font.TextRenderer.class, net.minecraft.text.OrderedText.class,
+        net.minecraft.client.renderer.state.gui.GuiTextRenderState.class.getDeclaredConstructor(
+                net.minecraft.client.gui.Font.class, net.minecraft.util.FormattedCharSequence.class,
                 org.joml.Matrix3x2fc.class, int.class, int.class, int.class, int.class,
-                boolean.class, boolean.class, net.minecraft.client.gui.ScreenRect.class);
-        check(net.minecraft.client.font.TextRenderer.class.getDeclaredField("fonts").getType()
-                == net.minecraft.client.font.TextRenderer.GlyphsProvider.class, "Chat input can reuse the original validated glyph provider");
+                boolean.class, boolean.class, net.minecraft.client.gui.navigation.ScreenRectangle.class);
+        check(net.minecraft.client.gui.Font.class.getDeclaredField("provider").getType()
+                == net.minecraft.client.gui.Font.Provider.class, "Chat input can reuse the original validated glyph provider");
         verifyChatInputHook();
         verifyFontSettingWiring();
-        var selector = net.minecraft.client.font.TextRenderer.class.getDeclaredMethod("getGlyphs", StyleSpriteSource.class);
-        check(selector.getReturnType() == net.minecraft.client.font.GlyphProvider.class, "Text selection hook matches this Minecraft version");
-        var element = net.minecraft.client.gui.render.state.GlyphGuiElementRenderState.class;
+        var selector = net.minecraft.client.gui.Font.class.getDeclaredMethod("getGlyphSource", FontDescription.class);
+        check(selector.getReturnType() == net.minecraft.client.gui.GlyphSource.class, "Component selection hook matches this Minecraft version");
+        var element = net.minecraft.client.renderer.state.gui.GlyphRenderState.class;
         check(element.getDeclaredMethod("pipeline").getReturnType() == com.mojang.blaze3d.pipeline.RenderPipeline.class,
                 "GUI font pipeline hook matches");
-        check(element.getDeclaredMethod("textureSetup").getReturnType() == net.minecraft.client.texture.TextureSetup.class,
+        check(element.getDeclaredMethod("textureSetup").getReturnType() == net.minecraft.client.gui.render.TextureSetup.class,
                 "GUI font sampler hook matches");
-        check(element.getDeclaredField("renderable").getType() == net.minecraft.client.font.TextDrawable.class,
+        check(element.getDeclaredField("renderable").getType() == net.minecraft.client.gui.font.TextRenderable.class,
                 "GUI glyph shadow field matches");
-        net.minecraft.client.font.GlyphAtlasTexture.class.getDeclaredConstructor(java.util.function.Supplier.class,
-                net.minecraft.client.font.TextRenderLayerSet.class, boolean.class);
+        net.minecraft.client.gui.font.FontTexture.class.getDeclaredConstructor(java.util.function.Supplier.class,
+                net.minecraft.client.gui.font.GlyphRenderTypes.class, boolean.class);
         try (var input = UiFontTest.class.getResourceAsStream("/openintel.mixins.json")) {
             var mixins = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8))
                     .getAsJsonObject().getAsJsonArray("client");
@@ -335,7 +336,7 @@ public final class UiFontTest {
                         @Override
                         public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
                             if (owner.equals("dev/openintel/render/UiFont") && name.equals("setEnabled")) wired[1] = true;
-                            if (owner.equals("net/minecraft/client/gui/hud/ChatHud") && name.equals("reset")) wired[2] = true;
+                            if (owner.equals("net/minecraft/client/gui/components/ChatComponent") && name.equals("rescaleChat")) wired[2] = true;
                             if (owner.equals("dev/openintel/config/OIConfig") && name.equals("save")) wired[3] = true;
                         }
                     };
@@ -347,7 +348,7 @@ public final class UiFontTest {
 
     private static void verifyChatInputHook() throws Exception {
         int[] references = {0};
-        try (var stream = net.minecraft.client.gui.screen.ChatScreen.class.getResourceAsStream("ChatScreen.class")) {
+        try (var stream = net.minecraft.client.gui.screens.ChatScreen.class.getResourceAsStream("ChatScreen.class")) {
             new org.objectweb.asm.ClassReader(stream).accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
                 @Override
                 public org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor,
@@ -356,7 +357,7 @@ public final class UiFontTest {
                     return new org.objectweb.asm.MethodVisitor(org.objectweb.asm.Opcodes.ASM9) {
                         @Override
                         public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-                            if (owner.equals("net/minecraft/client/MinecraftClient") && name.equals("advanceValidatingTextRenderer")) references[0]++;
+                            if (owner.equals("net/minecraft/client/Minecraft") && name.equals("fontFilterFishy")) references[0]++;
                         }
                     };
                 }

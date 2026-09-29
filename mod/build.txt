@@ -1,0 +1,997 @@
+﻿
+> Configure project :
+Fabric Loom: 1.16.3
+
+> Task :compileJava UP-TO-DATE
+> Task :processResources
+> Task :classes
+> Task :processIncludeJars
+> Task :sourcesJar
+
+> Task :compileTestJava FAILED
+.\gradlew.bat : C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:65: 
+error: package net.minecraft.client.texture does not exist
+At line:1 char:1
++ .\gradlew.bat build --console=plain 2>&1 | Out-File build.txt -Encodi ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\cap\De... does not exist:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    private static void verifyAtlas(net.minecraft.client.texture.NativeImage atlas) throws Exception {
+                                                                ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:76: error: package 
+net.minecraft.client.texture does not exist
+    private static void verifyMipmaps(net.minecraft.client.texture.NativeImage image, int level) throws Exception {
+                                                                  ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:10: error: package 
+net.minecraft.resource does not exist
+import net.minecraft.resource.ResourceManager;
+                             ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:204: error: package 
+net.minecraft.client.font does not exist
+    private static net.minecraft.client.font.GlyphProvider fixedGlyphs(float advance) {
+                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:53: error: package 
+net.minecraft.client.texture does not exist
+            verifyAtlas((net.minecraft.client.texture.NativeImage) atlas);
+                                                     ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:54: error: package 
+net.minecraft.client.texture does not exist
+            verifyMipmaps((net.minecraft.client.texture.NativeImage) atlas, 0);
+                                                       ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:96: error: package 
+net.minecraft.client.texture does not exist
+        var downsample = CleanFont.class.getDeclaredMethod("downsample", 
+net.minecraft.client.texture.NativeImage.class);
+                                                                                                     ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:98: error: package 
+net.minecraft.client.texture does not exist
+        try (var next = (net.minecraft.client.texture.NativeImage) downsample.invoke(null, image)) {
+                                                     ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:145: error: package 
+net.minecraft.client.texture does not exist
+                net.minecraft.client.texture.TextureSetup.class, String.class, float.class, float.class,
+                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:146: error: cannot 
+find symbol
+                int.class, net.minecraft.client.gui.ScreenRectangle.class, 
+net.minecraft.client.gui.ScreenRectangle.class);
+                                                   ^
+  symbol:   class ScreenRectangle
+  location: package net.minecraft.client.gui
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:146: error: cannot 
+find symbol
+                int.class, net.minecraft.client.gui.ScreenRectangle.class, 
+net.minecraft.client.gui.ScreenRectangle.class);
+                                                                                                   ^
+  symbol:   class ScreenRectangle
+  location: package net.minecraft.client.gui
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:151: error: cannot 
+find symbol
+        var bounds = (net.minecraft.client.gui.ScreenRectangle) boundsMethod.invoke(null, "A A", 0.25f, 0.5f, pose);
+                                              ^
+  symbol:   class ScreenRectangle
+  location: package net.minecraft.client.gui
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:152: error: package 
+net.minecraft.client.gui.render.state does not exist
+        var state = (net.minecraft.client.gui.render.state.GuiElementRenderState) constructor.newInstance(
+                                                          ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:153: error: package 
+net.minecraft.client.texture does not exist
+                pose, net.minecraft.client.texture.TextureSetup.noTexture(), "A A", 0.25f, 0.5f, -1, null, bounds);
+                                                  ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:156: error: package 
+net.minecraft.client.render does not exist
+        var consumer = (net.minecraft.client.render.VertexConsumer) java.lang.reflect.Proxy.newProxyInstance(
+                                                   ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:157: error: package 
+net.minecraft.client.render does not exist
+                CleanFontMetricsTest.class.getClassLoader(), new 
+Class<?>[]{net.minecraft.client.render.VertexConsumer.class},
+                                                                                                       ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:166: error: package 
+net.minecraft.client.render does not exist
+                    return method.getReturnType() == net.minecraft.client.render.VertexConsumer.class ? proxy : null;
+                                                                                ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:177: error: cannot 
+find symbol
+        var fallbackBounds = (net.minecraft.client.gui.ScreenRectangle) boundsMethod.invoke(null, "\uD83D\uDCE1", 0f, 
+0f, pose);
+                                                      ^
+  symbol:   class ScreenRectangle
+  location: package net.minecraft.client.gui
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:178: error: package 
+net.minecraft.client.gui.render.state does not exist
+        var fallback = (net.minecraft.client.gui.render.state.GuiElementRenderState) constructor.newInstance(
+                                                             ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:179: error: package 
+net.minecraft.client.texture does not exist
+                pose, net.minecraft.client.texture.TextureSetup.noTexture(), "\uD83D\uDCE1", 0f, 0f, -1, null, 
+fallbackBounds);
+                                                  ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:273: error: package 
+net.minecraft.client.gl does not exist
+        var vanilla = net.minecraft.client.gl.RenderPipelines.GUI_TEXTURED;
+                                             ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:274: error: package 
+net.minecraft.client.gl does not exist
+        check(net.minecraft.client.gl.RenderPipelines.getAll().contains(pipeline), "Font pipeline registered for 
+resource reload");
+                                     ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:275: error: cannot 
+find symbol
+        check(pipeline.getBlendFunction().equals(vanilla.getBlendFunction()), "Font coverage uses standard alpha 
+blending");
+                      ^
+  symbol:   method getBlendFunction()
+  location: variable pipeline of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:277: error: cannot 
+find symbol
+        check(pipeline.getVertexFormat().equals(vanilla.getVertexFormat()), "Font uses compatible GUI vertices");
+                      ^
+  symbol:   method getVertexFormat()
+  location: variable pipeline of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:278: error: cannot 
+find symbol
+        check(!pipeline.isWriteDepth(), "Transparent padding does not write depth");
+                       ^
+  symbol:   method isWriteDepth()
+  location: variable pipeline of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\MapFontTest.java:20: error: cannot find symbol
+        var original = Component.literal("White Rabbit's Timepiece").asOrderedText();
+                                                                    ^
+  symbol:   method asOrderedText()
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:14: error: cannot find 
+symbol
+        Component title = Component.literal("Treasure Map").formatted(ChatFormatting.AQUA);
+                                                           ^
+  symbol:   method formatted(ChatFormatting)
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:16: error: cannot find 
+symbol
+                Component.literal("White Rabbit's Timepiece").formatted(ChatFormatting.RED), 
+Component.literal("Original")));
+                                                             ^
+  symbol:   method formatted(ChatFormatting)
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:19: error: cannot find 
+symbol
+                Component.literal("  White Rabbit's Timepiece  ").formatted(ChatFormatting.RED), 
+Component.literal("Original")));
+                                                                 ^
+  symbol:   method formatted(ChatFormatting)
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:24: error: cannot find 
+symbol
+        check(method.invoke(null, ItemLore.DEFAULT, title).equals("Treasure Map"), "Empty lore fallback");
+                                          ^
+  symbol:   variable DEFAULT
+  location: class ItemLore
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:35: error: cannot find symbol
+        Style styled = Style.EMPTY.withColor(0xFFAA00).withBold(true).withItalic(true).withUnderline(true);
+                                                                                      ^
+  symbol:   method withUnderline(boolean)
+  location: class Style
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:38: error: cannot find symbol
+                && styled.isUnderlined() && styled.getColor().getRgb() == 0xFFAA00, "Style is never mutated by font 
+selection");
+                                                             ^
+  symbol:   method getRgb()
+  location: class TextColor
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:42: error: cannot find symbol
+        try (var baker = new GlyphBaker(null, UiFont.FONT_ID)) {
+                             ^
+  symbol:   class GlyphBaker
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:43: error: cannot find symbol
+            var atlasId = GlyphBaker.class.getDeclaredMethod("getAtlasId", int.class);
+                          ^
+  symbol:   class GlyphBaker
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:46: error: cannot find symbol
+            check(UiFont.smoothAtlas(label, TextureFormat.RED8), "Native glyph atlas is recognized for smooth 
+coverage");
+                                            ^
+  symbol:   variable TextureFormat
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:47: error: cannot find symbol
+            check(!UiFont.smoothAtlas(label, TextureFormat.RGBA8), "Color glyphs retain their own rendering");
+                                             ^
+  symbol:   variable TextureFormat
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:49: error: cannot find symbol
+        check(!UiFont.smoothAtlas("minecraft:default/0", TextureFormat.RED8), "Vanilla atlas filtering unchanged");
+                                                         ^
+  symbol:   variable TextureFormat
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:56: error: package FontLoader 
+does not exist
+            var loader = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(0)).getOrThrow();
+                                   ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:57: error: cannot find symbol
+            check(loader instanceof TrueTypeFontLoader, "Uses native TrueType loader");
+                                    ^
+  symbol:   class TrueTypeFontLoader
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:58: error: cannot find symbol
+            var ttf = (TrueTypeFontLoader) loader;
+                       ^
+  symbol:   class TrueTypeFontLoader
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:63: error: cannot find symbol
+            var resources = (ResourceManager) Proxy.newProxyInstance(UiFontTest.class.getClassLoader(),
+                             ^
+  symbol:   class ResourceManager
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:64: error: cannot find symbol
+                    new Class<?>[]{ResourceManager.class}, (proxy, method, values) -> {
+                                   ^
+  symbol:   class ResourceManager
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:73: error: package FontLoader 
+does not exist
+                var provider = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(i)).getOrThrow();
+                                         ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:74: error: cannot find symbol
+                check(provider instanceof TrueTypeFontLoader, "Noto stack uses native TrueType loader");
+                                          ^
+  symbol:   class TrueTypeFontLoader
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:82: error: method getGlyph in 
+class Font cannot be applied to given types;
+                    var glyph = medium.getGlyph(cp);
+                                      ^
+  required: int,Style
+  found:    int
+  reason: actual and formal argument lists differ in length
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:88: error: method getGlyph in 
+class Font cannot be applied to given types;
+                check(fonts.stream().anyMatch(f -> f.getGlyph(0x221E) != null),
+                                                    ^
+  required: int,Style
+  found:    int
+  reason: actual and formal argument lists differ in length
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:90: error: method getGlyph in 
+class Font cannot be applied to given types;
+                check(medium.getGlyph(0x00E9) != null, "Accented chat characters supported");
+                            ^
+  required: int,Style
+  found:    int
+  reason: actual and formal argument lists differ in length
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:92: error: cannot find symbol
+                for (var f : fonts) f.close();
+                                     ^
+  symbol:   method close()
+  location: variable f of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:97: error: cannot find symbol
+        
+check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.gl.RenderPipelines.GUI_TEXT.getVertexFormat()),
+                             ^
+  symbol:   method getVertexFormat()
+  location: variable PIPELINE of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:97: error: package 
+net.minecraft.client.gl.RenderPipelines does not exist
+        
+check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.gl.RenderPipelines.GUI_TEXT.getVertexFormat()),
+                                                                                              ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:104: error: package 
+net.minecraft.text.ClickEvent does not exist
+        var click = new net.minecraft.text.ClickEvent.SuggestCommand("/oi");
+                                                     ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:107: error: cannot find symbol
+                .append(net.minecraft.network.chat.Component.literal("B").styled(s -> s.withFont(iconFont)));
+                                                                         ^
+  symbol:   method styled((s)->s.wit[...]Font))
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:109: error: package 
+net.minecraft.text does not exist
+        var captured = new java.util.concurrent.atomic.AtomicReference<net.minecraft.text.FormattedCharSequence>();
+                                                                                         ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:142: error: package 
+net.minecraft.text does not exist
+        var captured = new java.util.concurrent.atomic.AtomicReference<net.minecraft.text.FormattedCharSequence>();
+                                                                                         ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:143: error: cannot find symbol
+        UiFont.withHudFont(() -> 
+captured.set(UiFont.capture(net.minecraft.network.chat.Component.literal("a".repeat(64)).asOrderedText())));
+                                                                                                                       
+  ^
+  symbol:   method asOrderedText()
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:161: error: cannot find symbol
+        var delegate = new net.minecraft.client.gui.Font.GlyphsProvider() {
+                                                        ^
+  symbol:   class GlyphsProvider
+  location: class Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:163: error: package 
+net.minecraft.client.font does not exist
+            public net.minecraft.client.font.GlyphProvider getGlyphs(FontDescription source) {
+                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:169: error: package 
+net.minecraft.client.font does not exist
+            public net.minecraft.client.font.EffectGlyph getRectangleGlyph() {
+                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:162: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:168: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:175: error: cannot find symbol
+        check(original.getWidth("abcd") == 24, "Unrelated text renderer keeps vanilla metrics");
+                      ^
+  symbol:   method getWidth(String)
+  location: variable original of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:179: error: cannot find symbol
+        check(input.getWidth(net.minecraft.network.chat.Component.literal("ab").styled(s -> s.withFont(custom))) == 12
+                                                                               ^
+  symbol:   method styled((s)->s.wit[...]stom))
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:181: error: package 
+net.minecraft.client.gui.widget does not exist
+        var field = new net.minecraft.client.gui.widget.EditBox(input, 4, 0, 100, 12,
+                                                       ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:191: error: package 
+net.minecraft.client.gui.widget does not exist
+        var firstCharacter = net.minecraft.client.gui.widget.EditBox.class.getDeclaredField("firstCharacterIndex");
+                                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:196: error: cannot find symbol
+        check(original.getWidth("abcd") == 24 && UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
+                      ^
+  symbol:   method getWidth(String)
+  location: variable original of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:205: error: package 
+net.minecraft.client.font does not exist
+        var glyph = new net.minecraft.client.font.BakedGlyph() {
+                                                 ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:207: error: package 
+net.minecraft.client.font does not exist
+            public net.minecraft.client.font.GlyphMetrics getMetrics() {
+                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:212: error: package 
+net.minecraft.client.font.TextRenderable does not exist
+            public net.minecraft.client.font.TextRenderable.DrawnGlyphRect create(float x, float y, int color,
+                                                           ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:206: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:208: error: package 
+net.minecraft.client.font does not exist
+                return net.minecraft.client.font.GlyphMetrics.empty(advance);
+                                                ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:211: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:217: error: package 
+net.minecraft.client.font does not exist
+        return new net.minecraft.client.font.GlyphProvider() {
+                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:219: error: package 
+net.minecraft.client.font does not exist
+            public net.minecraft.client.font.BakedGlyph get(int codePoint) {
+                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:224: error: package 
+net.minecraft.util.math.random does not exist
+            public net.minecraft.client.font.BakedGlyph getObfuscated(net.minecraft.util.math.random.Random random, 
+int width) {
+                                                                                                    ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:224: error: package 
+net.minecraft.client.font does not exist
+            public net.minecraft.client.font.BakedGlyph getObfuscated(net.minecraft.util.math.random.Random random, 
+int width) {
+                                            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:218: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:223: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:241: error: package 
+net.minecraft.client.gui.widget does not exist
+        var button = (net.minecraft.client.gui.widget.Button) factory.invoke(null,
+                                                     ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:277: error: package 
+net.minecraft.client.font does not exist
+        net.minecraft.client.font.BakedSheetGlyph.class.getDeclaredMethod("create", float.class, float.class,
+                                 ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:279: error: package 
+net.minecraft.client.font does not exist
+        net.minecraft.client.font.BakedSheetGlyph.class.getDeclaredMethod("create", float.class, float.class,
+                                 ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:281: error: package 
+net.minecraft.client.font does not exist
+        check(net.minecraft.client.font.BakedSheetGlyph.class.getDeclaredField("textureView").getType()
+                                       ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:283: error: package 
+net.minecraft.client.gui.hud does not exist
+        var chat = net.minecraft.client.gui.hud.ChatComponent.class;
+                                               ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:284: error: package 
+net.minecraft.client.gui.hud.GuiMessage does not exist
+        chat.getDeclaredMethod("addVisibleMessage", net.minecraft.client.gui.hud.GuiMessage.Line.class);
+                                                                                           ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:287: error: package 
+net.minecraft.client.font does not exist
+        chat.getDeclaredMethod("render", net.minecraft.client.font.DrawnTextConsumer.class,
+                                                                  ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:291: error: package 
+net.minecraft.client.render does not exist
+                    net.minecraft.client.gui.GuiGraphicsExtractor.class, 
+net.minecraft.client.render.DeltaTracker.class);
+                                                                                                    ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:290: error: package 
+net.minecraft.client.gui.hud does not exist
+            net.minecraft.client.gui.hud.Gui.class.getDeclaredMethod(name,
+                                        ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:294: error: package 
+net.minecraft.text does not exist
+                net.minecraft.client.gui.Font.class, net.minecraft.text.FormattedCharSequence.class,
+                                                                       ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:296: error: cannot find symbol
+                boolean.class, boolean.class, net.minecraft.client.gui.ScreenRectangle.class);
+                                                                      ^
+  symbol:   class ScreenRectangle
+  location: package net.minecraft.client.gui
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:293: error: package 
+net.minecraft.client.gui.render.state does not exist
+        net.minecraft.client.gui.render.state.GuiTextRenderState.class.getDeclaredConstructor(
+                                             ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:298: error: cannot find symbol
+                == net.minecraft.client.gui.Font.GlyphsProvider.class, "Chat input can reuse the original validated 
+glyph provider");
+                                                ^
+  symbol:   class GlyphsProvider
+  location: class Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:302: error: package 
+net.minecraft.client.font does not exist
+        check(selector.getReturnType() == net.minecraft.client.font.GlyphProvider.class, "Component selection hook 
+matches this Minecraft version");
+                                                                   ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:303: error: package 
+net.minecraft.client.gui.render.state does not exist
+        var element = net.minecraft.client.gui.render.state.GlyphRenderState.class;
+                                                           ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:306: error: package 
+net.minecraft.client.texture does not exist
+        check(element.getDeclaredMethod("textureSetup").getReturnType() == 
+net.minecraft.client.texture.TextureSetup.class,
+                                                                                                       ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:308: error: package 
+net.minecraft.client.font does not exist
+        check(element.getDeclaredField("renderable").getType() == net.minecraft.client.font.TextRenderable.class,
+                                                                                           ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:311: error: package 
+net.minecraft.client.font does not exist
+                net.minecraft.client.font.TextRenderLayerSet.class, boolean.class);
+                                         ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:310: error: cannot find symbol
+        net.minecraft.client.gui.FontTexture.class.getDeclaredConstructor(java.util.function.Supplier.class,
+                                ^
+  symbol:   class FontTexture
+  location: package net.minecraft.client.gui
+
+> Task :jar
+
+[Incubating] Problems report is available at: file:///C:/Users/cap/Desktop/openintel-26.2-work/mod/build/reports/problems/problems-report.html
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:350: error: package 
+net.minecraft.client.gui.screen does not exist
+        try (var stream = net.minecraft.client.gui.screen.ChatScreen.class.getResourceAsStream("ChatScreen.class")) {
+                                                         ^
+97 errors
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileTestJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:82: error: method getGlyph 
+in class Font cannot be applied to given types;
+                      var glyph = medium.getGlyph(cp);
+                                        ^
+    required: int,Style
+    found:    int
+    reason: actual and formal argument lists differ in length
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:88: error: method getGlyph 
+in class Font cannot be applied to given types;
+                  check(fonts.stream().anyMatch(f -> f.getGlyph(0x221E) != null),
+                                                      ^
+    required: int,Style
+    found:    int
+    reason: actual and formal argument lists differ in length
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:90: error: method getGlyph 
+in class Font cannot be applied to given types;
+                  check(medium.getGlyph(0x00E9) != null, "Accented chat characters supported");
+                              ^
+    required: int,Style
+    found:    int
+    reason: actual and formal argument lists differ in length
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:146: error: 
+cannot find symbol
+                  int.class, net.minecraft.client.gui.ScreenRectangle.class, 
+net.minecraft.client.gui.ScreenRectangle.class);
+                                                     ^
+    symbol:   class ScreenRectangle
+    location: package net.minecraft.client.gui
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:146: error: 
+cannot find symbol
+                  int.class, net.minecraft.client.gui.ScreenRectangle.class, 
+net.minecraft.client.gui.ScreenRectangle.class);
+                                                                                                     ^
+    symbol:   class ScreenRectangle
+    location: package net.minecraft.client.gui
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:151: error: 
+cannot find symbol
+          var bounds = (net.minecraft.client.gui.ScreenRectangle) boundsMethod.invoke(null, "A A", 0.25f, 0.5f, pose);
+                                                ^
+    symbol:   class ScreenRectangle
+    location: package net.minecraft.client.gui
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:177: error: 
+cannot find symbol
+          var fallbackBounds = (net.minecraft.client.gui.ScreenRectangle) boundsMethod.invoke(null, "\uD83D\uDCE1", 
+0f, 0f, pose);
+                                                        ^
+    symbol:   class ScreenRectangle
+    location: package net.minecraft.client.gui
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:24: error: cannot 
+find symbol
+          check(method.invoke(null, ItemLore.DEFAULT, title).equals("Treasure Map"), "Empty lore fallback");
+                                            ^
+    symbol:   variable DEFAULT
+    location: class ItemLore
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:42: error: cannot find 
+symbol
+          try (var baker = new GlyphBaker(null, UiFont.FONT_ID)) {
+                               ^
+    symbol:   class GlyphBaker
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:43: error: cannot find 
+symbol
+              var atlasId = GlyphBaker.class.getDeclaredMethod("getAtlasId", int.class);
+                            ^
+    symbol:   class GlyphBaker
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:46: error: cannot find 
+symbol
+              check(UiFont.smoothAtlas(label, TextureFormat.RED8), "Native glyph atlas is recognized for smooth 
+coverage");
+                                              ^
+    symbol:   variable TextureFormat
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:47: error: cannot find 
+symbol
+              check(!UiFont.smoothAtlas(label, TextureFormat.RGBA8), "Color glyphs retain their own rendering");
+                                               ^
+    symbol:   variable TextureFormat
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:49: error: cannot find 
+symbol
+          check(!UiFont.smoothAtlas("minecraft:default/0", TextureFormat.RED8), "Vanilla atlas filtering unchanged");
+                                                           ^
+    symbol:   variable TextureFormat
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:57: error: cannot find 
+symbol
+              check(loader instanceof TrueTypeFontLoader, "Uses native TrueType loader");
+                                      ^
+    symbol:   class TrueTypeFontLoader
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:58: error: cannot find 
+symbol
+              var ttf = (TrueTypeFontLoader) loader;
+                         ^
+    symbol:   class TrueTypeFontLoader
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:63: error: cannot find 
+symbol
+              var resources = (ResourceManager) Proxy.newProxyInstance(UiFontTest.class.getClassLoader(),
+                               ^
+    symbol:   class ResourceManager
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:64: error: cannot find 
+symbol
+                      new Class<?>[]{ResourceManager.class}, (proxy, method, values) -> {
+                                     ^
+    symbol:   class ResourceManager
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:74: error: cannot find 
+symbol
+                  check(provider instanceof TrueTypeFontLoader, "Noto stack uses native TrueType loader");
+                                            ^
+    symbol:   class TrueTypeFontLoader
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:161: error: cannot find 
+symbol
+          var delegate = new net.minecraft.client.gui.Font.GlyphsProvider() {
+                                                          ^
+    symbol:   class GlyphsProvider
+    location: class Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:296: error: cannot find 
+symbol
+                  boolean.class, boolean.class, net.minecraft.client.gui.ScreenRectangle.class);
+                                                                        ^
+    symbol:   class ScreenRectangle
+    location: package net.minecraft.client.gui
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:298: error: cannot find 
+symbol
+                  == net.minecraft.client.gui.Font.GlyphsProvider.class, "Chat input can reuse the original validated 
+glyph provider");
+                                                  ^
+    symbol:   class GlyphsProvider
+    location: class Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:310: error: cannot find 
+symbol
+          net.minecraft.client.gui.FontTexture.class.getDeclaredConstructor(java.util.function.Supplier.class,
+                                  ^
+    symbol:   class FontTexture
+    location: package net.minecraft.client.gui
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:162: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:168: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:206: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:211: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:218: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:223: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:275: error: 
+cannot find symbol
+          check(pipeline.getBlendFunction().equals(vanilla.getBlendFunction()), "Font coverage uses standard alpha 
+blending");
+                        ^
+    symbol:   method getBlendFunction()
+    location: variable pipeline of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:277: error: 
+cannot find symbol
+          check(pipeline.getVertexFormat().equals(vanilla.getVertexFormat()), "Font uses compatible GUI vertices");
+                        ^
+    symbol:   method getVertexFormat()
+    location: variable pipeline of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:278: error: 
+cannot find symbol
+          check(!pipeline.isWriteDepth(), "Transparent padding does not write depth");
+                         ^
+    symbol:   method isWriteDepth()
+    location: variable pipeline of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\MapFontTest.java:20: error: cannot find 
+symbol
+          var original = Component.literal("White Rabbit's Timepiece").asOrderedText();
+                                                                      ^
+    symbol:   method asOrderedText()
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:14: error: cannot 
+find symbol
+          Component title = Component.literal("Treasure Map").formatted(ChatFormatting.AQUA);
+                                                             ^
+    symbol:   method formatted(ChatFormatting)
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:16: error: cannot 
+find symbol
+                  Component.literal("White Rabbit's Timepiece").formatted(ChatFormatting.RED), 
+Component.literal("Original")));
+                                                               ^
+    symbol:   method formatted(ChatFormatting)
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:19: error: cannot 
+find symbol
+                  Component.literal("  White Rabbit's Timepiece  ").formatted(ChatFormatting.RED), 
+Component.literal("Original")));
+                                                                   ^
+    symbol:   method formatted(ChatFormatting)
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:35: error: cannot find 
+symbol
+          Style styled = Style.EMPTY.withColor(0xFFAA00).withBold(true).withItalic(true).withUnderline(true);
+                                                                                        ^
+    symbol:   method withUnderline(boolean)
+    location: class Style
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:38: error: cannot find 
+symbol
+                  && styled.isUnderlined() && styled.getColor().getRgb() == 0xFFAA00, "Style is never mutated by font 
+selection");
+                                                               ^
+    symbol:   method getRgb()
+    location: class TextColor
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:92: error: cannot find 
+symbol
+                  for (var f : fonts) f.close();
+                                       ^
+    symbol:   method close()
+    location: variable f of type Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:97: error: cannot find 
+symbol
+          
+check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.gl.RenderPipelines.GUI_TEXT.getVertexFormat()),
+                               ^
+    symbol:   method getVertexFormat()
+    location: variable PIPELINE of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:107: error: cannot find 
+symbol
+                  .append(net.minecraft.network.chat.Component.literal("B").styled(s -> s.withFont(iconFont)));
+                                                                           ^
+    symbol:   method styled((s)->s.wit[...]Font))
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:143: error: cannot find 
+symbol
+          UiFont.withHudFont(() -> 
+captured.set(UiFont.capture(net.minecraft.network.chat.Component.literal("a".repeat(64)).asOrderedText())));
+                                                                                                                       
+    ^
+    symbol:   method asOrderedText()
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:175: error: cannot find 
+symbol
+          check(original.getWidth("abcd") == 24, "Unrelated text renderer keeps vanilla metrics");
+                        ^
+    symbol:   method getWidth(String)
+    location: variable original of type Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:179: error: cannot find 
+symbol
+          check(input.getWidth(net.minecraft.network.chat.Component.literal("ab").styled(s -> s.withFont(custom))) == 
+12
+                                                                                 ^
+    symbol:   method styled((s)->s.wit[...]stom))
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:196: error: cannot find 
+symbol
+          check(original.getWidth("abcd") == 24 && UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
+                        ^
+    symbol:   method getWidth(String)
+    location: variable original of type Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:65: error: 
+package net.minecraft.client.texture does not exist
+      private static void verifyAtlas(net.minecraft.client.texture.NativeImage atlas) throws Exception {
+                                                                  ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:76: error: 
+package net.minecraft.client.texture does not exist
+      private static void verifyMipmaps(net.minecraft.client.texture.NativeImage image, int level) throws Exception {
+                                                                    ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:10: error: package 
+net.minecraft.resource does not exist
+  import net.minecraft.resource.ResourceManager;
+                               ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:204: error: package 
+net.minecraft.client.font does not exist
+      private static net.minecraft.client.font.GlyphProvider fixedGlyphs(float advance) {
+                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:53: error: 
+package net.minecraft.client.texture does not exist
+              verifyAtlas((net.minecraft.client.texture.NativeImage) atlas);
+                                                       ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:54: error: 
+package net.minecraft.client.texture does not exist
+              verifyMipmaps((net.minecraft.client.texture.NativeImage) atlas, 0);
+                                                         ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:96: error: 
+package net.minecraft.client.texture does not exist
+          var downsample = CleanFont.class.getDeclaredMethod("downsample", 
+net.minecraft.client.texture.NativeImage.class);
+                                                                                                       ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:98: error: 
+package net.minecraft.client.texture does not exist
+          try (var next = (net.minecraft.client.texture.NativeImage) downsample.invoke(null, image)) {
+                                                       ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:145: error: 
+package net.minecraft.client.texture does not exist
+                  net.minecraft.client.texture.TextureSetup.class, String.class, float.class, float.class,
+                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:152: error: 
+package net.minecraft.client.gui.render.state does not exist
+          var state = (net.minecraft.client.gui.render.state.GuiElementRenderState) constructor.newInstance(
+                                                            ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:153: error: 
+package net.minecraft.client.texture does not exist
+                  pose, net.minecraft.client.texture.TextureSetup.noTexture(), "A A", 0.25f, 0.5f, -1, null, bounds);
+                                                    ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:156: error: 
+package net.minecraft.client.render does not exist
+          var consumer = (net.minecraft.client.render.VertexConsumer) java.lang.reflect.Proxy.newProxyInstance(
+                                                     ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:157: error: 
+package net.minecraft.client.render does not exist
+                  CleanFontMetricsTest.class.getClassLoader(), new 
+Class<?>[]{net.minecraft.client.render.VertexConsumer.class},
+                                                                                                         ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:166: error: 
+package net.minecraft.client.render does not exist
+                      return method.getReturnType() == net.minecraft.client.render.VertexConsumer.class ? proxy : null;
+                                                                                  ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:178: error: 
+package net.minecraft.client.gui.render.state does not exist
+          var fallback = (net.minecraft.client.gui.render.state.GuiElementRenderState) constructor.newInstance(
+                                                               ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:179: error: 
+package net.minecraft.client.texture does not exist
+                  pose, net.minecraft.client.texture.TextureSetup.noTexture(), "\uD83D\uDCE1", 0f, 0f, -1, null, 
+fallbackBounds);
+                                                    ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:273: error: 
+package net.minecraft.client.gl does not exist
+          var vanilla = net.minecraft.client.gl.RenderPipelines.GUI_TEXTURED;
+                                               ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:274: error: 
+package net.minecraft.client.gl does not exist
+          check(net.minecraft.client.gl.RenderPipelines.getAll().contains(pipeline), "Font pipeline registered for 
+resource reload");
+                                       ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:56: error: package 
+FontLoader does not exist
+              var loader = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(0)).getOrThrow();
+                                     ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:73: error: package 
+FontLoader does not exist
+                  var provider = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(i)).getOrThrow();
+                                           ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:97: error: package 
+net.minecraft.client.gl.RenderPipelines does not exist
+          
+check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.gl.RenderPipelines.GUI_TEXT.getVertexFormat()),
+                                                                                                ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:104: error: package 
+net.minecraft.text.ClickEvent does not exist
+          var click = new net.minecraft.text.ClickEvent.SuggestCommand("/oi");
+                                                       ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:109: error: package 
+net.minecraft.text does not exist
+          var captured = new java.util.concurrent.atomic.AtomicReference<net.minecraft.text.FormattedCharSequence>();
+                                                                                           ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:142: error: package 
+net.minecraft.text does not exist
+          var captured = new java.util.concurrent.atomic.AtomicReference<net.minecraft.text.FormattedCharSequence>();
+                                                                                           ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:163: error: package 
+net.minecraft.client.font does not exist
+              public net.minecraft.client.font.GlyphProvider getGlyphs(FontDescription source) {
+                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:169: error: package 
+net.minecraft.client.font does not exist
+              public net.minecraft.client.font.EffectGlyph getRectangleGlyph() {
+                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:181: error: package 
+net.minecraft.client.gui.widget does not exist
+          var field = new net.minecraft.client.gui.widget.EditBox(input, 4, 0, 100, 12,
+                                                         ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:191: error: package 
+net.minecraft.client.gui.widget does not exist
+          var firstCharacter = net.minecraft.client.gui.widget.EditBox.class.getDeclaredField("firstCharacterIndex");
+                                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:205: error: package 
+net.minecraft.client.font does not exist
+          var glyph = new net.minecraft.client.font.BakedGlyph() {
+                                                   ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:207: error: package 
+net.minecraft.client.font does not exist
+              public net.minecraft.client.font.GlyphMetrics getMetrics() {
+                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:212: error: package 
+net.minecraft.client.font.TextRenderable does not exist
+              public net.minecraft.client.font.TextRenderable.DrawnGlyphRect create(float x, float y, int color,
+                                                             ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:208: error: package 
+net.minecraft.client.font does not exist
+                  return net.minecraft.client.font.GlyphMetrics.empty(advance);
+                                                  ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:217: error: package 
+net.minecraft.client.font does not exist
+          return new net.minecraft.client.font.GlyphProvider() {
+                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:219: error: package 
+net.minecraft.client.font does not exist
+              public net.minecraft.client.font.BakedGlyph get(int codePoint) {
+                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:224: error: package 
+net.minecraft.util.math.random does not exist
+              public net.minecraft.client.font.BakedGlyph getObfuscated(net.minecraft.util.math.random.Random random, 
+int width) {
+                                                                                                      ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:224: error: package 
+net.minecraft.client.font does not exist
+              public net.minecraft.client.font.BakedGlyph getObfuscated(net.minecraft.util.math.random.Random random, 
+int width) {
+                                              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:241: error: package 
+net.minecraft.client.gui.widget does not exist
+          var button = (net.minecraft.client.gui.widget.Button) factory.invoke(null,
+                                                       ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:277: error: package 
+net.minecraft.client.font does not exist
+          net.minecraft.client.font.BakedSheetGlyph.class.getDeclaredMethod("create", float.class, float.class,
+                                   ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:279: error: package 
+net.minecraft.client.font does not exist
+          net.minecraft.client.font.BakedSheetGlyph.class.getDeclaredMethod("create", float.class, float.class,
+                                   ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:281: error: package 
+net.minecraft.client.font does not exist
+          check(net.minecraft.client.font.BakedSheetGlyph.class.getDeclaredField("textureView").getType()
+                                         ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:283: error: package 
+net.minecraft.client.gui.hud does not exist
+          var chat = net.minecraft.client.gui.hud.ChatComponent.class;
+                                                 ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:284: error: package 
+net.minecraft.client.gui.hud.GuiMessage does not exist
+          chat.getDeclaredMethod("addVisibleMessage", net.minecraft.client.gui.hud.GuiMessage.Line.class);
+                                                                                             ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:287: error: package 
+net.minecraft.client.font does not exist
+          chat.getDeclaredMethod("render", net.minecraft.client.font.DrawnTextConsumer.class,
+                                                                    ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:291: error: package 
+net.minecraft.client.render does not exist
+                      net.minecraft.client.gui.GuiGraphicsExtractor.class, 
+net.minecraft.client.render.DeltaTracker.class);
+                                                                                                      ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:290: error: package 
+net.minecraft.client.gui.hud does not exist
+              net.minecraft.client.gui.hud.Gui.class.getDeclaredMethod(name,
+                                          ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:294: error: package 
+net.minecraft.text does not exist
+                  net.minecraft.client.gui.Font.class, net.minecraft.text.FormattedCharSequence.class,
+                                                                         ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:293: error: package 
+net.minecraft.client.gui.render.state does not exist
+          net.minecraft.client.gui.render.state.GuiTextRenderState.class.getDeclaredConstructor(
+                                               ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:302: error: package 
+net.minecraft.client.font does not exist
+          check(selector.getReturnType() == net.minecraft.client.font.GlyphProvider.class, "Component selection hook 
+matches this Minecraft version");
+                                                                     ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:303: error: package 
+net.minecraft.client.gui.render.state does not exist
+          var element = net.minecraft.client.gui.render.state.GlyphRenderState.class;
+                                                             ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:306: error: package 
+net.minecraft.client.texture does not exist
+          check(element.getDeclaredMethod("textureSetup").getReturnType() == 
+net.minecraft.client.texture.TextureSetup.class,
+                                                                                                         ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:308: error: package 
+net.minecraft.client.font does not exist
+          check(element.getDeclaredField("renderable").getType() == net.minecraft.client.font.TextRenderable.class,
+                                                                                             ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:311: error: package 
+net.minecraft.client.font does not exist
+                  net.minecraft.client.font.TextRenderLayerSet.class, boolean.class);
+                                           ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:350: error: package 
+net.minecraft.client.gui.screen does not exist
+          try (var stream = net.minecraft.client.gui.screen.ChatScreen.class.getResourceAsStream("ChatScreen.class")) {
+                                                           ^
+  97 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 1s
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.5.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+6 actionable tasks: 5 executed, 1 up-to-date

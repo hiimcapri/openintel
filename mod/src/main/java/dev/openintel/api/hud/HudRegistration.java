@@ -1,6 +1,6 @@
 package dev.openintel.api.hud;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 public interface HudRegistration extends AutoCloseable {
     Identifier id();

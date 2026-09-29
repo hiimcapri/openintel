@@ -66,10 +66,12 @@ public final class LogoHudTest {
             var guards = new java.util.HashSet<String>();
             for (var instruction : render.instructions) {
                 if (instruction instanceof org.objectweb.asm.tree.FieldInsnNode field) guards.add(field.name);
-                if (instruction instanceof org.objectweb.asm.tree.MethodInsnNode call)
+                if (instruction instanceof org.objectweb.asm.tree.MethodInsnNode call) {
                     check(!call.name.equals("isAuthenticated") && !call.name.equals("isConnected"), "Logo has no relay dependency");
+                    guards.add(call.name);
+                }
             }
-            check(guards.containsAll(java.util.List.of("logoHudEnabled", "hudHidden", "currentScreen")), "Logo respects visibility and open-screen guards");
+            check(guards.containsAll(java.util.List.of("logoHudEnabled", "isHidden", "screen")), "Logo respects visibility and open-screen guards");
         }
         LogoHud.registerPipeline();
         System.out.println("OpenIntel logo layout and asset tests passed");

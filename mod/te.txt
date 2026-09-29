@@ -1,0 +1,787 @@
+﻿
+> Configure project :
+Fabric Loom: 1.16.3
+
+> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+
+> Task :compileTestJava FAILED
+.\gradlew.bat : C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:68: 
+error: cannot find symbol
+At line:1 char:1
++ .\gradlew.bat compileTestJava --console=plain 2>&1 | Out-File te.txt  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\cap\De...not find symbol:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+                check((atlas.getColorArgb(x, y) & 0xFFFFFF) == 0xFFFFFF,
+                            ^
+  symbol:   method getColorArgb(int,int)
+  location: variable atlas of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:72: error: cannot 
+find symbol
+        check(atlas.getColorArgb(atlas.getWidth() - 1, atlas.getHeight() - 1) == 0x00FFFFFF,
+                   ^
+  symbol:   method getColorArgb(int,int)
+  location: variable atlas of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:85: error: cannot 
+find symbol
+                check((image.getColorArgb(x + dx, y) >>> 24) == 0, "Top gutter at mip " + level);
+                            ^
+  symbol:   method getColorArgb(int,int)
+  location: variable image of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:86: error: cannot 
+find symbol
+                check((image.getColorArgb(x + dx, y + h - 1) >>> 24) == 0, "Bottom gutter at mip " + level);
+                            ^
+  symbol:   method getColorArgb(int,int)
+  location: variable image of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:89: error: cannot 
+find symbol
+                check((image.getColorArgb(x, y + dy) >>> 24) == 0, "Left gutter at mip " + level);
+                            ^
+  symbol:   method getColorArgb(int,int)
+  location: variable image of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:90: error: cannot 
+find symbol
+                check((image.getColorArgb(x + w - 1, y + dy) >>> 24) == 0, "Right gutter at mip " + level);
+                            ^
+  symbol:   method getColorArgb(int,int)
+  location: variable image of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:106: error: cannot 
+find symbol
+                            sum += image.getColorArgb(x * 2 + dx, y * 2 + dy) >>> 24;
+                                        ^
+  symbol:   method getColorArgb(int,int)
+  location: variable image of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:109: error: cannot 
+find symbol
+                    int color = next.getColorArgb(x, y);
+                                    ^
+  symbol:   method getColorArgb(int,int)
+  location: variable next of type NativeImage
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:172: error: cannot 
+find symbol
+        for (var vertex : vertices) check(vertex.x >= bounds.getLeft() && vertex.x <= bounds.getRight()
+                                                            ^
+  symbol:   method getLeft()
+  location: variable bounds of type ScreenRectangle
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:172: error: cannot 
+find symbol
+        for (var vertex : vertices) check(vertex.x >= bounds.getLeft() && vertex.x <= bounds.getRight()
+                                                                                            ^
+  symbol:   method getRight()
+  location: variable bounds of type ScreenRectangle
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:173: error: cannot 
+find symbol
+                && vertex.y >= bounds.getTop() && vertex.y <= bounds.getBottom(), "Run bounds contain all transformed 
+glyph vertices");
+                                     ^
+  symbol:   method getTop()
+  location: variable bounds of type ScreenRectangle
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:173: error: cannot 
+find symbol
+                && vertex.y >= bounds.getTop() && vertex.y <= bounds.getBottom(), "Run bounds contain all transformed 
+glyph vertices");
+                                                                    ^
+  symbol:   method getBottom()
+  location: variable bounds of type ScreenRectangle
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:274: error: cannot 
+find symbol
+        check(net.minecraft.client.renderer.RenderPipelines.getAll().contains(pipeline), "Font pipeline registered for 
+resource reload");
+                                                           ^
+  symbol:   method getAll()
+  location: class RenderPipelines
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:275: error: cannot 
+find symbol
+        check(pipeline.getBlendFunction().equals(vanilla.getBlendFunction()), "Font coverage uses standard alpha 
+blending");
+                      ^
+  symbol:   method getBlendFunction()
+  location: variable pipeline of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:275: error: cannot 
+find symbol
+        check(pipeline.getBlendFunction().equals(vanilla.getBlendFunction()), "Font coverage uses standard alpha 
+blending");
+                                                        ^
+  symbol:   method getBlendFunction()
+  location: variable vanilla of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:277: error: cannot 
+find symbol
+        check(pipeline.getVertexFormat().equals(vanilla.getVertexFormat()), "Font uses compatible GUI vertices");
+                      ^
+  symbol:   method getVertexFormat()
+  location: variable pipeline of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:277: error: cannot 
+find symbol
+        check(pipeline.getVertexFormat().equals(vanilla.getVertexFormat()), "Font uses compatible GUI vertices");
+                                                       ^
+  symbol:   method getVertexFormat()
+  location: variable vanilla of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:278: error: cannot 
+find symbol
+        check(!pipeline.isWriteDepth(), "Transparent padding does not write depth");
+                       ^
+  symbol:   method isWriteDepth()
+  location: variable pipeline of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\MapFontTest.java:20: error: cannot find symbol
+        var original = Component.literal("White Rabbit's Timepiece").asOrderedText();
+                                                                    ^
+  symbol:   method asOrderedText()
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:14: error: cannot find 
+symbol
+        Component title = Component.literal("Treasure Map").formatted(ChatFormatting.AQUA);
+                                                           ^
+  symbol:   method formatted(ChatFormatting)
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:16: error: cannot find 
+symbol
+                Component.literal("White Rabbit's Timepiece").formatted(ChatFormatting.RED), 
+Component.literal("Original")));
+                                                             ^
+  symbol:   method formatted(ChatFormatting)
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:19: error: cannot find 
+symbol
+                Component.literal("  White Rabbit's Timepiece  ").formatted(ChatFormatting.RED), 
+Component.literal("Original")));
+                                                                 ^
+  symbol:   method formatted(ChatFormatting)
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:24: error: cannot find 
+symbol
+        check(method.invoke(null, ItemLore.DEFAULT, title).equals("Treasure Map"), "Empty lore fallback");
+                                          ^
+  symbol:   variable DEFAULT
+  location: class ItemLore
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:35: error: cannot find symbol
+        Style styled = Style.EMPTY.withColor(0xFFAA00).withBold(true).withItalic(true).withUnderline(true);
+                                                                                      ^
+  symbol:   method withUnderline(boolean)
+  location: class Style
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:38: error: cannot find symbol
+                && styled.isUnderlined() && styled.getColor().getRgb() == 0xFFAA00, "Style is never mutated by font 
+selection");
+                                                             ^
+  symbol:   method getRgb()
+  location: class TextColor
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:42: error: cannot find symbol
+        try (var baker = new GlyphBaker(null, UiFont.FONT_ID)) {
+                             ^
+  symbol:   class GlyphBaker
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:43: error: cannot find symbol
+            var atlasId = GlyphBaker.class.getDeclaredMethod("getAtlasId", int.class);
+                          ^
+  symbol:   class GlyphBaker
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:46: error: cannot find symbol
+            check(UiFont.smoothAtlas(label, TextureFormat.RED8), "Native glyph atlas is recognized for smooth 
+coverage");
+                                            ^
+  symbol:   variable TextureFormat
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:47: error: cannot find symbol
+            check(!UiFont.smoothAtlas(label, TextureFormat.RGBA8), "Color glyphs retain their own rendering");
+                                             ^
+  symbol:   variable TextureFormat
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:49: error: cannot find symbol
+        check(!UiFont.smoothAtlas("minecraft:default/0", TextureFormat.RED8), "Vanilla atlas filtering unchanged");
+                                                         ^
+  symbol:   variable TextureFormat
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:56: error: package FontLoader 
+does not exist
+            var loader = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(0)).getOrThrow();
+                                   ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:57: error: cannot find symbol
+            check(loader instanceof TrueTypeFontLoader, "Uses native TrueType loader");
+                                    ^
+  symbol:   class TrueTypeFontLoader
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:58: error: cannot find symbol
+            var ttf = (TrueTypeFontLoader) loader;
+                       ^
+  symbol:   class TrueTypeFontLoader
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:73: error: package FontLoader 
+does not exist
+                var provider = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(i)).getOrThrow();
+                                         ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:74: error: cannot find symbol
+                check(provider instanceof TrueTypeFontLoader, "Noto stack uses native TrueType loader");
+                                          ^
+  symbol:   class TrueTypeFontLoader
+  location: class UiFontTest
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:82: error: method getGlyph in 
+class Font cannot be applied to given types;
+                    var glyph = medium.getGlyph(cp);
+                                      ^
+  required: int,Style
+  found:    int
+  reason: actual and formal argument lists differ in length
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:88: error: method getGlyph in 
+class Font cannot be applied to given types;
+                check(fonts.stream().anyMatch(f -> f.getGlyph(0x221E) != null),
+                                                    ^
+  required: int,Style
+  found:    int
+  reason: actual and formal argument lists differ in length
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:90: error: method getGlyph in 
+class Font cannot be applied to given types;
+                check(medium.getGlyph(0x00E9) != null, "Accented chat characters supported");
+                            ^
+  required: int,Style
+  found:    int
+  reason: actual and formal argument lists differ in length
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:92: error: cannot find symbol
+                for (var f : fonts) f.close();
+                                     ^
+  symbol:   method close()
+  location: variable f of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:97: error: cannot find symbol
+        check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.renderer.RenderPipelines.GUI_TEXT.getVertex
+Format()),
+                             ^
+  symbol:   method getVertexFormat()
+  location: variable PIPELINE of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:97: error: cannot find symbol
+        check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.renderer.RenderPipelines.GUI_TEXT.getVertex
+Format()),
+                                                                                                             ^
+  symbol:   method getVertexFormat()
+  location: variable GUI_TEXT of type RenderPipeline
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:107: error: cannot find symbol
+                .append(net.minecraft.network.chat.Component.literal("B").styled(s -> s.withFont(iconFont)));
+                                                                         ^
+  symbol:   method styled((s)->s.wit[...]Font))
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:127: error: cannot find symbol
+                check(effective.isBold() && effective.getColor().getRgb() == 0xFFAA00
+                                                                ^
+  symbol:   method getRgb()
+  location: class TextColor
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:143: error: cannot find symbol
+        UiFont.withHudFont(() -> 
+captured.set(UiFont.capture(net.minecraft.network.chat.Component.literal("a".repeat(64)).asOrderedText())));
+                                                                                                                       
+  ^
+  symbol:   method asOrderedText()
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:161: error: cannot find symbol
+        var delegate = new net.minecraft.client.gui.Font.GlyphsProvider() {
+                                                        ^
+  symbol:   class GlyphsProvider
+  location: class Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:162: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:168: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:175: error: cannot find symbol
+        check(original.getWidth("abcd") == 24, "Unrelated text renderer keeps vanilla metrics");
+                      ^
+  symbol:   method getWidth(String)
+  location: variable original of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:179: error: cannot find symbol
+        check(input.getWidth(net.minecraft.network.chat.Component.literal("ab").styled(s -> s.withFont(custom))) == 12
+                                                                               ^
+  symbol:   method styled((s)->s.wit[...]stom))
+  location: class MutableComponent
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:183: error: cannot find symbol
+        field.setDrawsBackground(false);
+             ^
+  symbol:   method setDrawsBackground(boolean)
+  location: variable field of type EditBox
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:185: error: cannot find symbol
+        check(field.getCharacterX(2) == 12, "Chat input cursor positions use clean text advances");
+                   ^
+  symbol:   method getCharacterX(int)
+  location: variable field of type EditBox
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:186: error: cannot find symbol
+        field.setSelectionStart(1);
+             ^
+  symbol:   method setSelectionStart(int)
+  location: variable field of type EditBox
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:187: error: cannot find symbol
+        field.setSelectionEnd(3);
+             ^
+  symbol:   method setSelectionEnd(int)
+  location: variable field of type EditBox
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:188: error: cannot find symbol
+        check(field.getSelectedText().equals("bc"), "Selection preserves the typed character range");
+                   ^
+  symbol:   method getSelectedText()
+  location: variable field of type EditBox
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:190: error: cannot find symbol
+        field.setCursorToEnd(false);
+             ^
+  symbol:   method setCursorToEnd(boolean)
+  location: variable field of type EditBox
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:196: error: cannot find symbol
+        check(original.getWidth("abcd") == 24 && UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
+                      ^
+  symbol:   method getWidth(String)
+  location: variable original of type Font
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:212: error: cannot find symbol
+            public net.minecraft.client.gui.font.TextRenderable.DrawnGlyphRect create(float x, float y, int color,
+                                                               ^
+  symbol:   class DrawnGlyphRect
+  location: interface TextRenderable
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:205: error: <anonymous 
+dev.openintel.UiFontTest$2> is not abstract and does not override abstract method 
+createGlyph(float,float,int,int,Style,float,float) in BakedGlyph
+        var glyph = new net.minecraft.client.gui.font.glyphs.BakedGlyph() {
+                                                                          ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:206: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:208: error: cannot find symbol
+                return com.mojang.blaze3d.font.GlyphInfo.empty(advance);
+                                                        ^
+  symbol:   method empty(float)
+  location: interface GlyphInfo
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:211: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:217: error: <anonymous 
+dev.openintel.UiFontTest$3> is not abstract and does not override abstract method getSupportedGlyphs() in GlyphProvider
+        return new com.mojang.blaze3d.font.GlyphProvider() {
+                                                           ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:218: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:223: error: method does not 
+override or implement a method from a supertype
+            @Override
+            ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:287: error: package 
+net.minecraft.client.font does not exist
+        chat.getDeclaredMethod("render", net.minecraft.client.font.DrawnTextConsumer.class,
+                                                                  ^
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:298: error: cannot find symbol
+                == net.minecraft.client.gui.Font.GlyphsProvider.class, "Chat input can reuse the original validated 
+glyph provider");
+                                                ^
+  symbol:   class GlyphsProvider
+  location: class Font
+66 errors
+
+[Incubating] Problems report is available at: file:///C:/Users/cap/Desktop/openintel-26.2-work/mod/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileTestJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:82: error: method getGlyph 
+in class Font cannot be applied to given types;
+                      var glyph = medium.getGlyph(cp);
+                                        ^
+    required: int,Style
+    found:    int
+    reason: actual and formal argument lists differ in length
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:88: error: method getGlyph 
+in class Font cannot be applied to given types;
+                  check(fonts.stream().anyMatch(f -> f.getGlyph(0x221E) != null),
+                                                      ^
+    required: int,Style
+    found:    int
+    reason: actual and formal argument lists differ in length
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:90: error: method getGlyph 
+in class Font cannot be applied to given types;
+                  check(medium.getGlyph(0x00E9) != null, "Accented chat characters supported");
+                              ^
+    required: int,Style
+    found:    int
+    reason: actual and formal argument lists differ in length
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:205: error: <anonymous 
+dev.openintel.UiFontTest$2> is not abstract and does not override abstract method 
+createGlyph(float,float,int,int,Style,float,float) in BakedGlyph
+          var glyph = new net.minecraft.client.gui.font.glyphs.BakedGlyph() {
+                                                                            ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:217: error: <anonymous 
+dev.openintel.UiFontTest$3> is not abstract and does not override abstract method getSupportedGlyphs() in GlyphProvider
+          return new com.mojang.blaze3d.font.GlyphProvider() {
+                                                             ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:24: error: cannot 
+find symbol
+          check(method.invoke(null, ItemLore.DEFAULT, title).equals("Treasure Map"), "Empty lore fallback");
+                                            ^
+    symbol:   variable DEFAULT
+    location: class ItemLore
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:42: error: cannot find 
+symbol
+          try (var baker = new GlyphBaker(null, UiFont.FONT_ID)) {
+                               ^
+    symbol:   class GlyphBaker
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:43: error: cannot find 
+symbol
+              var atlasId = GlyphBaker.class.getDeclaredMethod("getAtlasId", int.class);
+                            ^
+    symbol:   class GlyphBaker
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:46: error: cannot find 
+symbol
+              check(UiFont.smoothAtlas(label, TextureFormat.RED8), "Native glyph atlas is recognized for smooth 
+coverage");
+                                              ^
+    symbol:   variable TextureFormat
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:47: error: cannot find 
+symbol
+              check(!UiFont.smoothAtlas(label, TextureFormat.RGBA8), "Color glyphs retain their own rendering");
+                                               ^
+    symbol:   variable TextureFormat
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:49: error: cannot find 
+symbol
+          check(!UiFont.smoothAtlas("minecraft:default/0", TextureFormat.RED8), "Vanilla atlas filtering unchanged");
+                                                           ^
+    symbol:   variable TextureFormat
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:57: error: cannot find 
+symbol
+              check(loader instanceof TrueTypeFontLoader, "Uses native TrueType loader");
+                                      ^
+    symbol:   class TrueTypeFontLoader
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:58: error: cannot find 
+symbol
+              var ttf = (TrueTypeFontLoader) loader;
+                         ^
+    symbol:   class TrueTypeFontLoader
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:74: error: cannot find 
+symbol
+                  check(provider instanceof TrueTypeFontLoader, "Noto stack uses native TrueType loader");
+                                            ^
+    symbol:   class TrueTypeFontLoader
+    location: class UiFontTest
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:161: error: cannot find 
+symbol
+          var delegate = new net.minecraft.client.gui.Font.GlyphsProvider() {
+                                                          ^
+    symbol:   class GlyphsProvider
+    location: class Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:212: error: cannot find 
+symbol
+              public net.minecraft.client.gui.font.TextRenderable.DrawnGlyphRect create(float x, float y, int color,
+                                                                 ^
+    symbol:   class DrawnGlyphRect
+    location: interface TextRenderable
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:298: error: cannot find 
+symbol
+                  == net.minecraft.client.gui.Font.GlyphsProvider.class, "Chat input can reuse the original validated 
+glyph provider");
+                                                  ^
+    symbol:   class GlyphsProvider
+    location: class Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:162: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:168: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:206: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:211: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:218: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:223: error: method does not 
+override or implement a method from a supertype
+              @Override
+              ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:56: error: package 
+FontLoader does not exist
+              var loader = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(0)).getOrThrow();
+                                     ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:73: error: package 
+FontLoader does not exist
+                  var provider = FontLoader.CODEC.codec().parse(JsonOps.INSTANCE, providers.get(i)).getOrThrow();
+                                           ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:287: error: package 
+net.minecraft.client.font does not exist
+          chat.getDeclaredMethod("render", net.minecraft.client.font.DrawnTextConsumer.class,
+                                                                    ^
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:68: error: cannot 
+find symbol
+                  check((atlas.getColorArgb(x, y) & 0xFFFFFF) == 0xFFFFFF,
+                              ^
+    symbol:   method getColorArgb(int,int)
+    location: variable atlas of type NativeImage
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:72: error: cannot 
+find symbol
+          check(atlas.getColorArgb(atlas.getWidth() - 1, atlas.getHeight() - 1) == 0x00FFFFFF,
+                     ^
+    symbol:   method getColorArgb(int,int)
+    location: variable atlas of type NativeImage
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:85: error: cannot 
+find symbol
+                  check((image.getColorArgb(x + dx, y) >>> 24) == 0, "Top gutter at mip " + level);
+                              ^
+    symbol:   method getColorArgb(int,int)
+    location: variable image of type NativeImage
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:86: error: cannot 
+find symbol
+                  check((image.getColorArgb(x + dx, y + h - 1) >>> 24) == 0, "Bottom gutter at mip " + level);
+                              ^
+    symbol:   method getColorArgb(int,int)
+    location: variable image of type NativeImage
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:89: error: cannot 
+find symbol
+                  check((image.getColorArgb(x, y + dy) >>> 24) == 0, "Left gutter at mip " + level);
+                              ^
+    symbol:   method getColorArgb(int,int)
+    location: variable image of type NativeImage
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:90: error: cannot 
+find symbol
+                  check((image.getColorArgb(x + w - 1, y + dy) >>> 24) == 0, "Right gutter at mip " + level);
+                              ^
+    symbol:   method getColorArgb(int,int)
+    location: variable image of type NativeImage
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:106: error: 
+cannot find symbol
+                              sum += image.getColorArgb(x * 2 + dx, y * 2 + dy) >>> 24;
+                                          ^
+    symbol:   method getColorArgb(int,int)
+    location: variable image of type NativeImage
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:109: error: 
+cannot find symbol
+                      int color = next.getColorArgb(x, y);
+                                      ^
+    symbol:   method getColorArgb(int,int)
+    location: variable next of type NativeImage
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:172: error: 
+cannot find symbol
+          for (var vertex : vertices) check(vertex.x >= bounds.getLeft() && vertex.x <= bounds.getRight()
+                                                              ^
+    symbol:   method getLeft()
+    location: variable bounds of type ScreenRectangle
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:172: error: 
+cannot find symbol
+          for (var vertex : vertices) check(vertex.x >= bounds.getLeft() && vertex.x <= bounds.getRight()
+                                                                                              ^
+    symbol:   method getRight()
+    location: variable bounds of type ScreenRectangle
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:173: error: 
+cannot find symbol
+                  && vertex.y >= bounds.getTop() && vertex.y <= bounds.getBottom(), "Run bounds contain all 
+transformed glyph vertices");
+                                       ^
+    symbol:   method getTop()
+    location: variable bounds of type ScreenRectangle
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:173: error: 
+cannot find symbol
+                  && vertex.y >= bounds.getTop() && vertex.y <= bounds.getBottom(), "Run bounds contain all 
+transformed glyph vertices");
+                                                                      ^
+    symbol:   method getBottom()
+    location: variable bounds of type ScreenRectangle
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:274: error: 
+cannot find symbol
+          check(net.minecraft.client.renderer.RenderPipelines.getAll().contains(pipeline), "Font pipeline registered 
+for resource reload");
+                                                             ^
+    symbol:   method getAll()
+    location: class RenderPipelines
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:275: error: 
+cannot find symbol
+          check(pipeline.getBlendFunction().equals(vanilla.getBlendFunction()), "Font coverage uses standard alpha 
+blending");
+                        ^
+    symbol:   method getBlendFunction()
+    location: variable pipeline of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:275: error: 
+cannot find symbol
+          check(pipeline.getBlendFunction().equals(vanilla.getBlendFunction()), "Font coverage uses standard alpha 
+blending");
+                                                          ^
+    symbol:   method getBlendFunction()
+    location: variable vanilla of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:277: error: 
+cannot find symbol
+          check(pipeline.getVertexFormat().equals(vanilla.getVertexFormat()), "Font uses compatible GUI vertices");
+                        ^
+    symbol:   method getVertexFormat()
+    location: variable pipeline of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:277: error: 
+cannot find symbol
+          check(pipeline.getVertexFormat().equals(vanilla.getVertexFormat()), "Font uses compatible GUI vertices");
+                                                         ^
+    symbol:   method getVertexFormat()
+    location: variable vanilla of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\CleanFontMetricsTest.java:278: error: 
+cannot find symbol
+          check(!pipeline.isWriteDepth(), "Transparent padding does not write depth");
+                         ^
+    symbol:   method isWriteDepth()
+    location: variable pipeline of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\MapFontTest.java:20: error: cannot find 
+symbol
+          var original = Component.literal("White Rabbit's Timepiece").asOrderedText();
+                                                                      ^
+    symbol:   method asOrderedText()
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:14: error: cannot 
+find symbol
+          Component title = Component.literal("Treasure Map").formatted(ChatFormatting.AQUA);
+                                                             ^
+    symbol:   method formatted(ChatFormatting)
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:16: error: cannot 
+find symbol
+                  Component.literal("White Rabbit's Timepiece").formatted(ChatFormatting.RED), 
+Component.literal("Original")));
+                                                               ^
+    symbol:   method formatted(ChatFormatting)
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\RelicMapNameTest.java:19: error: cannot 
+find symbol
+                  Component.literal("  White Rabbit's Timepiece  ").formatted(ChatFormatting.RED), 
+Component.literal("Original")));
+                                                                   ^
+    symbol:   method formatted(ChatFormatting)
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:35: error: cannot find 
+symbol
+          Style styled = Style.EMPTY.withColor(0xFFAA00).withBold(true).withItalic(true).withUnderline(true);
+                                                                                        ^
+    symbol:   method withUnderline(boolean)
+    location: class Style
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:38: error: cannot find 
+symbol
+                  && styled.isUnderlined() && styled.getColor().getRgb() == 0xFFAA00, "Style is never mutated by font 
+selection");
+                                                               ^
+    symbol:   method getRgb()
+    location: class TextColor
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:92: error: cannot find 
+symbol
+                  for (var f : fonts) f.close();
+                                       ^
+    symbol:   method close()
+    location: variable f of type Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:97: error: cannot find 
+symbol
+          check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.renderer.RenderPipelines.GUI_TEXT.getVert
+exFormat()),
+                               ^
+    symbol:   method getVertexFormat()
+    location: variable PIPELINE of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:97: error: cannot find 
+symbol
+          check(UiFont.PIPELINE.getVertexFormat().equals(net.minecraft.client.renderer.RenderPipelines.GUI_TEXT.getVert
+exFormat()),
+                                                                                                               ^
+    symbol:   method getVertexFormat()
+    location: variable GUI_TEXT of type RenderPipeline
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:107: error: cannot find 
+symbol
+                  .append(net.minecraft.network.chat.Component.literal("B").styled(s -> s.withFont(iconFont)));
+                                                                           ^
+    symbol:   method styled((s)->s.wit[...]Font))
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:127: error: cannot find 
+symbol
+                  check(effective.isBold() && effective.getColor().getRgb() == 0xFFAA00
+                                                                  ^
+    symbol:   method getRgb()
+    location: class TextColor
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:143: error: cannot find 
+symbol
+          UiFont.withHudFont(() -> 
+captured.set(UiFont.capture(net.minecraft.network.chat.Component.literal("a".repeat(64)).asOrderedText())));
+                                                                                                                       
+    ^
+    symbol:   method asOrderedText()
+3 actionable tasks: 1 executed, 2 up-to-date
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:175: error: cannot find 
+symbol
+          check(original.getWidth("abcd") == 24, "Unrelated text renderer keeps vanilla metrics");
+                        ^
+    symbol:   method getWidth(String)
+    location: variable original of type Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:179: error: cannot find 
+symbol
+          check(input.getWidth(net.minecraft.network.chat.Component.literal("ab").styled(s -> s.withFont(custom))) == 
+12
+                                                                                 ^
+    symbol:   method styled((s)->s.wit[...]stom))
+    location: class MutableComponent
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:183: error: cannot find 
+symbol
+          field.setDrawsBackground(false);
+               ^
+    symbol:   method setDrawsBackground(boolean)
+    location: variable field of type EditBox
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:185: error: cannot find 
+symbol
+          check(field.getCharacterX(2) == 12, "Chat input cursor positions use clean text advances");
+                     ^
+    symbol:   method getCharacterX(int)
+    location: variable field of type EditBox
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:186: error: cannot find 
+symbol
+          field.setSelectionStart(1);
+               ^
+    symbol:   method setSelectionStart(int)
+    location: variable field of type EditBox
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:187: error: cannot find 
+symbol
+          field.setSelectionEnd(3);
+               ^
+    symbol:   method setSelectionEnd(int)
+    location: variable field of type EditBox
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:188: error: cannot find 
+symbol
+          check(field.getSelectedText().equals("bc"), "Selection preserves the typed character range");
+                     ^
+    symbol:   method getSelectedText()
+    location: variable field of type EditBox
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:190: error: cannot find 
+symbol
+          field.setCursorToEnd(false);
+               ^
+    symbol:   method setCursorToEnd(boolean)
+    location: variable field of type EditBox
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:196: error: cannot find 
+symbol
+          check(original.getWidth("abcd") == 24 && UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
+                        ^
+    symbol:   method getWidth(String)
+    location: variable original of type Font
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\test\java\dev\openintel\UiFontTest.java:208: error: cannot find 
+symbol
+                  return com.mojang.blaze3d.font.GlyphInfo.empty(advance);
+                                                          ^
+    symbol:   method empty(float)
+    location: interface GlyphInfo
+  66 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 1s

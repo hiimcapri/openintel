@@ -3,7 +3,7 @@ package dev.openintel.jm;
 import dev.openintel.OpenIntelClient;
 import journeymap.api.v2.client.IClientAPI;
 import journeymap.api.v2.client.IClientPlugin;
-import journeymap.api.v2.client.JourneyMapPlugin;
+import journeymap.api.v2.common.JourneyMapPlugin;
 import journeymap.api.v2.common.waypoint.Waypoint;
 
 /**

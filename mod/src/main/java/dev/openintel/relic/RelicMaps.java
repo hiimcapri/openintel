@@ -1,17 +1,17 @@
 package dev.openintel.relic;
 
 import dev.openintel.OpenIntelClient;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.LoreComponent;
-import net.minecraft.item.FilledMapItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.World;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.MapItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -38,7 +38,7 @@ public final class RelicMaps {
     /** A detected relic: block coords plus dimension id string. */
     public record Relic(int x, int z, String dimension, String name) { }
 
-    private static final Identifier TARGET_X = Identifier.of("minecraft", "target_x");
+    private static final Identifier TARGET_X = Identifier.fromNamespaceAndPath("minecraft", "target_x");
     /** Keyed "x:z" — every map for the same relic shares coords. */
     private static final Map<String, Relic> active = new LinkedHashMap<>();
     /** Coords claimed this session — a kept map must not re-add them. */
@@ -53,33 +53,33 @@ public final class RelicMaps {
     }
 
     private static String mapName(ItemStack stack) {
-        var name = stack.get(DataComponentTypes.CUSTOM_NAME);
-        if (name == null) name = stack.get(DataComponentTypes.ITEM_NAME);
-        return mapName(stack.get(DataComponentTypes.LORE), name);
+        var name = stack.get(DataComponents.CUSTOM_NAME);
+        if (name == null) name = stack.get(DataComponents.ITEM_NAME);
+        return mapName(stack.get(DataComponents.LORE), name);
     }
 
-    private static String mapName(LoreComponent lore, Text name) {
+    private static String mapName(ItemLore lore, Component name) {
         if (lore != null) {
-            for (Text line : lore.lines()) {
-                String label = Formatting.strip(line.getString()).strip();
+            for (Component line : lore.lines()) {
+                String label = ChatFormatting.stripFormatting(line.getString()).strip();
                 if (!label.isEmpty()) return label;
             }
         }
-        String label = name == null ? "" : Formatting.strip(name.getString()).strip();
+        String label = name == null ? "" : ChatFormatting.stripFormatting(name.getString()).strip();
         return label.isEmpty() ? "Relic" : label;
     }
 
-    public static void tick(MinecraftClient mc) {
-        if (++ticks % 20 != 0 || mc.player == null || mc.world == null) return;
+    public static void tick(Minecraft mc) {
+        if (++ticks % 20 != 0 || mc.player == null || mc.level == null) return;
 
         Map<String, Relic> found = new LinkedHashMap<>();
         for (var stack : mc.player.getInventory()) {
-            if (!stack.isOf(Items.FILLED_MAP)) continue;
-            var decos = stack.get(DataComponentTypes.MAP_DECORATIONS);
+            if (!stack.is(Items.FILLED_MAP)) continue;
+            var decos = stack.get(DataComponents.MAP_DECORATIONS);
             if (decos == null) continue;
             String name = mapName(stack);
             decos.decorations().forEach((key, d) -> {
-                if (!d.type().getKey().map(k -> k.getValue().equals(TARGET_X)).orElse(false)) {
+                if (!d.type().unwrapKey().map(k -> k.identifier().equals(TARGET_X)).orElse(false)) {
                     return;
                 }
                 int x = (int) Math.round(d.x());
@@ -87,11 +87,11 @@ public final class RelicMaps {
                 if (claimed.contains(x + ":" + z)) return;
                 // MapState carries the dimension when it has arrived;
                 // the component doesn't, so fall back to the player's.
-                RegistryKey<World> dim = mc.world.getRegistryKey();
-                var state = FilledMapItem.getMapState(stack, mc.world);
+                ResourceKey<Level> dim = mc.level.dimension();
+                var state = MapItem.getSavedData(stack, mc.level);
                 if (state != null) dim = state.dimension;
                 found.putIfAbsent(x + ":" + z,
-                        new Relic(x, z, dim.getValue().toString(), name));
+                        new Relic(x, z, dim.identifier().toString(), name));
             });
         }
 
@@ -100,7 +100,7 @@ public final class RelicMaps {
             if (active.put(e.getKey(), e.getValue()) != null) continue;
             Relic r = e.getValue();
             OpenIntelClient.status("relic map detected: " + r.name()
-                    + " (" + Identifier.of(r.dimension()).getPath() + ")");
+                    + " (" + Identifier.parse(r.dimension()).getPath() + ")");
         }
 
         // Stale relics — the backing map left the inventory.
@@ -113,17 +113,17 @@ public final class RelicMaps {
      * from every surface: our active set (Xaero overlay) and JM's
      * waypoint store via the remover hook.
      */
-    public static void onGameMessage(net.minecraft.text.Text message, boolean overlay) {
+    public static void onGameMessage(net.minecraft.network.chat.Component message, boolean overlay) {
         if (overlay) onOverlayMessage(message);
     }
 
-    /** Shared by the GAME event and the InGameHud overlay mixin. */
-    public static void onOverlayMessage(net.minecraft.text.Text message) {
+    /** Shared by the GAME event and the Gui overlay mixin. */
+    public static void onOverlayMessage(net.minecraft.network.chat.Component message) {
         if (!message.getString().toLowerCase(java.util.Locale.ROOT)
                 .contains("found a relic")) return;
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null) return;
-        String dim = mc.world.getRegistryKey().getValue().toString();
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) return;
+        String dim = mc.level.dimension().identifier().toString();
         double px = mc.player.getX(), pz = mc.player.getZ();
 
         // Nearest active relic within claim radius — 96m is generous,

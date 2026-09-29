@@ -52,7 +52,68 @@ tasks.register('apiContractTest', JavaExec) {
     mainClass = 'dev.openintel.ApiContractTest'
 }
 
-check.dependsOn snitchDimensionTest, apiContractTest
+tasks.register('cleanFontMetricsTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.CleanFontMetricsTest'
+}
+
+tasks.register('cleanFontShaderTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.CleanFontShaderTest'
+}
+
+tasks.register('relicMapNameTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.RelicMapNameTest'
+}
+
+tasks.register('uiFontTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.UiFontTest'
+}
+
+tasks.register('radarLabelLayoutTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.radar.RadarLabelLayoutTest'
+}
+
+tasks.register('mapFontTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.MapFontTest'
+    if (project.hasProperty('journeyMapJar')) args project.property('journeyMapJar')
+}
+
+tasks.register('hudLayoutTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.HudLayoutTest'
+}
+
+tasks.register('offlineIntelTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.OfflineIntelTest'
+}
+
+tasks.register('publicationSafetyTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.PublicationSafetyTest'
+}
+
+tasks.register('logoHudTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.openintel.LogoHudTest'
+}
+
+check.dependsOn snitchDimensionTest, apiContractTest, cleanFontMetricsTest, relicMapNameTest, uiFontTest, radarLabelLayoutTest, mapFontTest, hudLayoutTest, offlineIntelTest, publicationSafetyTest, logoHudTest
 
 publishing {
     publications {

@@ -6,19 +6,18 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.AddressMode;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
-import com.mojang.blaze3d.textures.TextureFormat;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.ScreenRect;
-import net.minecraft.client.gui.render.state.SimpleGuiElementRenderState;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.texture.TextureSetup;
-import dev.openintel.mixin.DrawContextAccessor;
+import com.mojang.blaze3d.GpuFormat;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.gui.render.TextureSetup;
 import org.joml.Matrix3x2f;
-import net.minecraft.client.texture.AbstractTexture;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.renderer.texture.AbstractTexture;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.stb.STBTTFontinfo;
 import org.lwjgl.stb.STBTruetype;
 import org.lwjgl.system.MemoryStack;
@@ -39,7 +38,7 @@ import java.util.Map;
  * STBTruetype (bundled with LWJGL) rasterizes each needed codepoint
  * into a 1024px alpha atlas at 48px, registered as a texture; drawing
  * is per-glyph textured quads at ~9px logical height, tinted through
- * the drawTexture color argument. Glyph metrics carry advance/xoff/
+ * the blit color argument. Glyph metrics carry advance/xoff/
  * yoff so layout matches real typesetting, not a monospace grid.
  *
  * Lazily baked on first use (render thread); any failure flips
@@ -49,11 +48,12 @@ public final class CleanFont {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("OpenIntel/CleanFont");
 
-    private static final Identifier ATLAS_ID = Identifier.of("openintel", "clean_font");
-    private static final RenderPipeline PIPELINE = RenderPipeline.builder(RenderPipelines.POSITION_TEX_COLOR_SNIPPET)
-            .withLocation(Identifier.of("openintel", "pipeline/clean_font"))
-            .withFragmentShader(Identifier.of("openintel", "core/clean_font"))
-            .withDepthWrite(false)
+    private static final Identifier ATLAS_ID = Identifier.fromNamespaceAndPath("openintel", "clean_font");
+    private static final RenderPipeline PIPELINE = RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath("openintel", "pipeline/clean_font"))
+            .withFragmentShader(Identifier.fromNamespaceAndPath("openintel", "core/clean_font"))
+            .withDepthStencilState(new com.mojang.blaze3d.pipeline.DepthStencilState(
+                    com.mojang.blaze3d.platform.CompareOp.ALWAYS_PASS, false))
             .build();
     private static final int ATLAS = 1024;
     private static final int MIP_LEVELS = 4;
@@ -106,7 +106,7 @@ public final class CleanFont {
         return pen;
     }
 
-    public static void draw(DrawContext ctx, String text, float x, float y,
+    public static void draw(GuiGraphicsExtractor ctx, String text, float x, float y,
                             int argb, boolean shadow) {
         if (shadow) {
             int sc = UiFont.shadowColor((argb & 0xFF000000) | ((argb & 0xFCFCFC) >>> 2));
@@ -116,25 +116,26 @@ public final class CleanFont {
         pass(ctx, text, x, y, argb);
     }
 
-    public static void drawCentered(DrawContext ctx, String text, float cx,
+    public static void drawCentered(GuiGraphicsExtractor ctx, String text, float cx,
                                     float y, int argb) {
         draw(ctx, text, cx - width(text) / 2f, y, argb, true);
     }
 
-    private static void pass(DrawContext ctx, String text, float x, float y, int argb) {
+    private static void pass(GuiGraphicsExtractor ctx, String text, float x, float y, int argb) {
         if ((argb >>> 24) == 0 || text.isEmpty()) return;
-        var pose = new Matrix3x2f(ctx.getMatrices());
-        ScreenRect bounds = textBounds(text, x, y, pose);
+        var pose = new Matrix3x2f(ctx.pose());
+        ScreenRectangle bounds = textBounds(text, x, y, pose);
         if (bounds == null) return;
-        ScreenRect scissor = ctx.scissorStack.peekLast();
+        ScreenRectangle scissor = ctx.scissorStack.peek();
         if (scissor != null) bounds = bounds.intersection(scissor);
         if (bounds == null) return;
-        var texture = MinecraftClient.getInstance().getTextureManager().getTexture(ATLAS_ID);
-        ((DrawContextAccessor) ctx).openintel$state().addSimpleElement(new TextRun(pose,
-                TextureSetup.of(texture.getGlTextureView(), texture.getSampler()), text, x, y, argb, scissor, bounds));
+        var texture = Minecraft.getInstance().getTextureManager().getTexture(ATLAS_ID);
+        ctx.guiRenderState.addGuiElement(new TextRun(pose,
+                TextureSetup.singleTexture(texture.getTextureView(), texture.getSampler()),
+                text, x, y, argb, scissor, bounds));
     }
 
-    private static ScreenRect textBounds(String text, float x, float y, Matrix3x2f pose) {
+    private static ScreenRectangle textBounds(String text, float x, float y, Matrix3x2f pose) {
         float pen = x, left = Float.POSITIVE_INFINITY, top = Float.POSITIVE_INFINITY;
         float right = Float.NEGATIVE_INFINITY, bottom = Float.NEGATIVE_INFINITY;
         for (int i = 0; i < text.length();) {
@@ -153,16 +154,16 @@ public final class CleanFont {
         }
         if (!Float.isFinite(left)) return null;
         int x0 = (int) Math.floor(left), y0 = (int) Math.floor(top);
-        return new ScreenRect(x0, y0, (int) Math.ceil(right) - x0, (int) Math.ceil(bottom) - y0).transformEachVertex(pose);
+        return new ScreenRectangle(x0, y0, (int) Math.ceil(right) - x0, (int) Math.ceil(bottom) - y0).transformMaxBounds(pose);
     }
 
     private record TextRun(Matrix3x2f pose, TextureSetup textureSetup, String text, float x, float y, int color,
-                           ScreenRect scissorArea, ScreenRect bounds) implements SimpleGuiElementRenderState {
+                           ScreenRectangle scissorArea, ScreenRectangle bounds) implements GuiElementRenderState {
         @Override
         public RenderPipeline pipeline() { return PIPELINE; }
 
         @Override
-        public void setupVertices(VertexConsumer vertices) {
+        public void buildVertices(VertexConsumer vertices) {
             float pen = x;
             for (int i = 0; i < text.length();) {
                 int codePoint = text.codePointAt(i);
@@ -174,13 +175,18 @@ public final class CleanFont {
                     float x1 = x0 + g.w * S, y1 = y0 + g.h * S;
                     float u0 = g.x0 / (float) ATLAS, u1 = (g.x0 + g.w) / (float) ATLAS;
                     float v0 = g.y0 / (float) ATLAS, v1 = (g.y0 + g.h) / (float) ATLAS;
-                    vertices.vertex(pose, x0, y0).texture(u0, v0).color(color);
-                    vertices.vertex(pose, x0, y1).texture(u0, v1).color(color);
-                    vertices.vertex(pose, x1, y1).texture(u1, v1).color(color);
-                    vertices.vertex(pose, x1, y0).texture(u1, v0).color(color);
+                    vert(vertices, x0, y0, u0, v0);
+                    vert(vertices, x0, y1, u0, v1);
+                    vert(vertices, x1, y1, u1, v1);
+                    vert(vertices, x1, y0, u1, v0);
                 }
                 pen += (g != null ? g.adv : spaceAdv) * S;
             }
+        }
+
+        private void vert(VertexConsumer vc, float x, float y, float u, float v) {
+            org.joml.Vector2f p = pose.transformPosition(x, y, new org.joml.Vector2f());
+            vc.addVertex(p.x, p.y, 0).setUv(u, v).setColor(color);
         }
     }
 
@@ -254,7 +260,7 @@ public final class CleanFont {
                             scale, scale, cp);
                     for (int gy = 0; gy < gh; gy++) {
                         for (int gx = 0; gx < gw; gx++) {
-                            img.setColorArgb(pen + PAD + gx, rowY + PAD + gy,
+                            img.setPixel(pen + PAD + gx, rowY + PAD + gy,
                                     ((glyph.get(gy * gw + gx) & 0xFF) << 24) | 0xFFFFFF);
                         }
                     }
@@ -276,11 +282,11 @@ public final class CleanFont {
         for (int y = 0; y < result.getHeight(); y++) {
             for (int x = 0; x < result.getWidth(); x++) {
                 int sx = x * 2, sy = y * 2;
-                int alpha = ((source.getColorArgb(sx, sy) >>> 24)
-                        + (source.getColorArgb(sx + 1, sy) >>> 24)
-                        + (source.getColorArgb(sx, sy + 1) >>> 24)
-                        + (source.getColorArgb(sx + 1, sy + 1) >>> 24) + 2) / 4;
-                result.setColorArgb(x, y, (alpha << 24) | 0xFFFFFF);
+                int alpha = ((source.getPixel(sx, sy) >>> 24)
+                        + (source.getPixel(sx + 1, sy) >>> 24)
+                        + (source.getPixel(sx, sy + 1) >>> 24)
+                        + (source.getPixel(sx + 1, sy + 1) >>> 24) + 2) / 4;
+                result.setPixel(x, y, (alpha << 24) | 0xFFFFFF);
             }
         }
         return result;
@@ -289,15 +295,15 @@ public final class CleanFont {
     private static final class FontTexture extends AbstractTexture {
         private FontTexture(NativeImage image) {   // Default sampler minifies with NEAREST — far too crunchy
             // for 48px glyphs drawn at ~9px; use linear both ways.
-            sampler = RenderSystem.getSamplerCache().get(
+            sampler = RenderSystem.getSamplerCache().getSampler(
                     AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE,
                     FilterMode.LINEAR, FilterMode.LINEAR, true);
             var device = RenderSystem.getDevice();
-            glTexture = device.createTexture("openintel-clean-font",
+            texture = device.createTexture("openintel-clean-font",
                     GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_COPY_DST,
-                    TextureFormat.RGBA8, ATLAS, ATLAS, 1, MIP_LEVELS);
+                    GpuFormat.RGBA8_UNORM, ATLAS, ATLAS, 1, MIP_LEVELS);
             try {
-                glTextureView = device.createTextureView(glTexture);
+                textureView = device.createTextureView(texture);
                 uploadMip(image, 0);
             } catch (RuntimeException | Error error) {
                 close();
@@ -307,7 +313,7 @@ public final class CleanFont {
 
         private void uploadMip(NativeImage image, int level) {
             RenderSystem.getDevice().createCommandEncoder().writeToTexture(
-                    glTexture, image, level, 0, 0, 0, image.getWidth(), image.getHeight(), 0, 0);
+                    texture, image, level, 0, 0, 0);
             if (level + 1 < MIP_LEVELS) {
                 try (NativeImage next = downsample(image)) {
                     uploadMip(next, level + 1);
@@ -321,7 +327,7 @@ public final class CleanFont {
         try (NativeImage img = createAtlas()) {
             FontTexture tex = new FontTexture(img);
             try {
-                MinecraftClient.getInstance().getTextureManager().registerTexture(ATLAS_ID, tex);
+                Minecraft.getInstance().getTextureManager().register(ATLAS_ID, tex);
             } catch (RuntimeException | Error error) {
                 tex.close();
                 throw error;

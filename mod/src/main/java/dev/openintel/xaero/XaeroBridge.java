@@ -7,13 +7,13 @@ import dev.openintel.render.UiFont;
 import io.github.billstark001.xaerobridge.api.MapOverlayContext;
 import io.github.billstark001.xaerobridge.api.OverlayCanvas;
 import io.github.billstark001.xaerobridge.api.XaeroWorldMapBridge;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.lang.reflect.Field;
 
 /**
- * Mirrors OpenIntel's snitch hits and shared pings onto Xaero's World Map
+ * Mirrors OpenIntel's snitch hits and shared pings onto Xaero's Level Map
  * through the xaero-world-map-bridge overlay API.
  *
  * One permanent map overlay reads live state every frame — expiry,
@@ -30,7 +30,7 @@ public final class XaeroBridge {
 
     private static final int BACKING = 0xA0101014;
 
-    /** Set once the lambda→DrawContext unwrap fails — skip labels, keep fills. */
+    /** Set once the lambda→GuiGraphicsExtractor unwrap fails — skip labels, keep fills. */
     private static boolean textBroken;
 
     private XaeroBridge() { }
@@ -46,21 +46,21 @@ public final class XaeroBridge {
 
         String dim = ctx.dimension();
         if (dim == null) {
-            var world = MinecraftClient.getInstance().world;
+            var world = Minecraft.getInstance().level;
             if (world == null) return;
-            dim = world.getRegistryKey().getValue().toString();
+            dim = world.dimension().identifier().toString();
         }
 
         long now = System.currentTimeMillis();
         long snitchLife = cfg.snitchMarkerSeconds * 1000L;
         OverlayCanvas canvas = ctx.canvas();
-        var mc = MinecraftClient.getInstance();
-        String myName = mc.getSession().getUsername();
+        var mc = Minecraft.getInstance();
+        String myName = mc.getUser().getName();
         // Players in render distance are already on the map natively —
         // stacking a relay dot + label on them is just noise.
         java.util.Set<String> local = new java.util.HashSet<>();
-        if (mc.world != null) {
-            for (var e : mc.world.getPlayers()) local.add(e.getGameProfile().name().toLowerCase());
+        if (mc.level != null) {
+            for (var e : mc.level.players()) local.add(e.getGameProfile().name().toLowerCase());
         }
 
         // Relay positions: small allegiance dot, name underneath — focus
@@ -147,7 +147,7 @@ public final class XaeroBridge {
     /**
      * Marker label below the icon, tinted to match, on a dark backing so it
      * stays readable over bright map tiles. The bridge canvas only exposes
-     * fill(), so text goes through the DrawContext the canvas wraps — when
+     * fill(), so text goes through the GuiGraphicsExtractor the canvas wraps — when
      * that unwrap fails the markers still draw, just unlabeled.
      */
     private static void label(MapOverlayContext ctx, int cx, int y, String text, int argb) {
@@ -155,26 +155,26 @@ public final class XaeroBridge {
     }
 
     private static void drawLabel(MapOverlayContext ctx, int cx, int y, String text, int argb) {
-        DrawContext dc = drawContext(ctx.canvas());
+        GuiGraphicsExtractor dc = drawContext(ctx.canvas());
         if (dc == null) return;
-        var tr = MinecraftClient.getInstance().textRenderer;
-        int tw = tr.getWidth(text);
+        var tr = Minecraft.getInstance().font;
+        int tw = tr.width(text);
         ctx.canvas().fill(cx - tw / 2 - 2, y - 1, cx + (tw + 1) / 2 + 2,
-                y + tr.fontHeight + 1, BACKING);
-        dc.drawText(tr, text, cx - tw / 2, y, argb | 0xFF000000, false);
+                y + tr.lineHeight + 1, BACKING);
+        dc.text(tr, text, cx - tw / 2, y, argb | 0xFF000000, false);
     }
 
     /**
-     * The bridge builds its canvas as DrawContext::fill — a lambda holding
+     * The bridge builds its canvas as GuiGraphicsExtractor::fill — a lambda holding
      * the real context in a captured field. Fish it out for text rendering;
      * harmless when the implementation changes (labels just drop out).
      */
-    private static DrawContext drawContext(OverlayCanvas canvas) {
+    private static GuiGraphicsExtractor drawContext(OverlayCanvas canvas) {
         if (textBroken) return null;
         try {
             for (Field f : canvas.getClass().getDeclaredFields()) {
                 f.setAccessible(true);
-                if (f.get(canvas) instanceof DrawContext dc) return dc;
+                if (f.get(canvas) instanceof GuiGraphicsExtractor dc) return dc;
             }
         } catch (Throwable ignored) { }
         textBroken = true;

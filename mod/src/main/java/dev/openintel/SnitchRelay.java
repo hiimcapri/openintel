@@ -2,12 +2,12 @@ package dev.openintel;
 
 import com.google.gson.JsonObject;
 import dev.openintel.render.EventFeed;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.HoverEvent;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,7 +60,7 @@ public final class SnitchRelay {
     private static final Map<String, Long> recent = new HashMap<>();
 
     /** Wired to ClientReceiveMessageEvents.GAME — game/system chat only. */
-    public static void onGameMessage(Text message, boolean overlay) {
+    public static void onGameMessage(Component message, boolean overlay) {
         if (overlay) return;
         var cfg = OpenIntelClient.config();
         if (cfg == null) return;
@@ -85,7 +85,7 @@ public final class SnitchRelay {
         msg.addProperty("type", "snitch");
         msg.addProperty("message", text);
 
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
             msg.addProperty("reporter", client.player.getGameProfile().name());
         }
@@ -180,7 +180,7 @@ public final class SnitchRelay {
      * color (focus/friend/ally/enemy/neutral). Everything else passes
      * through untouched; click/hover styling on every segment is kept.
      */
-    public static Text restyleForChat(Text message, boolean overlay) {
+    public static Component restyleForChat(Component message, boolean overlay) {
         if (overlay) return message;
         var cfg = OpenIntelClient.config();
         if (cfg == null) return message;
@@ -201,7 +201,7 @@ public final class SnitchRelay {
 
         // Rebuild as flat styled segments; visit() yields leaves in order so
         // the concatenation reproduces the line exactly, minus the recolor.
-        MutableText out = Text.empty();
+        MutableComponent out = Component.empty();
         int[] pos = {0};
         message.visit((style, content) -> {
             int start = pos[0], end = start + content.length();
@@ -209,12 +209,12 @@ public final class SnitchRelay {
             int a = Math.max(0, span[0] - start);
             int b = Math.min(content.length(), span[1] - start);
             if (a >= b) {
-                out.append(Text.literal(content).setStyle(style));
+                out.append(Component.literal(content).setStyle(style));
             } else {
-                if (a > 0) out.append(Text.literal(content.substring(0, a)).setStyle(style));
-                out.append(Text.literal(content.substring(a, b))
+                if (a > 0) out.append(Component.literal(content.substring(0, a)).setStyle(style));
+                out.append(Component.literal(content.substring(a, b))
                         .setStyle(style.withColor(TextColor.fromRgb(color))));
-                if (b < content.length()) out.append(Text.literal(content.substring(b)).setStyle(style));
+                if (b < content.length()) out.append(Component.literal(content.substring(b)).setStyle(style));
             }
             return Optional.empty();
         }, Style.EMPTY);
@@ -231,7 +231,7 @@ public final class SnitchRelay {
         return null;
     }
 
-    static String hoverWorld(Text message) {
+    static String hoverWorld(Component message) {
         Set<String> worlds = new HashSet<>();
         message.visit((style, content) -> {
             if (style.getHoverEvent() instanceof HoverEvent.ShowText hover) {

@@ -130,7 +130,7 @@ public final class RadarLabelLayoutTest {
             boolean worldPlayers = false, range = false;
             for (var instruction : players.instructions) {
                 if (instruction instanceof org.objectweb.asm.tree.MethodInsnNode call) {
-                    if (call.name.equals("getPlayers")) worldPlayers = true;
+                    if (call.name.equals("players")) worldPlayers = true;
                     check(!call.owner.equals("dev/openintel/tracker/Tracker"), "Player blips use Minecraft entities, not relay snapshots");
                 }
                 if (instruction instanceof org.objectweb.asm.tree.FieldInsnNode field && field.name.equals("radarRange")) range = true;

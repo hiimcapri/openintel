@@ -29,3 +29,11 @@ replay_pid*
 .env.*
 *.pem
 *.key
+
+apply_port*.py
+
+port_translate.py
+
+all-imports.txt
+
+extract_map.py

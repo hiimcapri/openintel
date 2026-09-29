@@ -2,8 +2,8 @@ package dev.openintel.render;
 
 import dev.openintel.api.hud.HudSize;
 import dev.openintel.config.OIConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.LinkedHashMap;
 
@@ -14,7 +14,7 @@ public final class HudLayouts {
 
     private HudLayouts() { }
 
-    public static HudSize size(Element element, MinecraftClient client, OIConfig config) {
+    public static HudSize size(Element element, Minecraft client, OIConfig config) {
         return switch (element) {
             case RADAR -> new HudSize(radius(config) * 2 + 6, radius(config) * 2 + 6);
             case RELAY -> PresenceHud.size(client, config);
@@ -43,7 +43,7 @@ public final class HudLayouts {
         if (config.hudAnchors == null) config.hudAnchors = new LinkedHashMap<>();
     }
 
-    public static HudLayout.Frame bounds(Element element, MinecraftClient client, OIConfig config, int width, int height) {
+    public static HudLayout.Frame bounds(Element element, Minecraft client, OIConfig config, int width, int height) {
         return place(element, config, size(element, client, config), width, height);
     }
 
@@ -67,7 +67,7 @@ public final class HudLayouts {
                 config.hudReferenceHeight, width, height);
     }
 
-    public static void move(Element element, MinecraftClient client, OIConfig config,
+    public static void move(Element element, Minecraft client, OIConfig config,
                             double rawX, double rawY, int width, int height) {
         var frame = bounds(element, client, config, width, height);
         int x = HudLayout.snap(rawX, frame.width(), width, 10);
@@ -119,19 +119,19 @@ public final class HudLayouts {
         config.save();
     }
 
-    public static FrameScope apply(DrawContext context, HudLayout.Frame frame) {
+    public static FrameScope apply(GuiGraphicsExtractor context, HudLayout.Frame frame) {
         return new FrameScope(context, frame);
     }
 
     public static final class FrameScope implements AutoCloseable {
-        private final DrawContext context;
+        private final GuiGraphicsExtractor context;
 
-        private FrameScope(DrawContext context, HudLayout.Frame frame) {
+        private FrameScope(GuiGraphicsExtractor context, HudLayout.Frame frame) {
             this.context = context;
-            context.getMatrices().pushMatrix();
+            context.pose().pushMatrix();
             context.enableScissor(frame.x(), frame.y(), frame.right(), frame.bottom());
-            context.getMatrices().translate((float) frame.x(), (float) frame.y());
-            context.getMatrices().scale(frame.scale(), frame.scale());
+            context.pose().translate((float) frame.x(), (float) frame.y());
+            context.pose().scale(frame.scale(), frame.scale());
         }
 
         @Override
@@ -139,7 +139,7 @@ public final class HudLayouts {
             try {
                 context.disableScissor();
             } finally {
-                context.getMatrices().popMatrix();
+                context.pose().popMatrix();
             }
         }
     }

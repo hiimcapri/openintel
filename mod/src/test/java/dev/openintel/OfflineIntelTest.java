@@ -89,7 +89,7 @@ public final class OfflineIntelTest {
         check(calls(inbound, "dev/openintel/render/EventFeed", "clearRelay"), "Intel reset preserves local feed entries");
         check(client.methods.stream().anyMatch(m -> calls(m, "dev/openintel/tracker/Tracker", "clear")
                 && calls(m, "dev/openintel/ping/PingManager", "clear") && calls(m, "dev/openintel/relic/RelicMaps", "reset")),
-                "World disconnect retains full cleanup");
+                "Level disconnect retains full cleanup");
     }
 
     private static void verifyProducerOrigins() throws Exception {

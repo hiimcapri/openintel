@@ -2,17 +2,18 @@ package dev.openintel.render;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import dev.openintel.OpenIntelClient;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 
 public final class LogoHud {
-    private static final Identifier WHITE = Identifier.of("openintel", "textures/gui/white.png");
-    private static final RenderPipeline PIPELINE = RenderPipeline.builder(RenderPipelines.POSITION_TEX_COLOR_SNIPPET)
-            .withLocation(Identifier.of("openintel", "pipeline/logo"))
-            .withFragmentShader(Identifier.of("openintel", "core/logo"))
-            .withDepthWrite(false)
+    private static final Identifier WHITE = Identifier.fromNamespaceAndPath("openintel", "textures/gui/white.png");
+    private static final RenderPipeline PIPELINE = RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
+            .withLocation(Identifier.fromNamespaceAndPath("openintel", "pipeline/logo"))
+            .withFragmentShader(Identifier.fromNamespaceAndPath("openintel", "core/logo"))
+            .withDepthStencilState(new com.mojang.blaze3d.pipeline.DepthStencilState(
+                    com.mojang.blaze3d.platform.CompareOp.ALWAYS_PASS, false))
             .build();
 
     public record Bounds(float x, float y, float width, float height) { }
@@ -32,20 +33,20 @@ public final class LogoHud {
         return new Bounds((pixelWidth - margin - size) * sx, (pixelHeight - margin - size) * sy, size * sx, size * sy);
     }
 
-    public static void render(DrawContext context) {
+    public static void render(GuiGraphicsExtractor context) {
         var config = OpenIntelClient.config();
-        var client = MinecraftClient.getInstance();
-        if (config == null || !config.logoHudEnabled || client.player == null || client.world == null
-                || client.options.hudHidden || client.currentScreen != null) return;
-        var bounds = layout(context.getScaledWindowWidth(), context.getScaledWindowHeight(),
-                client.getWindow().getFramebufferWidth(), client.getWindow().getFramebufferHeight());
+        var client = Minecraft.getInstance();
+        if (config == null || !config.logoHudEnabled || client.player == null || client.level == null
+                || client.gui.hud.isHidden() || client.gui.screen() != null) return;
+        var bounds = layout(context.guiWidth(), context.guiHeight(),
+                client.getWindow().getWidth(), client.getWindow().getHeight());
         if (bounds.width <= 0 || bounds.height <= 0) return;
-        var pose = context.getMatrices();
+        var pose = context.pose();
         pose.pushMatrix();
         try {
             pose.translate(bounds.x, bounds.y);
             pose.scale(bounds.width, bounds.height);
-            context.drawTexture(PIPELINE, WHITE, 0, 0, 0f, 0f, 1, 1, 1, 1, 0xFFFFFFFF);
+            context.blit(PIPELINE, WHITE, 0, 0, 0f, 0f, 1, 1, 1, 1, 0xFFFFFFFF);
         } finally {
             pose.popMatrix();
         }

@@ -10,7 +10,7 @@ public record HudPosition(int x, int y) {
     public HudPosition clamp(HudSize size, int viewportWidth, int viewportHeight) {
         Objects.requireNonNull(size, "size");
         if (viewportWidth < 0 || viewportHeight < 0) {
-            throw new IllegalArgumentException("Viewport dimensions must be nonnegative");
+            throw new IllegalArgumentException("Viewport bounds must be nonnegative");
         }
         return new HudPosition(Math.min(x, Math.max(0, viewportWidth - size.width())),
                 Math.min(y, Math.max(0, viewportHeight - size.height())));

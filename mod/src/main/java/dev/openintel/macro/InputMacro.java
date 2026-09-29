@@ -1,8 +1,8 @@
 package dev.openintel.macro;
 
 import dev.openintel.OpenIntelClient;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
 
 /**
  * Base for toggle-on-keypress macros that drive vanilla inputs.
@@ -16,17 +16,17 @@ import net.minecraft.client.option.KeyBinding;
  * {@link #losesInputCustody}.
  */
 public abstract class InputMacro {
-    private final KeyBinding toggle;
+    private final KeyMapping toggle;
     private boolean active;
     private int watchedSlot = -1;
 
-    protected InputMacro(KeyBinding toggle) {
+    protected InputMacro(KeyMapping toggle) {
         this.toggle = toggle;
     }
 
     /** Wire into END_CLIENT_TICK. */
-    public final void tick(MinecraftClient mc) {
-        while (toggle.wasPressed()) {
+    public final void tick(Minecraft mc) {
+        while (toggle.consumeClick()) {
             if (active) {
                 deactivate(mc);
             } else if (mc.player != null && canEngage(mc)) {
@@ -44,22 +44,22 @@ public abstract class InputMacro {
         tickActive(mc);
     }
 
-    private void activate(MinecraftClient mc) {
+    private void activate(Minecraft mc) {
         active = true;
         watchedSlot = -1;
         onEngage(mc);
         OpenIntelClient.status(name() + " on");
     }
 
-    private void deactivate(MinecraftClient mc) {
+    private void deactivate(Minecraft mc) {
         active = false;
         onRelease(mc);
         OpenIntelClient.status(name() + " off");
     }
 
-    private static boolean hotbarKeyDown(MinecraftClient mc) {
-        for (KeyBinding k : mc.options.hotbarKeys) {
-            if (k.isPressed()) return true;
+    private static boolean hotbarKeyDown(Minecraft mc) {
+        for (KeyMapping k : mc.options.keyHotbarSlots) {
+            if (k.isDown()) return true;
         }
         return false;
     }
@@ -67,7 +67,7 @@ public abstract class InputMacro {
     public boolean isActive() { return active; }
 
     /** Extra gate for engaging (e.g. don't grab use while eating). */
-    protected boolean canEngage(MinecraftClient mc) { return mc.currentScreen == null; }
+    protected boolean canEngage(Minecraft mc) { return mc.gui.screen() == null; }
 
     /**
      * Whether the macro has lost input custody this tick and should
@@ -76,14 +76,14 @@ public abstract class InputMacro {
      * ice road does, matching CivModern (chat, inventory and scrolling
      * don't stop it; only the toggle key does).
      */
-    protected boolean losesInputCustody(MinecraftClient mc, int slot) {
-        return mc.currentScreen != null || !mc.mouse.isCursorLocked()
+    protected boolean losesInputCustody(Minecraft mc, int slot) {
+        return mc.gui.screen() != null || !mc.mouseHandler.isMouseGrabbed()
                 || slot != watchedSlot || hotbarKeyDown(mc);
     }
 
-    protected void onEngage(MinecraftClient mc) { }
-    protected void onRelease(MinecraftClient mc) { }
-    protected void tickActive(MinecraftClient mc) { }
+    protected void onEngage(Minecraft mc) { }
+    protected void onRelease(Minecraft mc) { }
+    protected void tickActive(Minecraft mc) { }
 
     /** Short name used in the "[OpenIntel] <name> on/off" chat feedback. */
     protected abstract String name();

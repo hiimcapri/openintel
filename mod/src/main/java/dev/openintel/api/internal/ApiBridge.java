@@ -8,8 +8,8 @@ import dev.openintel.gui.HudEditorScreen;
 import dev.openintel.ping.PingManager;
 import dev.openintel.render.EventFeed;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +56,7 @@ public final class ApiBridge {
             return action(true, () -> {
                 if (!validText(label, 64)) return invalid("Ping label must contain 1-64 printable characters");
                 if (!validPosition(x, y, z, dimension)) return invalid("Ping requires finite world coordinates and a valid dimension Identifier (maximum 128 characters)");
-                return PingManager.sendShared(label, color, x, y, z, Identifier.of(dimension).toString()) ? submitted()
+                return PingManager.sendShared(label, color, x, y, z, Identifier.parse(dimension).toString()) ? submitted()
                         : new ActionResult(ActionResult.Status.FAILED, "Relay could not submit the ping");
             });
         }
@@ -262,8 +262,8 @@ public final class ApiBridge {
 
     private static CompletableFuture<ActionResult> screen(boolean editor) {
         return action(false, () -> {
-            var client = MinecraftClient.getInstance();
-            client.setScreen(editor ? new HudEditorScreen(client.currentScreen) : new ClickGuiScreen(client.currentScreen));
+            var client = Minecraft.getInstance();
+            client.setScreenAndShow(editor ? new HudEditorScreen(client.gui.screen()) : new ClickGuiScreen(client.gui.screen()));
             return completed("Screen opened");
         });
     }
@@ -272,21 +272,21 @@ public final class ApiBridge {
         if (!ready) return CompletableFuture.completedFuture(new ActionResult(ActionResult.Status.NOT_READY, "OpenIntel has not initialized"));
         var future = new CompletableFuture<ActionResult>();
         try {
-            var client = MinecraftClient.getInstance();
-            var submittedWorld = client.world;
+            var client = Minecraft.getInstance();
+            var submittedWorld = client.level;
             var submittedRelay = OpenIntelClient.relay();
             long submittedGeneration = submittedRelay.sessionGeneration();
             client.execute(() -> {
                 if (future.isCancelled()) return;
                 try {
-                    if (client.world != submittedWorld || OpenIntelClient.relay() != submittedRelay
+                    if (client.level != submittedWorld || OpenIntelClient.relay() != submittedRelay
                             || submittedRelay.sessionGeneration() != submittedGeneration) {
                         future.complete(new ActionResult(ActionResult.Status.SESSION_CHANGED,
                                 "The game or relay session changed before this action could execute; submit a new request"));
                         return;
                     }
                     if (shared) {
-                        if (client.player == null || client.world == null || client.isInSingleplayer()
+                        if (client.player == null || client.level == null || client.hasSingleplayerServer()
                                 || OpenIntelClient.currentMinecraftServer(client) == null) {
                             future.complete(new ActionResult(ActionResult.Status.NOT_IN_MULTIPLAYER, "Join the selected multiplayer server first"));
                             return;
@@ -336,7 +336,7 @@ public final class ApiBridge {
     private static ActionResult invalid(String message) { return new ActionResult(ActionResult.Status.INVALID_ARGUMENT, message); }
 
     private static void requireClientThread() {
-        if (!MinecraftClient.getInstance().isOnThread()) throw new IllegalStateException("OpenIntel mutation requires the client thread");
+        if (!Minecraft.getInstance().isSameThread()) throw new IllegalStateException("OpenIntel mutation requires the client thread");
     }
 
     private static void publish(ApiEvent event) {

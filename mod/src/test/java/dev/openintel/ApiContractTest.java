@@ -85,7 +85,7 @@ public final class ApiContractTest {
         check(recursiveCount.get() == 256, "Recursive events bounded without hanging client thread");
         recursive.close();
         var hud = OpenIntelApi.hud();
-        var id = net.minecraft.util.Identifier.of("contract_test", "example");
+        var id = net.minecraft.resources.Identifier.fromNamespaceAndPath("contract_test", "example");
         var size = new dev.openintel.api.hud.HudSize(120, 20);
         var position = new dev.openintel.api.hud.HudPosition(100, 100);
         var handle = hud.register(id, "Contract example", size, position, (context, bounds, delta) -> { });
@@ -96,7 +96,7 @@ public final class ApiContractTest {
             throw new AssertionError("Duplicate HUD accepted");
         } catch (IllegalArgumentException expected) { }
         try {
-            hud.register(net.minecraft.util.Identifier.of("openintel", "reserved"), "Reserved", size, position,
+            hud.register(net.minecraft.resources.Identifier.fromNamespaceAndPath("openintel", "reserved"), "Reserved", size, position,
                     (context, bounds, delta) -> { });
             throw new AssertionError("Reserved namespace accepted");
         } catch (IllegalArgumentException expected) { }

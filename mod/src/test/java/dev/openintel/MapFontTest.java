@@ -1,9 +1,9 @@
 package dev.openintel;
 
 import dev.openintel.render.UiFont;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.StyleSpriteSource;
-import net.minecraft.text.Text;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.network.chat.Component;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
@@ -17,15 +17,15 @@ public final class MapFontTest {
     public static void main(String[] args) throws Exception {
         UiFont.initialize(true);
         var calls = new AtomicInteger();
-        var original = Text.literal("White Rabbit's Timepiece").asOrderedText();
-        var captured = new AtomicReference<OrderedText>();
+        var original = Component.literal("White Rabbit's Timepiece").getVisualOrderText();
+        var captured = new AtomicReference<FormattedCharSequence>();
         UiFont.withMapFont("openintel", () -> {
             calls.incrementAndGet();
-            check(UiFont.select(StyleSpriteSource.DEFAULT).equals(UiFont.SOURCE), "Our overlay measurements use our font");
+            check(UiFont.select(FontDescription.DEFAULT).equals(UiFont.SOURCE), "Our overlay measurements use our font");
             captured.set(UiFont.capture(original));
         });
         check(calls.get() == 1, "Our overlay renderer is called exactly once");
-        check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT, "Map font scope is restored");
+        check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT, "Map font scope is restored");
         captured.get().accept((index, style, cp) -> {
             check(style.getFont().equals(UiFont.SOURCE), "Our deferred map labels retain our font");
             check(Integer.valueOf(0).equals(style.getShadowColor()), "Our map labels have no text shadow");
@@ -35,22 +35,22 @@ public final class MapFontTest {
             int previous = calls.get();
             UiFont.withMapFont(owner, () -> {
                 calls.incrementAndGet();
-                check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT, "Foreign map text keeps its font");
+                check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT, "Foreign map text keeps its font");
                 check(UiFont.capture(original) == original, "Identical label text from another owner is not changed");
             });
             check(calls.get() == previous + 1, "Foreign renderer is called exactly once");
         }
         UiFont.withMapFont("openintel", () -> {
-            UiFont.withMapFont("another_mod", () -> check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT,
+            UiFont.withMapFont("another_mod", () -> check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
                     "Nested foreign overlay does not inherit our font"));
-            check(UiFont.select(StyleSpriteSource.DEFAULT).equals(UiFont.SOURCE), "Outer owned overlay scope restored");
+            check(UiFont.select(FontDescription.DEFAULT).equals(UiFont.SOURCE), "Outer owned overlay scope restored");
         });
         try {
             UiFont.withMapFont("openintel", () -> { throw new IllegalStateException("scope test"); });
         } catch (IllegalStateException expected) { }
-        check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT, "Failed overlay rendering cannot leak font selection");
+        check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT, "Failed overlay rendering cannot leak font selection");
         UiFont.setEnabled(false);
-        UiFont.withMapFont("openintel", () -> check(UiFont.select(StyleSpriteSource.DEFAULT) == StyleSpriteSource.DEFAULT,
+        UiFont.withMapFont("openintel", () -> check(UiFont.select(FontDescription.DEFAULT) == FontDescription.DEFAULT,
                 "Disabled clean font is respected on map overlays"));
         verifyIntegrationWiring();
         if (args.length > 0) verifyJourneyMap(args[0]);
@@ -105,7 +105,7 @@ public final class MapFontTest {
                     @Override
                     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
                         if (name.equals("getModId") && descriptor.equals("()Ljava/lang/String;")) methods[0] = true;
-                        if (name.equals("drawText") && descriptor.equals("(Lnet/minecraft/class_332;DDLjourneymap/client/render/map/Renderer;DD)V")) methods[1] = true;
+                        if (name.equals("drawText") && descriptor.equals("(Lnet/minecraft/client/gui/GuiGraphicsExtractor;DDLjourneymap/client/render/map/Renderer;DD)V")) methods[1] = true;
                         return null;
                     }
                 }, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);

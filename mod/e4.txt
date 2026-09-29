@@ -1,0 +1,8 @@
+﻿
+[Incubating] Problems report is available at: 
+file:///C:/Users/cap/Desktop/openintel-26.2-work/mod/build/reports/problems/problems-report.html
+BUILD SUCCESSFUL in 1s
+Consider enabling configuration cache to speed up this build: 
+https://docs.gradle.org/9.5.0/userguide/configuration_cache_enabling.html
+
+

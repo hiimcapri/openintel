@@ -1,0 +1,19 @@
+﻿
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\MarkerHud.java:155: error: cannot find 
+symbol
+  symbol:   method getRotation()
+  location: variable camera of type Camera
+C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\xaero\XaeroBridge.java:49: error: cannot find 
+symbol
+  symbol:   variable world
+  location: class Minecraft
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\xaero\XaeroBridge.java:49: error: cannot 
+find symbol
+    symbol:   variable world
+    location: class Minecraft
+  C:\Users\cap\Desktop\openintel-26.2-work\mod\src\main\java\dev\openintel\render\MarkerHud.java:155: error: cannot 
+find symbol
+    symbol:   method getRotation()
+    location: variable camera of type Camera
+
+

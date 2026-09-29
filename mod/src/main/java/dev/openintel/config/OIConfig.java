@@ -111,7 +111,7 @@ public class OIConfig {
     /** Max rows in the presence panel. */
     public int presenceMaxRows = 12;
 
-    /** List players in other dimensions (with a dim tag, no distance). */
+    /** List players in other bounds (with a dim tag, no distance). */
     public boolean presenceShowAllDims = true;
 
     // ---------------------------------------------------------- ping wheel ---
@@ -198,7 +198,7 @@ public class OIConfig {
     /** Draw snitch hits + shared pings on JourneyMap's fullscreen map (soft dep). */
     public boolean jmMarkers = true;
 
-    /** Draw snitch hits + shared pings on Xaero's World Map screen (soft dep). */
+    /** Draw snitch hits + shared pings on Xaero's Level Map screen (soft dep). */
     public boolean xaeroMarkers = true;
 
     // -------------------------------------------------------------- radar ----

@@ -5,10 +5,10 @@ import dev.openintel.api.internal.ApiBridge;
 import dev.openintel.api.hud.HudSize;
 import dev.openintel.allegiance.AllegianceManager.Allegiance;
 import dev.openintel.config.OIConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.entity.Entity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.world.entity.Entity;
 
 import java.util.Deque;
 import java.util.List;
@@ -48,10 +48,10 @@ public final class EventFeed {
     }
 
     private static void add(String text, int argb, boolean relay) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
-            var world = client.world;
-            client.execute(() -> { if (client.world == world) add(text, argb, relay); });
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
+            var world = client.level;
+            client.execute(() -> { if (client.level == world) add(text, argb, relay); });
             return;
         }
         OIConfig cfg = OpenIntelClient.config();
@@ -71,8 +71,8 @@ public final class EventFeed {
     }
 
     private static void clear(boolean includeLocal) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             client.execute(() -> clear(includeLocal));
             return;
         }
@@ -93,8 +93,8 @@ public final class EventFeed {
     // ------------------------------------------------------------ hooks ----
 
     /** Fabric ENTITY_LOAD — announces enemy/focus players entering render. */
-    public static void onEntityLoad(Entity entity, net.minecraft.client.world.ClientWorld world) {
-        if (!(entity instanceof AbstractClientPlayerEntity p)) return;
+    public static void onEntityLoad(Entity entity, net.minecraft.client.multiplayer.ClientLevel world) {
+        if (!(entity instanceof AbstractClientPlayer p)) return;
         String name = p.getGameProfile().name();
         if (!inRender.add(name)) return;
 
@@ -104,18 +104,18 @@ public final class EventFeed {
         }
     }
 
-    public static void onEntityUnload(Entity entity, net.minecraft.client.world.ClientWorld world) {
-        if (entity instanceof AbstractClientPlayerEntity p) {
+    public static void onEntityUnload(Entity entity, net.minecraft.client.multiplayer.ClientLevel world) {
+        if (entity instanceof AbstractClientPlayer p) {
             inRender.remove(p.getGameProfile().name());
         }
     }
 
     /** Client tick — watches rendered teammates for deaths. */
-    public static void tick(MinecraftClient client) {
+    public static void tick(Minecraft client) {
         OIConfig cfg = OpenIntelClient.config();
-        if (!cfg.eventFeedEnabled || client.world == null) return;
+        if (!cfg.eventFeedEnabled || client.level == null) return;
 
-        for (AbstractClientPlayerEntity p : client.world.getPlayers()) {
+        for (AbstractClientPlayer p : client.level.players()) {
             if (p == client.player) continue;
             String name = p.getGameProfile().name();
             Allegiance a = OpenIntelClient.allegiances().of(name);
@@ -137,12 +137,12 @@ public final class EventFeed {
 
     // ------------------------------------------------------------ render ---
 
-    public static void render(DrawContext ctx) {
+    public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
         if (!cfg.eventFeedEnabled || entries.isEmpty()) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.options.hudHidden) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.gui.hud.isHidden()) return;
 
         long now = System.currentTimeMillis();
         long holdMs = cfg.eventFeedSeconds * 1000L;
@@ -152,7 +152,7 @@ public final class EventFeed {
         List<Entry> visible = List.copyOf(entries);
         HudSize size = measure(client, visible);
         var frame = HudLayouts.place(HudLayouts.Element.EVENTS, cfg, size,
-                ctx.getScaledWindowWidth(), ctx.getScaledWindowHeight());
+                ctx.guiWidth(), ctx.guiHeight());
         if (frame.scale() <= 0) return;
         try (var ignored = HudLayouts.apply(ctx, frame)) {
             int y = 0;
@@ -161,28 +161,28 @@ public final class EventFeed {
                 long age = now - e.createdAt;
                 float fade = age <= holdMs ? 1f : 1f - (age - holdMs) / (float) FADE_MS;
                 int color = scaleAlpha(e.color, fade);
-                float tw = cf ? CleanFont.width(e.text) : client.textRenderer.getWidth(e.text);
+                float tw = cf ? CleanFont.width(e.text) : client.font.width(e.text);
                 int x = cfg.eventFeedX >= 0 ? 0 : Math.max(0, Math.round(size.width() - tw));
                 if (cf) CleanFont.draw(ctx, e.text, x, y, color, true);
-                else ctx.drawText(client.textRenderer, e.text, x, y, color, true);
-                y += client.textRenderer.fontHeight + 2;
+                else ctx.text(client.font, e.text, x, y, color, true);
+                y += client.font.lineHeight + 2;
             }
         }
     }
 
-    public static HudSize size(MinecraftClient client) {
+    public static HudSize size(Minecraft client) {
         return measure(client, List.copyOf(entries));
     }
 
-    private static HudSize measure(MinecraftClient client, List<Entry> visible) {
+    private static HudSize measure(Minecraft client, List<Entry> visible) {
         if (visible.isEmpty()) return new HudSize(180, 58);
         boolean cf = CleanFont.active();
         int width = 1;
         for (Entry entry : visible) {
-            float w = cf ? CleanFont.width(entry.text) : client.textRenderer.getWidth(entry.text);
+            float w = cf ? CleanFont.width(entry.text) : client.font.width(entry.text);
             width = Math.max(width, (int) Math.ceil(w));
         }
-        return new HudSize(Math.min(32768, width), Math.max(1, visible.size() * (client.textRenderer.fontHeight + 2)));
+        return new HudSize(Math.min(32768, width), Math.max(1, visible.size() * (client.font.lineHeight + 2)));
     }
 
     private static int scaleAlpha(int argb, float f) {

@@ -1,11 +1,11 @@
 package dev.openintel.render;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.ScreenRect;
-import net.minecraft.client.gui.render.state.SimpleGuiElementRenderState;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.texture.TextureSetup;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.gui.render.TextureSetup;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3x2fc;
 
@@ -18,17 +18,17 @@ import java.util.function.Consumer;
  * vertices; per-vertex colors give interpolated gradients (soft edges).
  */
 public record ColoredQuadsElement(Matrix3x2fc pose, Consumer<VertexConsumer> painter,
-                                  ScreenRect bounds) implements SimpleGuiElementRenderState {
+                                  ScreenRectangle bounds) implements GuiElementRenderState {
 
     @Override
     public RenderPipeline pipeline() { return RenderPipelines.GUI; }
 
     @Override
-    public TextureSetup textureSetup() { return TextureSetup.empty(); }
+    public TextureSetup textureSetup() { return TextureSetup.noTexture(); }
 
     @Override
-    public @Nullable ScreenRect scissorArea() { return null; }
+    public @Nullable ScreenRectangle scissorArea() { return null; }
 
     @Override
-    public void setupVertices(VertexConsumer vertices) { painter.accept(vertices); }
+    public void buildVertices(VertexConsumer vertices) { painter.accept(vertices); }
 }

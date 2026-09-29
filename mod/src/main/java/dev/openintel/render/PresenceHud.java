@@ -4,9 +4,9 @@ import dev.openintel.OpenIntelClient;
 import dev.openintel.api.hud.HudSize;
 import dev.openintel.config.OIConfig;
 import dev.openintel.tracker.Tracker.RemotePlayer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,7 +17,7 @@ import java.util.Locale;
  * Side-panel roster of everyone the relay is tracking: name in allegiance
  * color, dimension tag, distance, and a freshness dot that walks
  * green → yellow → red as the intel ages. Same-dimension players sort
- * first by distance; other dimensions sink to the bottom.
+ * first by distance; other bounds sink to the bottom.
  *
  * Toggle + layout live in /oi settings. Respects the master relay-rendering
  * switch — it's a relay-derived view.
@@ -31,30 +31,30 @@ public final class PresenceHud {
     private record Row(String name, int color, String dim, double dist,
                        float age, float alpha, boolean sameDim) { }
 
-    public static HudSize size(MinecraftClient mc, OIConfig cfg) {
+    public static HudSize size(Minecraft mc, OIConfig cfg) {
         return measure(mc, rows(mc, cfg));
     }
 
-    public static void render(DrawContext ctx) {
+    public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
         if (!cfg.presenceEnabled || !cfg.relayRendering) return;
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null || mc.options.hudHidden) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null || mc.gui.hud.isHidden()) return;
         List<Row> rows = rows(mc, cfg);
         if (rows.isEmpty()) return;
         HudSize size = measure(mc, rows);
         var frame = HudLayouts.place(HudLayouts.Element.RELAY, cfg, size,
-                ctx.getScaledWindowWidth(), ctx.getScaledWindowHeight());
+                ctx.guiWidth(), ctx.guiHeight());
         if (frame.scale() <= 0) return;
         try (var ignored = HudLayouts.apply(ctx, frame)) {
             drawPanel(ctx, mc, cfg, rows, size);
         }
     }
 
-    private static List<Row> rows(MinecraftClient mc, OIConfig cfg) {
-        if (mc.player == null || mc.world == null || OpenIntelClient.tracker() == null) return List.of();
-        String myDim = mc.world.getRegistryKey().getValue().toString();
-        Vec3d self = mc.player.getEntityPos();
+    private static List<Row> rows(Minecraft mc, OIConfig cfg) {
+        if (mc.player == null || mc.level == null || OpenIntelClient.tracker() == null) return List.of();
+        String myDim = mc.level.dimension().identifier().toString();
+        Vec3 self = mc.player.position();
         long now = System.currentTimeMillis();
         List<Row> rows = new ArrayList<>();
         for (RemotePlayer p : OpenIntelClient.tracker().all()) {
@@ -77,9 +77,9 @@ public final class PresenceHud {
         return rows;
     }
 
-    private static HudSize measure(MinecraftClient mc, List<Row> rows) {
+    private static HudSize measure(Minecraft mc, List<Row> rows) {
         if (rows.isEmpty()) return new HudSize(132, 58);
-        var tr = mc.textRenderer;
+        var tr = mc.font;
         boolean cf = CleanFont.active();
         int panelW = 96;
         for (Row r : rows) {
@@ -87,12 +87,12 @@ public final class PresenceHud {
                     + 6 + tw(tr, cf, distText(r)) + 4 + 4 + 4;
             panelW = Math.max(panelW, (int) Math.ceil(w));
         }
-        return new HudSize(Math.min(32768, panelW), rows.size() * (tr.fontHeight + 2) + 8);
+        return new HudSize(Math.min(32768, panelW), rows.size() * (tr.lineHeight + 2) + 8);
     }
 
-    private static void drawPanel(DrawContext ctx, MinecraftClient mc, OIConfig cfg, List<Row> rows, HudSize size) {
-        var tr = mc.textRenderer;
-        int lineH = tr.fontHeight + 2;
+    private static void drawPanel(GuiGraphicsExtractor ctx, Minecraft mc, OIConfig cfg, List<Row> rows, HudSize size) {
+        var tr = mc.font;
+        int lineH = tr.lineHeight + 2;
         int padX = 4, padY = 4, dot = 4;
         boolean cf = CleanFont.active();
         int panelW = size.width(), panelH = size.height();
@@ -113,15 +113,15 @@ public final class PresenceHud {
         }
     }
 
-    private static float tw(net.minecraft.client.font.TextRenderer tr,
+    private static float tw(net.minecraft.client.gui.Font tr,
                             boolean cf, String s) {
-        return cf ? CleanFont.width(s) : tr.getWidth(s);
+        return cf ? CleanFont.width(s) : tr.width(s);
     }
 
-    private static void draw(DrawContext ctx, net.minecraft.client.font.TextRenderer tr,
+    private static void draw(GuiGraphicsExtractor ctx, net.minecraft.client.gui.Font tr,
                              boolean cf, String s, float x, int y, int color) {
         if (cf) CleanFont.draw(ctx, s, x, y, color, true);
-        else ctx.drawText(tr, s, (int) x, y, color, true);
+        else ctx.text(tr, s, (int) x, y, color, true);
     }
 
     private static String distText(Row r) {

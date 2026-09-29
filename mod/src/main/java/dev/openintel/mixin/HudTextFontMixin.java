@@ -3,15 +3,15 @@ package dev.openintel.mixin;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import dev.openintel.render.UiFont;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.Hud;
+import net.minecraft.client.DeltaTracker;
 import org.spongepowered.asm.mixin.Mixin;
 
-@Mixin(InGameHud.class)
+@Mixin(Hud.class)
 public abstract class HudTextFontMixin {
-    @WrapMethod(method = {"renderOverlayMessage", "renderTitleAndSubtitle"})
-    private void openintel$hudTextFont(DrawContext context, RenderTickCounter tickCounter, Operation<Void> original) {
+    @WrapMethod(method = {"extractOverlayMessage", "extractTitle"})
+    private void openintel$hudTextFont(GuiGraphicsExtractor context, DeltaTracker tickCounter, Operation<Void> original) {
         UiFont.withHudFont(() -> original.call(context, tickCounter));
     }
 }
