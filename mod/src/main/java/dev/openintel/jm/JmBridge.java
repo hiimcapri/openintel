@@ -156,7 +156,7 @@ final class JmBridge implements Runnable {
                 .setFontShadow(false)
                 .setBackgroundColor(0x101014)
                 .setBackgroundOpacity(0.6f)
-                .setScale(1.0f)
+                .setScale(1.75f)
                 .setOffsetY(24));
         try {
             api.show(overlay);
