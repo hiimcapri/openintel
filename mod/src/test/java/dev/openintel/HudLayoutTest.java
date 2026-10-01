@@ -66,10 +66,10 @@ public final class HudLayoutTest {
 
     private static void verifyEdgeOverflow() throws Exception {
         var entry = Class.forName("dev.openintel.render.MarkerHud$EdgeEntry");
-        var constructor = entry.getDeclaredConstructor(String.class, int.class, double.class);
+        var constructor = entry.getDeclaredConstructor(String.class, int.class, double.class, int.class);
         constructor.setAccessible(true);
         var entries = new java.util.ArrayList<>();
-        for (int i = 0; i < 5; i++) entries.add(constructor.newInstance("player" + i, -1, (double) i));
+        for (int i = 0; i < 5; i++) entries.add(constructor.newInstance("player" + i, -1, (double) i, 200));
         var rows = dev.openintel.render.MarkerHud.class.getDeclaredMethod("edgeRows", java.util.List.class, int.class);
         rows.setAccessible(true);
         var visible = (java.util.List<?>) rows.invoke(null, entries, 2);

@@ -96,8 +96,8 @@ public final class ClickGui {
                         bool("options.openintel.relay.stale_decay", cfg.staleDecay, v -> cfg.staleDecay = v)),
                 new Option(tr("options.openintel.relay.enemy_alert"), "Chat alert when an enemy is spotted by the relay.",
                         bool("options.openintel.relay.enemy_alert", cfg.localEnemyAlert, v -> cfg.localEnemyAlert = v)),
-                new Option(tr("options.openintel.relay.opacity"), "Alpha applied to every relay marker.",
-                        slider("options.openintel.relay.opacity", 10, 255, cfg.relayOpacity,
+                new Option(tr("options.openintel.relay.opacity"), "Alpha applied to active relay markers and pings.",
+                        slider("options.openintel.relay.opacity", 151, 255, cfg.relayOpacity,
                                 "", v -> cfg.relayOpacity = v)),
                 new Option(tr("options.openintel.relay.marker_scale"), "Size of over-head markers — chevron and name label together.",
                         slider("options.openintel.relay.marker_scale", 50, 200, (int) (cfg.markerScale * 100),
@@ -106,6 +106,28 @@ public final class ClickGui {
                         rangeSlider("options.openintel.relay.max_dist",
                                 (int) Math.min(20000, Math.max(0, cfg.maxMarkerDistance)),
                                 v -> cfg.maxMarkerDistance = v))
+        )));
+
+        // -------------------------------------------------------- war table
+        cats.add(new Category("wartable", "War Table", List.of(
+                new Group("Map"),
+                new Option(tr("options.openintel.wartable.enabled"),
+                        "Enable the War Table keybind and shared map screen.",
+                        bool("options.openintel.wartable.enabled",
+                                cfg.warTableEnabled, v -> cfg.warTableEnabled = v)),
+                new Option(tr("options.openintel.wartable.sanctuaries"),
+                        "Draw sanctuary boundaries over the live map.",
+                        bool("options.openintel.wartable.sanctuaries",
+                                cfg.warTableSanctuaries, v -> cfg.warTableSanctuaries = v)),
+                new Group("Waypoints"),
+                new Option(tr("options.openintel.wartable.pin_markers"),
+                        "Show synced War Table pins as in-world waypoints.",
+                        bool("options.openintel.wartable.pin_markers",
+                                cfg.warTablePinMarkers, v -> cfg.warTablePinMarkers = v)),
+                new Option(tr("options.openintel.wartable.pin_opacity"),
+                        "Static waypoint opacity; lower than active relay markers.",
+                        slider("options.openintel.wartable.pin_opacity", 30, 150,
+                                cfg.warTablePinOpacity, "", v -> cfg.warTablePinOpacity = v))
         )));
 
         // ------------------------------------------------------------- radar
@@ -213,6 +235,10 @@ public final class ClickGui {
                 new Option(tr("options.openintel.snitch.range"), "Hide snitch markers beyond this distance; 0 is unlimited.",
                         rangeSlider("options.openintel.snitch.range", cfg.snitchMarkerRange,
                                 v -> cfg.snitchMarkerRange = v)),
+                new Option(tr("options.openintel.snitch.opacity"),
+                        "Static snitch marker opacity; lower than active relay markers.",
+                        slider("options.openintel.snitch.opacity", 30, 150,
+                                cfg.snitchMarkerOpacity, "", v -> cfg.snitchMarkerOpacity = v)),
                 new Option("Snitch marker color", "Fixed color, or the tripper's allegiance color.",
                         colorButton(self, "Snitch marker color",
                                 () -> cfg.snitchMarkerColorAuto ? -1 : cfg.snitchMarkerColor,

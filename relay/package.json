@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node server.js --self-test && node cut.test.js"
+    "test": "node server.js --self-test && node cut.test.js && node wartable.test.js"
   },
   "dependencies": {
     "discord.js": "14.27.0",

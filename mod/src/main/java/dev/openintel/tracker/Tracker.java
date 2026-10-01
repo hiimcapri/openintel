@@ -191,6 +191,8 @@ public class Tracker {
                 EventFeed.clearRelay();
             }
             case "ping" -> PingManager.receive(msg);
+            case "wartable" -> dev.openintel.wartable.WarTable.receive(msg);
+            case "wartable_sync" -> dev.openintel.wartable.WarTable.applySync(msg);
             case "snitch" -> applySnitch(msg);
             case "notice" -> {
                 String text = msg.has("msg") ? msg.get("msg").getAsString() : "";

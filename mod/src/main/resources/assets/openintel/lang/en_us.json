@@ -8,7 +8,6 @@
   "key.openintel.use_macro": "Use macro",
   "key.openintel.ice_road": "Ice road macro",
   "key.openintel.ping": "Ping wheel",
-
   "options.openintel.relay.rendering": "Relay rendering",
   "options.openintel.relay.visible_markers": "Markers + nameplates in render distance",
   "options.openintel.relay.edge_chevrons": "Edge chevrons",
@@ -40,9 +39,9 @@
   "options.openintel.snitch.enabled": "Forward snitch alerts",
   "options.openintel.snitch.seconds": "Snitch marker duration",
   "options.openintel.snitch.range": "Snitch marker range",
+  "options.openintel.snitch.opacity": "Snitch marker opacity",
   "options.openintel.jm.markers": "JourneyMap fullscreen markers",
   "options.openintel.xaero.markers": "Xaero World Map markers",
-
   "options.openintel.radar.enabled": "Radar",
   "options.openintel.radar.north_up": "North up",
   "options.openintel.radar.compress": "Distance compression",
@@ -62,11 +61,15 @@
   "options.openintel.radar.text_size": "Text size",
   "options.openintel.radar.bg_alpha": "Background alpha",
   "options.openintel.radar.fg_alpha": "Ring alpha",
-
   "options.openintel.macro.attack_interval": "Attack interval",
   "options.openintel.macro.use_interval": "Use interval",
   "options.openintel.macro.snap_yaw": "Snap yaw to 45°",
   "options.openintel.macro.snap_pitch": "Snap pitch to 45°",
   "options.openintel.macro.auto_eat": "Auto-eat",
-  "options.openintel.macro.stop_hunger": "Park at low hunger"
+  "options.openintel.macro.stop_hunger": "Park at low hunger",
+  "key.openintel.wartable": "War Table",
+  "options.openintel.wartable.enabled": "War Table (shared map annotations)",
+  "options.openintel.wartable.sanctuaries": "Sanctuary overlays",
+  "options.openintel.wartable.pin_markers": "War Table waypoints",
+  "options.openintel.wartable.pin_opacity": "Waypoint opacity"
 }

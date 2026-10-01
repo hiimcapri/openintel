@@ -94,6 +94,31 @@ const MINECRAFT_SERVER = normalizeMinecraftServer(CONFIG.minecraftServer);
 if (!MINECRAFT_SERVER) throw new Error("config.minecraftServer is required");
 let USERS = loadJson("users.json", { users: [] });
 let ALLEGIANCES = loadJson("allegiances.json", { allies: [], enemies: [] });
+// War Table: persistent admin-drawn map annotations shared with all clients.
+let WARTABLE = loadJson("wartable.json", { strokes: [] });
+const WARTABLE_MAX_STROKES = 400;
+const WARTABLE_TOOLS = new Set(["pen", "line", "arrow", "area", "label", "marker"]);
+
+function wartableSync(recipient) {
+  return { type: "wartable_sync", strokes: WARTABLE.strokes.filter(
+    stroke => canReceiveIntel(recipient, stroke.from, null, userByName)) };
+}
+
+// Mirrors the client's Stroke validation — bounds-checks before anything
+// an admin draws gets persisted or fanned out.
+function validStroke(s) {
+  if (!s || typeof s !== "object") return false;
+  if (typeof s.id !== "string" || !/^[A-Za-z0-9_-]{4,64}$/.test(s.id)) return false;
+  if (!WARTABLE_TOOLS.has(String(s.tool ?? "").toLowerCase())) return false;
+  if (!Array.isArray(s.points) || s.points.length < 2 || s.points.length > 1024
+      || s.points.length % 2 !== 0) return false;
+  if (!s.points.every(v => Number.isFinite(v) && Math.abs(v) <= 1e6)) return false;
+  if (!(typeof s.color === "number" && Number.isInteger(s.color))) return false;
+  if (!(typeof s.width === "number" && s.width >= 1 && s.width <= 64)) return false;
+  if (s.label != null && (typeof s.label !== "string" || s.label.length > 96)) return false;
+  if (String(s.tool).toLowerCase() === "label" && (s.label == null || s.label === "")) return false;
+  return true;
+}
 
 function loadJson(name, fallback) {
   try { return JSON.parse(fs.readFileSync(filePath(name), "utf8")); } catch { return fallback; }
@@ -237,6 +262,7 @@ function broadcast(obj) {
     if (client.visibilityKey !== key) {
       client.send(JSON.stringify({ type: "intel_reset" }));
       client.send(JSON.stringify(allegiancePayload(recipient)));
+      client.send(JSON.stringify(wartableSync(recipient)));
       client.visibilityKey = key;
     }
     let payload = obj;
@@ -251,6 +277,10 @@ function broadcast(obj) {
         if (!snitchDecisions.has(audience)) snitchDecisions.set(audience, dedupeSnitch(obj, audience));
         if (!snitchDecisions.get(audience)) continue;
       }
+    } else if (obj.type === "wartable") {
+      // Admin-authored map annotations: same visibility lane as pings —
+      // trial is send-only and cut reporters' strokes stay admin-visible.
+      if (!canReceiveIntel(recipient, obj.from, null, userByName)) continue;
     }
     client.send(JSON.stringify(payload));
     delivered.add(identity);
@@ -363,6 +393,7 @@ wss.on("connection", (ws, req) => {
       ws.visibilityKey = visibilityKey(user, USERS.users);
       ws.send(JSON.stringify({ ...allegiancePayload(user), type: "welcome", minecraftServer: MINECRAFT_SERVER,
         role: ws.role, relayCut: user.relayCut === true }));
+      if (!isTrial(user)) ws.send(JSON.stringify(wartableSync(user)));
       adminLog(`✅ **${user.name}** connected (${ws.role})`);
       return;
     }
@@ -410,6 +441,68 @@ wss.on("connection", (ws, req) => {
       applyFocus(msg.action, msg.subject ? String(msg.subject) : null, ws.authedAs, {
         tier: ws.role, adminOnly: false, source: { guild: null, channel: "websocket" },
       });
+      return;
+    }
+
+    // War Table: admin-drawn strokes, persisted + fanned out to everyone.
+    if (msg.type === "wartable") {
+      if (user.quarantined) return;
+      if (!isAdmin(user)) {
+        ws.send(JSON.stringify({ type: "notice", msg: "war table edits are admin-only" }));
+        return;
+      }
+      const action = String(msg.action ?? "");
+      if (action === "add") {
+        const stroke = msg.stroke;
+        if (!validStroke(stroke)) {
+          ws.send(JSON.stringify({ type: "notice", msg: "invalid map stroke rejected" }));
+          return;
+        }
+        const clean = {
+          id: stroke.id,
+          tool: String(stroke.tool).toLowerCase(),
+          color: stroke.color,
+          width: stroke.width,
+          points: stroke.points.map(Number),
+          from: ws.authedAs,
+          t: Date.now(),
+        };
+        if (stroke.label != null && stroke.label !== "") clean.label = String(stroke.label).slice(0, 96);
+        const existing = WARTABLE.strokes.findIndex((s) => s.id === clean.id);
+        if (existing >= 0) WARTABLE.strokes.splice(existing, 1);
+        if (WARTABLE.strokes.length >= WARTABLE_MAX_STROKES) {
+          ws.send(JSON.stringify({ type: "notice", msg: `war table is full (${WARTABLE_MAX_STROKES} strokes) — clear some first` }));
+          return;
+        }
+        WARTABLE.strokes.push(clean);
+        saveJson("wartable.json", WARTABLE);
+        broadcast({ type: "wartable", action: "add", stroke: clean, from: ws.authedAs });
+        return;
+      }
+      if (action === "delete") {
+        const id = String(msg.id ?? "");
+        const before = WARTABLE.strokes.length;
+        WARTABLE.strokes = WARTABLE.strokes.filter((s) => s.id !== id);
+        if (WARTABLE.strokes.length !== before) {
+          saveJson("wartable.json", WARTABLE);
+          broadcast({ type: "wartable", action: "delete", id, from: ws.authedAs });
+        }
+        return;
+      }
+      if (action === "clear") {
+        const scope = msg.scope === "mine" ? "mine" : "all";
+        const before = WARTABLE.strokes.length;
+        WARTABLE.strokes = scope === "mine"
+          ? WARTABLE.strokes.filter((s) => lower(s.from) !== lower(ws.authedAs))
+          : [];
+        if (WARTABLE.strokes.length !== before) {
+          saveJson("wartable.json", WARTABLE);
+          broadcast({ type: "wartable", action: "clear", scope, from: ws.authedAs });
+          audit({ actor: ws.authedAs, tier: ws.role, action: `wartable.clear.${scope}`,
+            source: { channel: "websocket" }, before: { strokes: before }, after: { strokes: WARTABLE.strokes.length } });
+        }
+        return;
+      }
       return;
     }
 
@@ -595,6 +688,7 @@ if (DISCORD.botToken) {
       "!online [page]                       who is connected to the relay",
       "!list [users|allies|enemies|focus|online|all] [page]",
       "!where <player>                      last known position of a tracked player",
+      "!gentoken                            generate a random sha256 token (DM)",
       "!broadcast <message>                 relay notice (operator)",
       "!focus <player>|clear / !unfocus     focus management (operator)",
       "!panel                               interactive status panel (operator)",
@@ -605,6 +699,7 @@ if (DISCORD.botToken) {
       "!user remove|disable|enable <name>   user lifecycle (admin)",
       "!user role <name> <role>             set user role (admin)",
       "!user rotate-token|info <name>       token/user details (admin)",
+      "!user token <name>                   DM the raw token (admin)",
       "!help                                this message",
     ].join("\n")
   );
@@ -667,6 +762,15 @@ if (DISCORD.botToken) {
         ));
       }
 
+      if (cmd === "gentoken") {
+        const token = crypto.createHash("sha256").update(crypto.randomBytes(32)).digest("hex");
+        try {
+          await msg.author.send("Random token:\n`" + token + "`");
+          return void msg.reply("token sent to your DMs");
+        } catch {
+          return void msg.reply(fence("token: " + token + "\n(could not DM you - save it, then delete this message)"));
+        }
+      }
       // Everything below mutates state.
       if (cmd === "broadcast") {
         const text = parts.slice(1).join(" ").trim();
@@ -744,8 +848,8 @@ if (DISCORD.botToken) {
         const action = lower(parts[1] ?? "");
         const name = parts[2];
         if (!(await requireTier(msg, tier, "admin", `user.${action || "unknown"}`, name))) return;
-        if (!["add", "remove", "disable", "enable", "role", "rotate-token", "info"].includes(action)) {
-          return void msg.reply("usage: `!user add|remove|disable|enable|role|rotate-token|info ...`");
+        if (!["add", "remove", "disable", "enable", "role", "rotate-token", "info", "token"].includes(action)) {
+          return void msg.reply("usage: `!user add|remove|disable|enable|role|rotate-token|token|info ...`");
         }
         if (!name || !validName(name)) {
           commandAudit(msg, tier, `user.${action}`, name, { success: false, reason: "invalid Minecraft name" });
@@ -791,6 +895,16 @@ if (DISCORD.botToken) {
             `token fingerprint: sha256:${tokenFingerprint(user.token)}`,
             `active sessions: ${socketsFor(user.name).length}`,
           ].join("\n")));
+        }
+        if (action === "token") {
+          try {
+            await msg.author.send(`OpenIntel token for **${user.name}** (${user.role ?? "member"}):\n\`${user.token}\`\nAnyone holding it authenticates as ${user.name} - treat it like a password.`);
+          } catch {
+            commandAudit(msg, tier, "user.token", user.name, { before: null, after: null, success: false, reason: "DM delivery failed" });
+            return void msg.reply("could not DM you the token. Enable DMs and retry.");
+          }
+          commandAudit(msg, tier, "user.token", user.name, { before: null, after: null });
+          return void msg.reply(`token for ${user.name} sent to your DMs`);
         }
         if (action === "remove") USERS.users = USERS.users.filter((u) => lower(u.name) !== lower(user.name));
         if (action === "disable") user.disabled = true;

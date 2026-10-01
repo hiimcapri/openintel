@@ -3,6 +3,7 @@ relay/config.json
 relay/users.json
 relay/allegiances.json
 relay/audit.jsonl
+relay/wartable.json
 
 # --- node ---
 relay/node_modules/

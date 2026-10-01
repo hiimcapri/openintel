@@ -25,6 +25,8 @@ import dev.openintel.render.PotionHud;
 import dev.openintel.render.PresenceHud;
 import dev.openintel.render.UiFont;
 import dev.openintel.tracker.Tracker;
+import dev.openintel.wartable.WarTable;
+import dev.openintel.wartable.WarTableScreen;
 import dev.openintel.xaero.XaeroBridge;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -77,6 +79,7 @@ public class OpenIntelClient implements ClientModInitializer {
     private static KeyBinding useToggleKey;
     private static KeyBinding iceRoadKey;
     private static KeyBinding pingKey;
+    private static KeyBinding warTableKey;
     private AttackMacro attackMacro;
     private IntervalMacro useMacro;
     private HoldKeyMacro holdAttackMacro;
@@ -91,7 +94,7 @@ public class OpenIntelClient implements ClientModInitializer {
     /** All mod keybinds, for display in config screens. */
     public static KeyBinding[] allKeys() {
         return new KeyBinding[]{radarToggleKey, attackToggleKey, useToggleKey,
-                holdAttackKey, holdUseKey, iceRoadKey, pingKey};
+                holdAttackKey, holdUseKey, iceRoadKey, pingKey, warTableKey};
     }
 
     @Override
@@ -102,6 +105,7 @@ public class OpenIntelClient implements ClientModInitializer {
         UiFont.initialize(config.cleanFont);
         tracker = new Tracker();
         allegiances = new AllegianceManager();
+        WarTable.load();
         relay = new RelayClient(
                 msg -> tracker.handleMessage(msg, MinecraftClient.getInstance()),
                 OpenIntelClient::status);
@@ -133,6 +137,11 @@ public class OpenIntelClient implements ClientModInitializer {
                     && client.currentScreen == null) {
                 client.setScreen(new PingWheelScreen(pingKey,
                         PingWheelScreen.physicallyHeld(pingKey)));
+            }
+            while (warTableKey.wasPressed()) {
+                if (config.warTableEnabled && client.currentScreen == null) {
+                    client.setScreen(new WarTableScreen());
+                }
             }
         });
 
@@ -178,6 +187,7 @@ public class OpenIntelClient implements ClientModInitializer {
             PingManager.clear();
             RelicMaps.reset();
             SnitchRelay.reset();
+            WarTable.reset();
             tracker.clear();
             allegiances.replaceAll(java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of());
         });
@@ -242,6 +252,7 @@ public class OpenIntelClient implements ClientModInitializer {
         useToggleKey = keybind("key.openintel.use_macro", GLFW.GLFW_KEY_RIGHT_BRACKET);
         iceRoadKey = keybind("key.openintel.ice_road", GLFW.GLFW_KEY_BACKSPACE);
         pingKey = keybind("key.openintel.ping", GLFW.GLFW_KEY_G);
+        warTableKey = keybind("key.openintel.wartable", GLFW.GLFW_KEY_O);
 
         attackMacro = new AttackMacro(attackToggleKey);
         useMacro = new IntervalMacro(useToggleKey,
@@ -323,6 +334,16 @@ public class OpenIntelClient implements ClientModInitializer {
                             MinecraftClient.getInstance().execute(() ->
                                     MinecraftClient.getInstance().setScreen(
                                             new PingWheelScreen(pingKey, false)));
+                            return 1;
+                        }))
+                        .then(ClientCommandManager.literal("map").executes(c -> {
+                            MinecraftClient.getInstance().execute(() ->
+                                    MinecraftClient.getInstance().setScreen(new WarTableScreen()));
+                            return 1;
+                        }))
+                        .then(ClientCommandManager.literal("wartable").executes(c -> {
+                            MinecraftClient.getInstance().execute(() ->
+                                    MinecraftClient.getInstance().setScreen(new WarTableScreen()));
                             return 1;
                         }))
                         .then(ClientCommandManager.literal("snitchtest").executes(c -> {

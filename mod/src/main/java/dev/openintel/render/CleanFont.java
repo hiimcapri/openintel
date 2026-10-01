@@ -94,6 +94,15 @@ public final class CleanFont {
         return !failed;
     }
 
+    /** True when every char is present in the atlas (after lazy bake). */
+    public static boolean supports(String text) {
+        if (!active()) return false;
+        for (int i = 0; i < text.length(); i++) {
+            if (!glyphs.containsKey((int) text.charAt(i))) return false;
+        }
+        return true;
+    }
+
     public static float width(String text) {
         float pen = 0;
         for (int i = 0; i < text.length();) {
