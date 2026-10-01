@@ -231,6 +231,21 @@ function enemyAlert(enemy, x, z, dim, reporter) {
 const positions = new Map();
 const STALE_MS = CONFIG.staleMs ?? 10000;
 
+// Latest intel of any kind per player — feeds !where and war-table marks.
+// name(lower) -> { name, x, y, z, dim, t, kind, reporter }
+const lastSeen = new Map();
+const LAST_SEEN_MS = 6 * 60 * 60 * 1000;
+
+function noteSeen(name, x, y, z, dim, reporter, kind) {
+  if (typeof name !== "string" || !validName(name)) return;
+  if (![x, y, z].every(Number.isFinite)) return;
+  lastSeen.set(lower(name), {
+    name, x: +x, y: +y, z: +z,
+    dim: typeof dim === "string" && dim ? dim : "minecraft:overworld",
+    t: Date.now(), kind, reporter,
+  });
+}
+
 // ---------------------------------------------------------------- websocket
 const app = express();
 app.use(express.json());
@@ -270,8 +285,9 @@ function broadcast(obj) {
       payload = { ...obj, replace: true, players: visiblePositions(obj.players, recipient, userByName) };
     } else if (obj.type === "allegiances") {
       payload = allegiancePayload(recipient);
-    } else if (obj.type === "snitch" || obj.type === "ping") {
-      if (!canReceiveIntel(recipient, obj.from, obj.type === "snitch" ? obj.player : null, userByName)) continue;
+    } else if (obj.type === "snitch" || obj.type === "ping" || obj.type === "where") {
+      const subject = obj.type === "ping" ? null : obj.player;
+      if (!canReceiveIntel(recipient, obj.from, subject, userByName)) continue;
       if (obj.type === "snitch") {
         const audience = isAdmin(recipient) ? "admin" : "public";
         if (!snitchDecisions.has(audience)) snitchDecisions.set(audience, dedupeSnitch(obj, audience));
@@ -513,6 +529,8 @@ wss.on("connection", (ws, req) => {
       msg.from = ws.authedAs;
       msg.t = Date.now();
       broadcast(msg);
+      if (msg.type === "snitch" && msg.player)
+        noteSeen(msg.player, msg.x, msg.y, msg.z, msg.dim ?? msg.world, ws.authedAs, "snitch");
       return;
     }
 
@@ -526,6 +544,7 @@ wss.on("connection", (ws, req) => {
           name: r.subject, x: +r.x, y: +r.y, z: +r.z,
           dim: String(r.dim), t: now, reporter: ws.authedAs,
         });
+        noteSeen(r.subject, r.x, r.y, r.z, r.dim, ws.authedAs, "position");
         if (isEnemy(r.subject) && canReceiveIntel({ role: "member" }, ws.authedAs, r.subject, userByName))
           enemyAlert(r.subject, r.x, r.z, r.dim, ws.authedAs);
       }
@@ -541,6 +560,7 @@ wss.on("connection", (ws, req) => {
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of positions) if (now - v.t > STALE_MS) positions.delete(k);
+  for (const [k, v] of lastSeen) if (now - v.t > LAST_SEEN_MS) lastSeen.delete(k);
   sendVisibleState();
 }, CONFIG.broadcastIntervalMs ?? 250);
 
@@ -620,6 +640,7 @@ function forwardDiscordSnitch(text) {
   msg.from = "discord";
   msg.t = Date.now();
   if (broadcast(msg)) adminLog(`📡 Snitch hit via Discord relay: ${snitch ?? "?"} by ${player ?? "?"}`);
+  noteSeen(player, x, y, z, msg.world, "discord", "snitch");
 }
 
 const DISCORD = CONFIG.discord ?? {};
@@ -687,7 +708,7 @@ if (DISCORD.botToken) {
     [
       "!online [page]                       who is connected to the relay",
       "!list [users|allies|enemies|focus|online|all] [page]",
-      "!where <player>                      last known position of a tracked player",
+      "!where <player>                      latest intel for a player; marks it on the war table",
       "!gentoken                            generate a random sha256 token (DM)",
       "!broadcast <message>                 relay notice (operator)",
       "!focus <player>|clear / !unfocus     focus management (operator)",
@@ -752,13 +773,25 @@ if (DISCORD.botToken) {
       if (cmd === "where") {
         const name = parts[1];
         if (!name) return void msg.reply("usage: `!where <player>`");
-        const p = visiblePositions(positions.values(), { role: tier }, userByName)
-          .find(report => lower(report.name) === lower(name));
-        if (!p) return void msg.reply(fence(`${name}: no recent report`));
-        const age = Math.round((Date.now() - p.t) / 1000);
+        const q = lower(name);
+        // Latest intel of any kind: snitch trips outlive the 10s position window.
+        let hit = lastSeen.get(q);
+        if (!hit) {
+          const p = visiblePositions(positions.values(), { role: tier }, userByName)
+            .find(report => lower(report.name) === q);
+          if (p) hit = { name: p.name, x: p.x, y: p.y, z: p.z, dim: p.dim,
+                         t: p.t, kind: "position", reporter: p.reporter };
+        }
+        if (hit && !canReceiveIntel({ role: tier }, hit.reporter, hit.name, userByName)) hit = null;
+        if (!hit) return void msg.reply(fence(`${name}: no recent report`));
+        // Drop a marker every connected client's war table can render.
+        broadcast({ type: "where", player: hit.name, x: hit.x, y: hit.y, z: hit.z,
+                    dim: hit.dim, t: hit.t, kind: hit.kind, from: hit.reporter });
+        const age = Math.round((Date.now() - hit.t) / 1000);
+        const kind = hit.kind === "snitch" ? "snitch hit" : "position";
         return void msg.reply(fence(
-          `${p.name}: ${Math.round(p.x)}, ${Math.round(p.y)}, ${Math.round(p.z)} ` +
-          `(${p.dim.replace("minecraft:", "")}) — ${age}s ago, reported by ${p.reporter}`
+          `${hit.name}: ${Math.round(hit.x)}, ${Math.round(hit.y)}, ${Math.round(hit.z)} ` +
+          `(${String(hit.dim).replace("minecraft:", "")}) — ${kind} ${age}s ago, reported by ${hit.reporter}`
         ));
       }
 
