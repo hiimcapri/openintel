@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.7.0 — War Table
+
+- Added War Table, a shared annotation layer over the server's own live
+  map. The client downloads the configured live-map render, slices it into
+  a cached tile pyramid, and presents a full-screen pan/zoom canvas.
+- Admins can draw freehand strokes, straight lines, arrows, circles,
+  rectangles, and text labels in world coordinates; strokes survive map
+  image refreshes because geometry is stored in blocks, not pixels.
+- Strokes sync through the relay with server-side admin gating;
+  lower-rank users see the board read-only. Relay state persists in
+  `wartable.json` and is replayed on connect.
+- Controls: `O` opens the board (rebindable), left-drag pans/draws,
+  scroll zooms to cursor, `Ctrl+Z` removes your last stroke, eraser and
+  clear-all on the toolbar. `/oi wartable` and `/oi map` open it too.
+
 ## 1.6.1 — OpenIntel branding and Noto Sans
 
 - Added the OpenIntel mark — a black O with a joined eye — as a small

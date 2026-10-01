@@ -10,6 +10,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.world.phys.Vec3;
+import dev.openintel.wartable.Stroke;
+import dev.openintel.wartable.WarTable;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix3x2fc;
 import org.joml.Quaternionf;
@@ -43,30 +45,45 @@ public final class MarkerHud {
     /** A shared thing to mark: relay player, ping, or snitch hit.
      *  kind: 0 = down-chevron (player), 1 = diamond (focus/ping), 2 = up-triangle (snitch). */
     private record Target(String key, String label, int color, int kind,
-                          double x, double y, double z) { }
+                          int opacityGroup, float markerScale,
+                          double x, double y, double z) {
+        private Target(String key, String label, int color, int kind,
+                       int opacityGroup, double x, double y, double z) {
+            this(key, label, color, kind, opacityGroup, 1f, x, y, z);
+        }
+    }
     /** A soft vector shape in screen space. */
-    private record Shape(float x, float y, int color, int kind) { }
+    private record Shape(float x, float y, int color, int kind, float size) { }
     /** Edge arrowhead: dir 0=left, 1=right, 2=up, 3=down. */
     private record Arrow(float x, float y, int color, int dir) { }
-    /** scale: user marker-scale for over-head labels; edge labels stay 1f. */
-    private record Label(float x, float y, String text, int color, float scale, String key) {
+    /** Labels collide only inside their configured opacity group. */
+    private record Label(float x, float y, String text, int color, float scale,
+                         String key, int opacityGroup) {
+        private Label(float x, float y, String text, int color, float scale, String key) {
+            this(x, y, text, color, scale, key, color >>> 24);
+        }
         private Label(float x, float y, String text, int color, float scale) {
-            this(x, y, text, color, scale, text);
+            this(x, y, text, color, scale, text, color >>> 24);
         }
     }
     private record Glyph(float x, float y, String text, int color) { }
-    private record EdgeEntry(String label, int color, double dist) { }
+    private record EdgeEntry(String label, int color, double dist, int opacityGroup) { }
 
     public static void render(GuiGraphicsExtractor ctx) {
         OIConfig cfg = OpenIntelClient.config();
-        if (!cfg.relayRendering) return;
+        if (!cfg.relayRendering && !cfg.warTablePinMarkers) return;
 
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.level == null || client.gui.hud.isHidden()) return;
 
         String myDim = client.level.dimension().identifier().toString();
         long now = System.currentTimeMillis();
-        float opacity = cfg.relayOpacity / 255f;
+        int relayAlpha = Math.clamp(cfg.relayOpacity, 151, 255);
+        int snitchAlpha = Math.clamp(cfg.snitchMarkerOpacity, 30, 150);
+        int pinAlpha = Math.clamp(cfg.warTablePinOpacity, 30, 150);
+        float opacity = relayAlpha / 255f;
+        float snitchOpacity = snitchAlpha / 255f;
+        float pinOpacity = pinAlpha / 255f;
         int w = ctx.guiWidth(), h = ctx.guiHeight();
         if (w <= 0 || h <= 0) return;
         if (w != lastViewportWidth || h != lastViewportHeight) {
@@ -88,63 +105,82 @@ public final class MarkerHud {
         for (var e : client.level.players()) localPlayers.put(e.getGameProfile().name(), e);
 
         List<Target> targets = new ArrayList<>();
-        for (RemotePlayer p : OpenIntelClient.tracker().all()) {
-            if (p.dimension == null || !p.dimension.equals(myDim)) continue;
-            var local = localPlayers.get(p.name);
-            if (local != null && !cfg.markVisiblePlayers) continue;
+        if (cfg.relayRendering) {
+            for (RemotePlayer p : OpenIntelClient.tracker().all()) {
+                if (p.dimension == null || !p.dimension.equals(myDim)) continue;
+                var local = localPlayers.get(p.name);
+                if (local != null && !cfg.markVisiblePlayers) continue;
 
-            double tx, ty, tz;
-            float alpha;
-            if (local != null) {
-                Vec3 lp = local.getPosition(tickDelta);
-                tx = lp.x; ty = lp.y + 2.4; tz = lp.z;
-                alpha = opacity;                         // live: never stale
-            } else {
-                tx = p.x; ty = p.y + 2.4; tz = p.z;
-                alpha = opacity * staleFade(cfg, now, p.lastSeen);
+                double tx, ty, tz;
+                float alpha;
+                if (local != null) {
+                    Vec3 lp = local.getPosition(tickDelta);
+                    tx = lp.x; ty = lp.y + 2.4; tz = lp.z;
+                    alpha = opacity;                         // live: never stale
+                } else {
+                    tx = p.x; ty = p.y + 2.4; tz = p.z;
+                    alpha = opacity * staleFade(cfg, now, p.lastSeen);
+                }
+                if (alpha < 0.03f) continue;
+                Allegiance allegiance = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
+                int color = scaleAlpha(allegiance.argb, alpha);
+                targets.add(new Target("player|" + myDim + "|" + p.name, p.name, color,
+                        allegiance == Allegiance.FOCUS ? 1 : 0, relayAlpha, tx, ty, tz));
             }
-            if (alpha < 0.03f) continue;
-            Allegiance allegiance = p.allegiance != null ? p.allegiance : Allegiance.NEUTRAL;
-            int color = scaleAlpha(allegiance.argb, alpha);
-            targets.add(new Target("player|" + myDim + "|" + p.name, p.name, color, allegiance == Allegiance.FOCUS ? 1 : 0,
-                    tx, ty, tz));
+            for (PingManager.Ping ping : PingManager.active()) {
+                if (ping.dimension == null || !ping.dimension.equals(myDim)) continue;
+                float life = Math.min(1f, (ping.expiresAt - now) / 4000f);
+                targets.add(new Target("ping|" + myDim + "|" + ping.id, "⚑ " + ping.label,
+                        scaleAlpha(ping.color, opacity * life), 1, relayAlpha,
+                        ping.x, ping.y, ping.z));
+            }
+            // Snitch hits: "snitch | tripper | 42s", fading to nothing over
+            // snitchMarkerSeconds. The live counter is free — we render per frame.
+            long snitchLife = cfg.snitchMarkerSeconds * 1000L;
+            for (var hit : OpenIntelClient.tracker().snitchHits()) {
+                if (hit.dimension == null || !hit.dimension.equals(myDim)) continue;
+                long age = now - hit.t;
+                if (age < 0) age = 0;
+                float fade = 1f - age / (float) snitchLife;
+                if (fade <= 0.03f) continue;
+                Allegiance a = OpenIntelClient.allegiances().of(hit.player);
+                int argb = (cfg.snitchMarkerColorAuto || cfg.snitchMarkerColor == -1)
+                        ? a.argb : cfg.snitchMarkerColor;
+                targets.add(new Target(
+                        "snitch|" + myDim + "|" + hit.x + "|" + hit.y + "|" + hit.z + "|" + hit.player,
+                        hit.snitch + " | " + hit.player + " | " + ago(age),
+                        scaleAlpha(argb, snitchOpacity * fade), 2, snitchAlpha,
+                        hit.x, hit.y + 2.4, hit.z));
+            }
+            // Relic points: X/Z only, so the diamond rides at eye level —
+            // close enough to read, far ones live on the edge as direction.
+            for (var r : dev.openintel.relic.RelicMaps.all()) {
+                if (!r.dimension().equals(myDim)) continue;
+                targets.add(new Target("relic|" + myDim + "|" + r.x() + "|" + r.z(), r.name(),
+                        scaleAlpha(0xFFFFAA00, pinOpacity), 1, pinAlpha,
+                        r.x() + 0.5, client.player.getY() + 1.5, r.z() + 0.5));
+            }
         }
-        for (PingManager.Ping ping : PingManager.active()) {
-            if (ping.dimension == null || !ping.dimension.equals(myDim)) continue;
-            float life = Math.min(1f, (ping.expiresAt - now) / 4000f);
-            targets.add(new Target("ping|" + myDim + "|" + ping.id, "⚑ " + ping.label, scaleAlpha(ping.color, opacity * life),
-                    1, ping.x, ping.y, ping.z));
-        }
-        // Snitch hits: "snitch | tripper | 42s", fading to nothing over
-        // snitchMarkerSeconds. The live counter is free — we render per frame.
-        long snitchLife = cfg.snitchMarkerSeconds * 1000L;
-        for (var hit : OpenIntelClient.tracker().snitchHits()) {
-            if (hit.dimension == null || !hit.dimension.equals(myDim)) continue;
-            long age = now - hit.t;
-            if (age < 0) age = 0;
-            float fade = 1f - age / (float) snitchLife;
-            if (fade <= 0.03f) continue;
-            Allegiance a = OpenIntelClient.allegiances().of(hit.player);
-            int argb = (cfg.snitchMarkerColorAuto || cfg.snitchMarkerColor == -1)
-                    ? a.argb : cfg.snitchMarkerColor;
-            targets.add(new Target(
-                    "snitch|" + myDim + "|" + hit.x + "|" + hit.y + "|" + hit.z + "|" + hit.player,
-                    hit.snitch + " | " + hit.player + " | " + ago(age),
-                    scaleAlpha(argb, opacity * fade), 2,
-                    hit.x, hit.y + 2.4, hit.z));
-        }
-        // Relic points: X/Z only, so the diamond rides at eye level —
-        // close enough to read, far ones live on the edge as direction.
-        for (var r : dev.openintel.relic.RelicMaps.all()) {
-            if (!r.dimension().equals(myDim)) continue;
-            targets.add(new Target("relic|" + myDim + "|" + r.x() + "|" + r.z(), r.name(),
-                    scaleAlpha(0xFFFFAA00, opacity), 1,
-                    r.x() + 0.5, client.player.getY() + 1.5, r.z() + 0.5));
+
+        // War Table pins are persistent waypoints: shared while the relay is
+        // live, local-only while offline. Same X/Z convention as relic points.
+        if (cfg.warTablePinMarkers && pinOpacity > 0
+                && "minecraft:overworld".equals(myDim)) {
+            for (Stroke s : WarTable.waypointStrokes()) {
+                if (s.tool != Stroke.Tool.MARKER) continue;
+                String label = s.label != null ? s.label
+                        : (s.author != null ? s.author + "'s pin" : "pin");
+                targets.add(new Target("wartable|" + myDim + "|" + s.id, label,
+                        scaleAlpha(s.color, pinOpacity), 1, pinAlpha, 1.15f,
+                        s.points[0] + 0.5, client.player.getY() + 1.5, s.points[1] + 0.5));
+            }
         }
         if (targets.isEmpty()) {
             renderY.clear();
             return;
         }
+        // Lower-opacity markers submit first so brighter intel wins overlaps.
+        targets.sort(Comparator.comparingInt(t -> t.color >>> 24));
 
         // ---- project + classify --------------------------------------------
         float cx = w / 2f, cy = h / 2f;
@@ -192,10 +228,12 @@ public final class MarkerHud {
                 if (t.kind == 2) {
                     // Snitch: ⚠ glyph floats above the name line.
                     glyphs.add(new Glyph(sx, sy - 4f * scale, "⚠", t.color));
-                    projectedLabels.add(new Label(sx, sy + 5f * scale, text, t.color, scale, t.key));
+                    projectedLabels.add(new Label(sx, sy + 5f * scale, text, t.color,
+                            scale, t.key, t.opacityGroup));
                 } else {
-                    shapes.add(new Shape(sx, sy, t.color, t.kind));
-                    projectedLabels.add(new Label(sx, sy - (lineH + 9f) * scale, text, t.color, scale, t.key));
+                    shapes.add(new Shape(sx, sy, t.color, t.kind, t.markerScale));
+                    projectedLabels.add(new Label(sx, sy - (lineH + 9f) * scale, text,
+                            t.color, scale, t.key, t.opacityGroup));
                 }
                 continue;
             }
@@ -204,7 +242,7 @@ public final class MarkerHud {
             // whichever NDC axis overflows more. Directly-behind targets have
             // ~zero NDC magnitude, so fall back to camera-space dominance.
             if (cfg.edgeChevrons) {
-                EdgeEntry e = new EdgeEntry(text, t.color, dist);
+                EdgeEntry e = new EdgeEntry(text, t.color, dist, t.opacityGroup);
                 if (Math.abs(nx) > 0.01f || Math.abs(ny) > 0.01f) {
                     if (Math.abs(nx) > Math.abs(ny)) {
                         (nx < 0 ? left : right).add(e);
@@ -241,6 +279,7 @@ public final class MarkerHud {
         queueColumnEdge(client, bottom, 3, bottomAnchorX, h - rowInset, false, arrows, labels, edgeScale, w, h);
 
         // ---- one geometry pass, then text on top ----------------------------
+        arrows.sort(Comparator.comparingInt(a -> a.color >>> 24));
         if (!shapes.isEmpty() || !arrows.isEmpty()) {
             Matrix3x2f pose = new Matrix3x2f(ctx.pose());
             ctx.guiRenderState.addGuiElement(new ColoredQuadsElement(
@@ -248,8 +287,9 @@ public final class MarkerHud {
                         for (Shape s : shapes) {
                             // Scale around each marker's own anchor — edges
                             // (arrows) stay at the user's HUD size.
+                            float markerScale = scale * s.size;
                             Matrix3x2f sp = new Matrix3x2f(pose)
-                                    .translate(s.x, s.y).scale(scale, scale)
+                                    .translate(s.x, s.y).scale(markerScale, markerScale)
                                     .translate(-s.x, -s.y);
                             emitShape(vc, sp, s);
                         }
@@ -272,6 +312,7 @@ public final class MarkerHud {
             else ctx.centeredText(tr, g.text, 0, -tr.lineHeight / 2, g.color);
             pose.popMatrix();
         }
+        labels.sort(Comparator.comparingInt(l -> l.color >>> 24));
         for (Label l : labels) {
             if (l.text.isEmpty()) continue;
             float tw = cf ? CleanFont.width(l.text) : tr.width(l.text);
@@ -314,16 +355,18 @@ public final class MarkerHud {
             // discrete levels.
             float y = label.y;
             for (int iter = 0; iter <= resolved.size(); iter++) {
-                Label b = blocker(client, new Label(label.x, y, label.text, label.color, scale, label.key),
-                        resolved, lineH, scale);
+                Label b = blocker(client, new Label(label.x, y, label.text, label.color,
+                        scale, label.key, label.opacityGroup), resolved, lineH, scale);
                 if (b == null) break;
                 y = b.y - lineH - 0.5f;
             }
             if (y < 2) y = label.y;
-            resolved.add(new Label(label.x, y, label.text, label.color, scale, label.key));
+            resolved.add(new Label(label.x, y, label.text, label.color,
+                    scale, label.key, label.opacityGroup));
 
             float ry = smoothY(label, y);
-            placed.add(new Label(label.x, ry, label.text, label.color, scale, label.key));
+            placed.add(new Label(label.x, ry, label.text, label.color,
+                    scale, label.key, label.opacityGroup));
         }
         renderY.keySet().retainAll(seen);
         return placed;
@@ -353,6 +396,7 @@ public final class MarkerHud {
         float right = candidate.x + half + 2;
         Label top = null;
         for (Label other : placed) {
+            if (other.opacityGroup != candidate.opacityGroup) continue;
             float otherHalf = textW(client, other.text) * scale / 2f;
             if (left < other.x + otherHalf + 2 && right > other.x - otherHalf - 2
                     && candidate.y < other.y + lineH && candidate.y + lineH > other.y
@@ -384,7 +428,8 @@ public final class MarkerHud {
             String text = HudLayout.ellipsize(e.label, available / scale, s -> textW(client, s));
             float tw = textW(client, text) * scale;
             float x = rightSide ? arrowX - 7 * scale - tw / 2 : arrowX + 7 * scale + tw / 2;
-            labels.add(new Label(x, y, text, e.color, scale));
+            labels.add(new Label(x, y, text, e.color, scale,
+                    e.label, e.opacityGroup));
             arrows.add(new Arrow(arrowX, midY, e.color, rightSide ? 1 : 0));
             y += lineH;
         }
@@ -409,7 +454,8 @@ public final class MarkerHud {
         y = Math.clamp(y, 0, Math.max(0, height - visible.size() * lineH));
         for (EdgeEntry e : visible) {
             String text = HudLayout.ellipsize(e.label, Math.max(0, width / scale - 2), s -> textW(client, s));
-            labels.add(new Label(cx, y, text, e.color, scale));
+            labels.add(new Label(cx, y, text, e.color, scale,
+                    e.label, e.opacityGroup));
             y += lineH;
         }
     }
@@ -419,7 +465,7 @@ public final class MarkerHud {
         if (entries.size() <= capacity) return entries;
         var visible = new ArrayList<>(entries.subList(0, capacity - 1));
         visible.add(new EdgeEntry("+" + (entries.size() - visible.size()) + " more",
-                entries.get(0).color, entries.get(0).dist));
+                entries.get(0).color, entries.get(0).dist, entries.get(0).opacityGroup));
         return visible;
     }
 

@@ -84,7 +84,7 @@ public class OIConfig {
     /** Master switch for every relay-driven overlay (markers, chevrons, nameplates). */
     public boolean relayRendering = true;
 
-    /** Opacity of relay rendering (nameplates, markers, chevrons), 0–255. */
+    /** Opacity of active relay markers (players, pings, chevrons), 151–255. */
     public int relayOpacity = 230;
 
     /** Fade relay blips/markers out as their intel approaches staleAfterMs. */
@@ -187,6 +187,9 @@ public class OIConfig {
     /** Max distance (blocks) for snitch-hit markers; <= 0 = unlimited. */
     public int snitchMarkerRange = 0;
 
+    /** Static snitch marker opacity, 30–150, independent of active relay markers. */
+    public int snitchMarkerOpacity = 150;
+
     /** Snitch marker icon + label color (ARGB). */
     public int snitchMarkerColor = 0xFFAAAAAA;
 
@@ -200,6 +203,26 @@ public class OIConfig {
 
     /** Draw snitch hits + shared pings on Xaero's Level Map screen (soft dep). */
     public boolean xaeroMarkers = true;
+
+    // -------------------------------------------------------- war table ----
+
+    /** War Table screen: shared admin-drawn annotations over the live map. */
+    public boolean warTableEnabled = true;
+
+    /** Live-map API base (no trailing slash); serves /maps/map-{r}.{json,png}. */
+    public String liveMapBase = "";
+
+    /** Which live-map renderer image the War Table uses as its backdrop. */
+    public String warTableRenderer = "hillshade";
+
+    /** Draw sanctuary boundaries over the War Table map. */
+    public boolean warTableSanctuaries = true;
+
+    /** Render synced War Table pins as in-world waypoint markers. */
+    public boolean warTablePinMarkers = true;
+
+    /** Static waypoint opacity, 30–150, independent of active relay markers. */
+    public int warTablePinOpacity = 150;
 
     // -------------------------------------------------------------- radar ----
 
@@ -343,6 +366,11 @@ public class OIConfig {
                 // Migrate it to unlimited; explicit non-default caps survive.
                 if (c.maxMarkerDistance == 4096) c.maxMarkerDistance = 0;
                 if (OLD_SNITCH_PATTERN.equals(c.snitchPattern)) c.snitchPattern = DEFAULT_SNITCH_PATTERN;
+                // Marker opacity is role-banded so static intel cannot collide
+                // with active relay intel merely because a stale config overlapped.
+                c.relayOpacity = Math.clamp(c.relayOpacity, 151, 255);
+                c.snitchMarkerOpacity = Math.clamp(c.snitchMarkerOpacity, 30, 150);
+                c.warTablePinOpacity = Math.clamp(c.warTablePinOpacity, 30, 150);
                 // Before the explicit auto-color flag existed, -1 was the
                 // allegiance auto-color sentinel and the default. Preserve it
                 // under the flag; explicit colors keep their static value.

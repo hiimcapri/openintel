@@ -7,7 +7,7 @@
 
 <h1 align="center">OpenIntel</h1>
 
-OpenIntel **1.6.1** is an open-source Fabric intelligence client for
+OpenIntel **1.7.0** is an open-source Fabric intelligence client for
 **Minecraft 1.21.11 / Java 21**. It combines nearby-player radar, responsive
 HUDs, clean text, local snitch/relic tracking, and optional team intelligence
 through a self-hosted relay. It does not add its own minimap, waypoint
@@ -34,6 +34,18 @@ features do not require a relay connection.
   markers, unlimited or capped marker range, and stale-intel fading.
 - **Focus targets** can be managed in-game by Operators or higher, or through the Discord
   terminal and update live for every connected client.
+
+### War Table
+
+- **Shared map annotations** over the configured live-map render: a
+  full-screen pan/zoom canvas opened with `O` (rebindable), `/oi wartable`,
+  or `/oi map`.
+- Admins draw freehand strokes, lines, arrows, circles, rectangles, and text
+  labels in world coordinates; geometry survives map refreshes.
+- Strokes sync through the relay with server-side admin gating — lower ranks
+  see the board read-only — and relay state persists across restarts.
+- Works without a relay too: unauthenticated clients keep a private local
+  stroke layer that survives authoritative syncs.
 
 ### Snitch intelligence
 
@@ -459,7 +471,7 @@ All controls are rebindable under the OpenIntel keybind category.
 
 ## Fabric mod integration API (v1)
 
-OpenIntel **1.6.1** provides the public v1 Java API under `dev.openintel.api`.
+OpenIntel **1.7.0** provides the public v1 Java API under `dev.openintel.api`.
 Use `OpenIntelApi` as the entry point; do not link against `tracker`, `net`,
 `render`, or `api.internal` implementation classes. This is a client-side
 Fabric API for Minecraft **1.21.11**, not the Discord/admin REST API.
@@ -481,7 +493,7 @@ repositories {
 }
 
 dependencies {
-    modImplementation "dev.openintel:openintel:1.6.1"
+    modImplementation "dev.openintel:openintel:1.7.0"
 }
 ```
 
@@ -489,9 +501,9 @@ Use matching Minecraft/Yarn versions. OpenIntel is installed separately in
 `mods/`; do not nest a personalized/token-bearing jar in your mod. No public
 Maven repository is provisioned by this project. Alternatively, place the
 neutral remapped jar in your project's `libs/` and use
-`modImplementation files("libs/openintel-1.6.1.jar")`.
+`modImplementation files("libs/openintel-1.7.0.jar")`.
 
-For a required integration, add `"openintel": ">=1.6.1"` to your mod's
+For a required integration, add `"openintel": ">=1.7.0"` to your mod's
 `fabric.mod.json` `depends` object. Declare this entrypoint:
 
 ```json
