@@ -624,28 +624,35 @@ const DISCORD_SNITCH_INTERACTION =
 const DISCORD_SNITCH_INGAME =
   /(?<player>\w{3,16})\s+(?<action>entered snitch)\s+at\s+(?<snitch>\S+)[^\[(]*\[\s*(?<world>\S+)\s+(?<x>-?\d+)\s+(?<y>-?\d+)\s+(?<z>-?\d+)\s*\]/i;
 
-function forwardDiscordSnitch(text) {
+function parseDiscordSnitch(text) {
   let eventKind = "event";
   let m = text.match(DISCORD_SNITCH_EVENT) ?? text.match(DISCORD_SNITCH_INGAME);
   if (!m) {
     m = text.match(DISCORD_SNITCH_INTERACTION);
     eventKind = "interaction";
   }
-  if (!m) return;
+  if (!m) return null;
   const player = m.groups.player;
-  let snitch = m.groups.snitch.replace(/^[+\s*]+|[+\s*]+$/g, "");
-  const world = m.groups.world ?? null;
+  const snitch = m.groups.snitch.replace(/^[+\s*]+|[+\s*]+$/g, "");
   const x = +m.groups.x, y = +m.groups.y, z = +m.groups.z;
-  if (!player || !snitch) return;
+  if (!player || !snitch) return null;
+  return { player, snitch, world: m.groups.world ?? null, x, y, z,
+           action: m.groups.action.trim(), eventKind };
+}
+
+function forwardDiscordSnitch(text) {
+  const hit = parseDiscordSnitch(text);
+  if (!hit) return;
   const msg = {
-    type: "snitch", message: text, reporter: "discord", player, snitch,
-    action: m.groups.action.trim(), eventKind, x, y, z,
+    type: "snitch", message: text, reporter: "discord", player: hit.player,
+    snitch: hit.snitch, action: hit.action, eventKind: hit.eventKind,
+    x: hit.x, y: hit.y, z: hit.z,
   };
-  if (world) msg.world = world;
+  if (hit.world) msg.world = hit.world;
   msg.from = "discord";
   msg.t = Date.now();
-  if (broadcast(msg)) adminLog(`📡 Snitch hit via Discord relay: ${snitch ?? "?"} by ${player ?? "?"}`);
-  noteSeen(player, x, y, z, msg.world, "discord", "snitch");
+  if (broadcast(msg)) adminLog(`📡 Snitch hit via Discord relay: ${hit.snitch ?? "?"} by ${hit.player ?? "?"}`);
+  noteSeen(hit.player, hit.x, hit.y, hit.z, msg.world, "discord", "snitch");
 }
 
 const DISCORD = CONFIG.discord ?? {};
@@ -747,6 +754,33 @@ if (DISCORD.botToken) {
     )
     .setTimestamp();
 
+  // !where fallback: snitch channels keep "name: player entered snitch at
+  // (x, y, z)" history — scan them newest-first when relay memory is empty.
+  const HISTORY_SCAN_LIMIT = 100;
+  async function historyWhere(name) {
+    const q = lower(name);
+    let best = null;
+    for (const channelId of SNITCH_CHANNELS) {
+      try {
+        const channel = bot.channels.cache.get(channelId)
+          ?? await bot.channels.fetch(channelId).catch(() => null);
+        if (!channel || !channel.isTextBased()) continue;
+        const messages = await channel.messages.fetch({ limit: HISTORY_SCAN_LIMIT }).catch(() => null);
+        if (!messages) continue;
+        for (const m of messages.values()) {
+          const hit = parseDiscordSnitch(m.content ?? "");
+          if (!hit || lower(hit.player) !== q) continue;
+          if (!best || m.createdTimestamp > best.t) {
+            best = { name: hit.player, x: hit.x, y: hit.y, z: hit.z,
+                     dim: hit.world ?? "minecraft:overworld",
+                     t: m.createdTimestamp, kind: "snitch", reporter: "discord" };
+          }
+        }
+      } catch { /* channel gone or no history access — keep scanning others */ }
+    }
+    return best;
+  }
+
   bot.on("messageCreate", async (msg) => {
     try {
       // Snitch relay channels share one lane and one global dedupe map.
@@ -794,6 +828,12 @@ if (DISCORD.botToken) {
                          t: p.t, kind: "position", reporter: p.reporter };
         }
         if (hit && !canReceiveIntel({ role: tier }, hit.reporter, hit.name, userByName)) hit = null;
+        if (!hit) {
+          // Relay memory is empty — check the snitch channels' history.
+          hit = await historyWhere(name);
+          if (hit && !canReceiveIntel({ role: tier }, hit.reporter, hit.name, userByName)) hit = null;
+          if (hit) lastSeen.set(q, hit);   // cache it for follow-up lookups
+        }
         if (!hit) return void msg.reply(fence(`${name}: no recent report`));
         lastWhere.set(cmdChannel, hit);
         // Drop a marker every connected client's war table can render.
