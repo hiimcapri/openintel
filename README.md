@@ -191,6 +191,8 @@ features do not require a relay connection.
 
 ## Screenshots
 
+![OpenIntel War Table: shared map with team annotations, snitch intel nameplates and markers](docs/wartable.png)
+
 These screenshots show an earlier build. Updated 1.6.1 clean-text and local-only
 radar screenshots will be added separately.
 
