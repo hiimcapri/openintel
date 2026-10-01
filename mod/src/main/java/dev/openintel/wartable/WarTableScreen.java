@@ -493,13 +493,22 @@ public class WarTableScreen extends Screen {
         else ctx.drawCenteredTextWithShadow(textRenderer, text, Math.round(cx), Math.round(y), color);
     }
 
-    /** Small dark halo for gray intel text over light map terrain. */
-    private void drawOutlinedCentered(DrawContext ctx, String text, float cx, float y, int color) {
-        int outline = (Math.clamp((color >>> 24) + 70, 160, 230) << 24);
-        drawCentered(ctx, text, cx - 1, y, outline);
-        drawCentered(ctx, text, cx + 1, y, outline);
-        drawCentered(ctx, text, cx, y - 1, outline);
-        drawCentered(ctx, text, cx, y + 1, outline);
+    /** Filled diamond at a map point — same marker language as JourneyMap waypoints. */
+    private void drawDiamond(DrawContext ctx, int cx, int cy, int r, int argb) {
+        for (int dy = -r; dy <= r; dy++) {
+            int half = r - Math.abs(dy);
+            ctx.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, argb);
+        }
+    }
+
+    /** Dark translucent plate under the label — readable over any terrain, no outline halo. */
+    private void drawPlatedCentered(DrawContext ctx, String text, float cx, float y, int color) {
+        float w = textWidth(text);
+        int alpha = (color >>> 24) & 0xFF;
+        int plate = Math.clamp(Math.round(alpha * 0.75f), 0, 0xD0) << 24 | 0x0A0C12;
+        int x0 = Math.round(cx - w / 2f) - 3, x1 = Math.round(cx + w / 2f) + 3;
+        int y0 = Math.round(y) - 2, y1 = Math.round(y + textHeight()) + 1;
+        ctx.fill(x0, y0, x1, y1, plate);
         drawCentered(ctx, text, cx, y, color);
     }
 
@@ -731,9 +740,9 @@ public class WarTableScreen extends Screen {
                         : cfg.snitchMarkerColor;
                 int argb = scaleAlpha(rgb, baseAlpha * fade);
                 int ix = (int) Math.round(sx), iy = (int) Math.round(sy);
-                drawOutlinedCentered(ctx, "⚠", ix, iy - 7, argb);
-                drawOutlinedCentered(ctx, hit.snitch + " | " + hit.player + " | " + ago(now - hit.t),
-                        (float) sx, (float) sy + 4, argb);
+                drawDiamond(ctx, ix, iy, 4, argb);
+                drawPlatedCentered(ctx, hit.snitch + " | " + hit.player + " | " + ago(now - hit.t),
+                        (float) sx, iy + 6, argb);
             }
         }
         // Relay-tracked players in the overworld.
