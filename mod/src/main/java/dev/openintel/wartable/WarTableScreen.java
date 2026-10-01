@@ -745,7 +745,7 @@ public class WarTableScreen extends Screen {
                 int ix = (int) Math.round(sx), iy = (int) Math.round(sy);
                 drawDiamond(ctx, ix, iy, 4, argb);
                 drawPlatedCentered(ctx, hit.snitch + " | " + hit.player + " | " + ago(now - hit.t),
-                        (float) sx, iy + 40, argb);
+                        (float) sx, iy + 12, argb);
             }
         }
         // Relay-tracked players in the overworld.
