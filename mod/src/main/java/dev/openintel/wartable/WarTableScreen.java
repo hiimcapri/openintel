@@ -719,7 +719,7 @@ public class WarTableScreen extends Screen {
             ctx.fill((int) sx - d, (int) sy - 1, (int) sx - d + 3, (int) sy + 2, p.color);
             ctx.fill((int) sx + d - 2, (int) sy - 1, (int) sx + d + 1, (int) sy + 2, p.color);
             ctx.fill((int) sx - 1, (int) sy - 1, (int) sx + 2, (int) sy + 2, p.color | 0xFF000000);
-            drawCentered(ctx, p.label, (float) sx, (float) sy - 14,
+            drawPlatedCentered(ctx, p.label, (float) sx, (float) sy - 14,
                     p.color | 0xFF000000);
         }
         // Snitch hits use the same warning-marker language as the world HUD:

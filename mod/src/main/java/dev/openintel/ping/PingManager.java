@@ -159,6 +159,33 @@ public final class PingManager {
         }
     }
 
+    /**
+     * Inbound `!where` marker: the relay's latest intel point for a player.
+     * Renders like a shared ping; the label carries the report's local time.
+     */
+    public static void receiveWhere(JsonObject msg) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (!client.isOnThread()) {
+            JsonObject copy = msg.deepCopy();
+            var world = client.world;
+            client.execute(() -> { if (client.world == world) receiveWhere(copy); });
+            return;
+        }
+        if (!msg.has("player") || !msg.has("x") || !msg.has("y") || !msg.has("z")) return;
+        String player = msg.get("player").getAsString();
+        long t = msg.has("t") ? msg.get("t").getAsLong() : System.currentTimeMillis();
+        String when = java.time.format.DateTimeFormatter.ofPattern("h:mm a")
+                .format(java.time.LocalDateTime.ofInstant(
+                        java.time.Instant.ofEpochMilli(t), java.time.ZoneId.systemDefault()));
+        String sender = msg.has("from") ? msg.get("from").getAsString() : "?";
+        String prefix = "where-" + player.toLowerCase(Locale.ROOT) + "-";
+        pings.removeIf(p -> p.id.startsWith(prefix));   // one mark per player
+        add(prefix + t, "!where | " + player + " | " + when, 0xFF55CCFF, sender,
+                msg.get("x").getAsDouble(), msg.get("y").getAsDouble(),
+                msg.get("z").getAsDouble(),
+                msg.has("dim") ? msg.get("dim").getAsString() : null, false);
+    }
+
     private static Ping add(String id, String label, int color, String sender,
                             double x, double y, double z, String dim, boolean local) {
         Ping p = new Ping(id, label, color, sender);
