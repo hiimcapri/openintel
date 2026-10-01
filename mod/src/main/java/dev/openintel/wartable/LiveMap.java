@@ -45,6 +45,7 @@ public final class LiveMap {
 
     public static final int TILE = 256;
     private static final long REFRESH_MS = 55 * 60 * 1000;
+    private static final long FAILURE_RETRY_MS = 30 * 1000;
     private static final long RENDERER_REFRESH_MS = 5 * 60 * 1000;
     private static final List<String> FALLBACK_RENDERERS =
             List.of("hillshade", "color", "shaded", "contour");
@@ -154,8 +155,9 @@ public final class LiveMap {
     public static void ensureLoaded(String name) {
         String target = safeRenderer(name);
         Entry current = entry(target);
+        long staleAfter = current.state() == State.FAILED ? FAILURE_RETRY_MS : REFRESH_MS;
         if ((current.state() == State.READY || current.state() == State.FAILED)
-                && System.currentTimeMillis() - current.fetchedAt() < REFRESH_MS) return;
+                && System.currentTimeMillis() - current.fetchedAt() < staleAfter) return;
         if (!loading.add(target)) return;
         entries.put(target, Entry.loading(entries.get(target)));
         Thread t = new Thread(() -> load(target), "openintel-livemap-" + target);
@@ -216,39 +218,52 @@ public final class LiveMap {
 
     private static void load(String name) {
         String target = safeRenderer(name);
+        dbg(target, "load start");
         try {
             String base = baseUrl();
+            dbg(target, "base=" + base);
             if (base == null) {
-                entries.put(target, new Entry(State.FAILED, null, 0, 0,
-                        "no live map url configured"));
+                entries.put(target, new Entry(State.FAILED, null, 0,
+                        System.currentTimeMillis(), "no live map url configured"));
                 return;
             }
             String metaUrl = base + "/maps/map-" + target + ".json";
             String pngUrl = base + "/maps/map-" + target + ".png";
 
-            JsonObject meta = JsonParser.parseString(
-                    get(metaUrl, "application/json")).getAsJsonObject();
+            String metaJson = get(metaUrl, "application/json");
+            dbg(target, "meta fetched (" + metaJson.length() + " chars)");
+            JsonObject meta = JsonParser.parseString(metaJson).getAsJsonObject();
             MapProjection proj = MapProjection.fromJson(meta);
             if (proj == null) throw new IllegalStateException("bad map metadata");
+            dbg(target, "projection ok " + proj.width() + "x" + proj.height());
 
             byte[] png = getBytes(pngUrl);
+            dbg(target, "png fetched (" + png.length + " bytes)");
 
             Path root = rendererRoot(target);
             Files.createDirectories(root.resolve("tiles"));
             Path pngPath = root.resolve("source.png");
             Files.write(pngPath, png);
             Files.writeString(root.resolve("source.json"), GSON.toJson(meta));
+            dbg(target, "source written, building pyramid");
 
             int maxLevel = buildPyramid(root, pngPath);
             entries.put(target, new Entry(State.READY, proj, maxLevel,
                     System.currentTimeMillis(), null));
-        } catch (Exception e) {
+            dbg(target, "READY maxLevel=" + maxLevel);
+        } catch (Throwable e) {
+            dbg(target, "FAILED " + e);
+            e.printStackTrace();
             entries.put(target, new Entry(State.FAILED, null, 0,
                     System.currentTimeMillis(),
                     e.getClass().getSimpleName() + ": " + e.getMessage()));
         } finally {
             loading.remove(target);
         }
+    }
+
+    private static void dbg(String target, String msg) {
+        System.out.println("[openintel-livemap][" + target + "] " + msg);
     }
 
     private static String baseUrl() {
@@ -305,6 +320,8 @@ public final class LiveMap {
             int rows = (int) Math.ceil(current.getHeight() / (double) TILE);
             Path dir = root.resolve("tiles").resolve("l" + level);
             Files.createDirectories(dir);
+            dbg(root.getFileName().toString(),
+                    "level " + level + " " + cols + "x" + rows + " tiles");
             for (int ty = 0; ty < rows; ty++) {
                 for (int tx = 0; tx < cols; tx++) {
                     // Edge tiles keep their true extent — the rest of the tile
