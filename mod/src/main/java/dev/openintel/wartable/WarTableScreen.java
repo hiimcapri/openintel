@@ -505,7 +505,7 @@ public class WarTableScreen extends Screen {
     private void drawPlatedCentered(GuiGraphicsExtractor ctx, String text, float cx, float y, int color) {
         float w = textWidth(text);
         int alpha = (color >>> 24) & 0xFF;
-        int plate = Math.clamp(Math.round(alpha * 0.75f), 0, 0xD0) << 24 | 0x0A0C12;
+        int plate = Math.clamp(Math.round(alpha * 0.9f), 0xA0, 0xE0) << 24 | 0x0A0C12;
         int x0 = Math.round(cx - w / 2f) - 3, x1 = Math.round(cx + w / 2f) + 3;
         int y0 = Math.round(y) - 2, y1 = Math.round(y + textHeight()) + 1;
         ctx.fill(x0, y0, x1, y1, plate);
@@ -738,7 +738,10 @@ public class WarTableScreen extends Screen {
                 int rgb = (cfg.snitchMarkerColorAuto || cfg.snitchMarkerColor == -1)
                         ? OpenIntelClient.allegiances().of(hit.player).argb
                         : cfg.snitchMarkerColor;
-                int argb = scaleAlpha(rgb, baseAlpha * fade);
+                // Floor the alpha while the hit is alive — the marker fades
+                // with age but never below readability; expiry still cuts it.
+                float vis = 0.55f + 0.45f * baseAlpha * fade;
+                int argb = scaleAlpha(rgb, vis);
                 int ix = (int) Math.round(sx), iy = (int) Math.round(sy);
                 drawDiamond(ctx, ix, iy, 4, argb);
                 drawPlatedCentered(ctx, hit.snitch + " | " + hit.player + " | " + ago(now - hit.t),
