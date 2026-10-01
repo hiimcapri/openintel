@@ -236,6 +236,11 @@ const STALE_MS = CONFIG.staleMs ?? 10000;
 const lastSeen = new Map();
 const LAST_SEEN_MS = 6 * 60 * 60 * 1000;
 
+// channelId -> last handled command / last successful !where hit, so a bare
+// !broadcastpos can re-broadcast whatever !where just found in that channel.
+const lastCmd = new Map();
+const lastWhere = new Map();
+
 function noteSeen(name, x, y, z, dim, reporter, kind) {
   if (typeof name !== "string" || !validName(name)) return;
   if (![x, y, z].every(Number.isFinite)) return;
@@ -709,7 +714,7 @@ if (DISCORD.botToken) {
       "!online [page]                       who is connected to the relay",
       "!list [users|allies|enemies|focus|online|all] [page]",
       "!where <player>                      latest intel for a player; marks it on the war table",
-      "!broadcastpos x y z | !where line    60s 'coord broadcast' map marker",
+      "!broadcastpos [x y z | !where line]  60s 'coord broadcast' marker; bare = last !where result",
       "!gentoken                            generate a random sha256 token (DM)",
       "!broadcast <message>                 relay notice (operator)",
       "!focus <player>|clear / !unfocus     focus management (operator)",
@@ -758,6 +763,10 @@ if (DISCORD.botToken) {
       const actor = actorOf(msg);
       const tier = discordTier(msg.member);
       const context = { tier, source: sourceOf(msg) };
+      const cmdChannel = msg.channelId ?? "dm";
+      // broadcastpos deliberately doesn't count — a bare call still sees the
+      // preceding !where as the "last command".
+      if (cmd !== "broadcastpos") lastCmd.set(cmdChannel, cmd);
 
       if (cmd === "help") return void msg.reply(HELP);
 
@@ -774,6 +783,7 @@ if (DISCORD.botToken) {
       if (cmd === "where") {
         const name = parts[1];
         if (!name) return void msg.reply("usage: `!where <player>`");
+        lastWhere.delete(cmdChannel);
         const q = lower(name);
         // Latest intel of any kind: snitch trips outlive the 10s position window.
         let hit = lastSeen.get(q);
@@ -785,6 +795,7 @@ if (DISCORD.botToken) {
         }
         if (hit && !canReceiveIntel({ role: tier }, hit.reporter, hit.name, userByName)) hit = null;
         if (!hit) return void msg.reply(fence(`${name}: no recent report`));
+        lastWhere.set(cmdChannel, hit);
         // Drop a marker every connected client's war table can render.
         broadcast({ type: "where", player: hit.name, x: hit.x, y: hit.y, z: hit.z,
                     dim: hit.dim, t: hit.t, kind: hit.kind, from: hit.reporter });
@@ -824,19 +835,33 @@ if (DISCORD.botToken) {
       if (cmd === "broadcastpos") {
         if (!(await requireTier(msg, tier, "operator", "broadcastpos", null))) return;
         const rest = parts.slice(1).join(" ").trim();
-        const paste = rest.match(
-          /^(?<name>[A-Za-z0-9_]{3,16})\s*:\s*(?<x>-?\d+(?:\.\d+)?)\s*,\s*(?<y>-?\d+(?:\.\d+)?)\s*,\s*(?<z>-?\d+(?:\.\d+)?)\s*(?:\((?<dim>[^)]+)\))?/);
-        const direct = rest.match(
-          /^(?<x>-?\d+(?:\.\d+)?)[,\s]+(?<y>-?\d+(?:\.\d+)?)[,\s]+(?<z>-?\d+(?:\.\d+)?)(?:\s*\(?\s*(?<dim>[a-z_]+:[a-z_]+|[a-z_]+)\)?)?/i);
-        const m = paste ?? direct;
-        if (!m) {
-          commandAudit(msg, tier, "broadcastpos", null, { success: false, reason: "could not parse coordinates" });
-          return void msg.reply("usage: `!broadcastpos <x> <y> <z>` or paste a `!where` result line");
+        let player = null, x, y, z;
+        let dim = "minecraft:overworld";
+        if (!rest) {
+          // Bare call: re-broadcast whatever the last !where found in this channel.
+          const hit = lastCmd.get(cmdChannel) === "where" ? lastWhere.get(cmdChannel) : null;
+          if (!hit) {
+            commandAudit(msg, tier, "broadcastpos", null, { success: false, reason: "no args and no prior !where result" });
+            return void msg.reply("usage: `!broadcastpos <x> <y> <z>`, paste a `!where` result line, or run it right after a successful `!where`");
+          }
+          ({ name: player, x, y, z, dim } = hit);
+        } else {
+          const paste = rest.match(
+            /^(?<name>[A-Za-z0-9_]{3,16})\s*:\s*(?<x>-?\d+(?:\.\d+)?)\s*,\s*(?<y>-?\d+(?:\.\d+)?)\s*,\s*(?<z>-?\d+(?:\.\d+)?)\s*(?:\((?<dim>[^)]+)\))?/);
+          const direct = rest.match(
+            /^(?<x>-?\d+(?:\.\d+)?)[,\s]+(?<y>-?\d+(?:\.\d+)?)[,\s]+(?<z>-?\d+(?:\.\d+)?)(?:\s*\(?\s*(?<dim>[a-z_]+:[a-z_]+|[a-z_]+)\)?)?/i);
+          const m = paste ?? direct;
+          if (!m) {
+            commandAudit(msg, tier, "broadcastpos", null, { success: false, reason: "could not parse coordinates" });
+            return void msg.reply("usage: `!broadcastpos <x> <y> <z>` or paste a `!where` result line");
+          }
+          x = +m.groups.x; y = +m.groups.y; z = +m.groups.z;
+          if (m.groups.dim) {
+            dim = lower(m.groups.dim.trim());
+            if (!dim.includes(":")) dim = "minecraft:" + dim;
+          }
+          player = paste ? m.groups.name : null;
         }
-        const x = +m.groups.x, y = +m.groups.y, z = +m.groups.z;
-        let dim = m.groups.dim ? lower(m.groups.dim.trim()) : "minecraft:overworld";
-        if (!dim.includes(":")) dim = "minecraft:" + dim;
-        const player = paste ? m.groups.name : null;
         const label = player ? `coord broadcast | ${player}` : "coord broadcast";
         broadcast({
           type: "ping",
