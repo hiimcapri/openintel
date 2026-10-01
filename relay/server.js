@@ -709,6 +709,7 @@ if (DISCORD.botToken) {
       "!online [page]                       who is connected to the relay",
       "!list [users|allies|enemies|focus|online|all] [page]",
       "!where <player>                      latest intel for a player; marks it on the war table",
+      "!broadcastpos x y z | !where line    60s 'coord broadcast' map marker",
       "!gentoken                            generate a random sha256 token (DM)",
       "!broadcast <message>                 relay notice (operator)",
       "!focus <player>|clear / !unfocus     focus management (operator)",
@@ -815,6 +816,37 @@ if (DISCORD.botToken) {
         broadcast({ type: "notice", msg: `[Broadcast] ${text}`, from: actor, t: Date.now() });
         commandAudit(msg, tier, "broadcast", null, { after: { message: text } });
         return void msg.reply("broadcast sent");
+      }
+
+      // Temporary 60s map marker. Two forms:
+      //   !broadcastpos 1093 69 2704
+      //   !broadcastpos ItzHigh: 1093, 69, 2704 (overworld) — snitch hit 86s ago, reported by Capri
+      if (cmd === "broadcastpos") {
+        if (!(await requireTier(msg, tier, "operator", "broadcastpos", null))) return;
+        const rest = parts.slice(1).join(" ").trim();
+        const paste = rest.match(
+          /^(?<name>[A-Za-z0-9_]{3,16})\s*:\s*(?<x>-?\d+(?:\.\d+)?)\s*,\s*(?<y>-?\d+(?:\.\d+)?)\s*,\s*(?<z>-?\d+(?:\.\d+)?)\s*(?:\((?<dim>[^)]+)\))?/);
+        const direct = rest.match(
+          /^(?<x>-?\d+(?:\.\d+)?)[,\s]+(?<y>-?\d+(?:\.\d+)?)[,\s]+(?<z>-?\d+(?:\.\d+)?)(?:\s*\(?\s*(?<dim>[a-z_]+:[a-z_]+|[a-z_]+)\)?)?/i);
+        const m = paste ?? direct;
+        if (!m) {
+          commandAudit(msg, tier, "broadcastpos", null, { success: false, reason: "could not parse coordinates" });
+          return void msg.reply("usage: `!broadcastpos <x> <y> <z>` or paste a `!where` result line");
+        }
+        const x = +m.groups.x, y = +m.groups.y, z = +m.groups.z;
+        let dim = m.groups.dim ? lower(m.groups.dim.trim()) : "minecraft:overworld";
+        if (!dim.includes(":")) dim = "minecraft:" + dim;
+        const player = paste ? m.groups.name : null;
+        const label = player ? `coord broadcast | ${player}` : "coord broadcast";
+        broadcast({
+          type: "ping",
+          id: `bc-${Date.now().toString(36)}-${crypto.randomBytes(3).toString("hex")}`,
+          label, x, y, z, dim, color: 0xFFFFAA33, from: "discord", t: Date.now(), ttl: 60_000,
+        });
+        commandAudit(msg, tier, "broadcastpos", player ?? `${x},${y},${z}`, { after: { x, y, z, dim } });
+        return void msg.reply(fence(
+          `${label} @ ${Math.round(x)}, ${Math.round(y)}, ${Math.round(z)} ` +
+          `(${dim.replace("minecraft:", "")}) — on war tables for 60s`));
       }
 
       if (cmd === "panel") {

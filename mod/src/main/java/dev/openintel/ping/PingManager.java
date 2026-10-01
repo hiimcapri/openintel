@@ -149,6 +149,9 @@ public final class PingManager {
                 msg.get("x").getAsDouble(), msg.get("y").getAsDouble(),
                 msg.get("z").getAsDouble(),
                 msg.has("dim") ? msg.get("dim").getAsString() : null, false);
+        // Server-side override for short-lived marks (e.g. coord broadcast).
+        if (msg.has("ttl"))
+            p.expiresAt = System.currentTimeMillis() + msg.get("ttl").getAsLong();
 
         Minecraft client = Minecraft.getInstance();
         String self = client.player != null
