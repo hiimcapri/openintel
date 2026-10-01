@@ -9,7 +9,7 @@ import dev.openintel.OpenIntelClient;
 import dev.openintel.api.OpenIntelApi;
 import dev.openintel.render.EventFeed;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -85,7 +85,7 @@ public final class WarTable {
     public static boolean add(Stroke.Tool tool, int color, float width,
                               float[] points, String label) {
         if (!canDraw()) return false;
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         String author = client.player != null ? client.player.getGameProfile().name() : "?";
         String id = Long.toString(System.currentTimeMillis(), 36) + "-"
                 + Integer.toString(java.util.concurrent.ThreadLocalRandom.current().nextInt(), 36);
@@ -158,11 +158,11 @@ public final class WarTable {
 
     /** Relay op: add / delete / clear. */
     public static void receive(JsonObject msg) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             JsonObject copy = msg.deepCopy();
-            var world = client.world;
-            client.execute(() -> { if (client.world == world) receive(copy); });
+            var world = client.level;
+            client.execute(() -> { if (client.level == world) receive(copy); });
             return;
         }
         String action = msg.has("action") ? msg.get("action").getAsString() : "";
@@ -208,11 +208,11 @@ public final class WarTable {
 
     /** Full authoritative set — replaces shared state on (re)auth; local edits survive. */
     public static void applySync(JsonObject msg) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client != null && !client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (client != null && !client.isSameThread()) {
             JsonObject copy = msg.deepCopy();
-            var world = client.world;
-            client.execute(() -> { if (client.world == world) applySync(copy); });
+            var world = client.level;
+            client.execute(() -> { if (client.level == world) applySync(copy); });
             return;
         }
         strokes.clear();

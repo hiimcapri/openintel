@@ -5,16 +5,16 @@ import dev.openintel.ping.PingManager;
 import dev.openintel.render.CleanFont;
 import dev.openintel.render.UiFont;
 import dev.openintel.tracker.Tracker;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.EditBox;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.BasicStroke;
@@ -93,7 +93,7 @@ public class WarTableScreen extends Screen {
     private double labelAnchorX, labelAnchorZ;
     private boolean labeling;
     private UiTool labelTool;
-    private TextFieldWidget labelField;
+    private EditBox labelField;
     private String eraseHoverId;
     private Sanctuaries.Sanctuary hoveredSanctuary;
 
@@ -104,7 +104,7 @@ public class WarTableScreen extends Screen {
     // Stroke overlay: rasterized to a screen-size texture, uploaded on
     // view/data change — the same drawTexture path as the map tiles, which
     // the deferred GUI renderer orders reliably.
-    private NativeImageBackedTexture strokeTex;
+    private DynamicTexture strokeTex;
     private Identifier strokeTexId;
     private double lastCx = Double.NaN, lastCy = Double.NaN, lastZoom = Double.NaN;
     private int lastRev = -1, lastW = -1, lastH = -1, lastErase = -1;
@@ -122,7 +122,7 @@ public class WarTableScreen extends Screen {
     private final List<int[]> swatches = new ArrayList<>();   // [x,y,color]
 
     public WarTableScreen() {
-        super(Text.literal("War Table"));
+        super(Component.literal("War Table"));
     }
 
     // ------------------------------------------------------------ setup ----
@@ -138,13 +138,13 @@ public class WarTableScreen extends Screen {
 
         // Label input is always present; it only shows while LABEL or PIN is
         // armed and an anchor point has been clicked.
-        labelField = new TextFieldWidget(textRenderer,
-                (int) (width / 2) - 120, (int) height - STATUS_H - 24, 240, 16, Text.literal("label"));
+        labelField = new EditBox(font,
+                (int) (width / 2) - 120, (int) height - STATUS_H - 24, 240, 16, Component.literal("label"));
         labelField.setMaxLength(Stroke.MAX_LABEL);
         labelField.setVisible(labeling);
-        labelField.setPlaceholder(Text.literal(labelTool == UiTool.PIN
+        labelField.setHint(Component.literal(labelTool == UiTool.PIN
                 ? "pin label…" : "label text…"));
-        addDrawableChild(labelField);
+        addRenderableWidget(labelField);
         if (labeling) setFocused(labelField);
         rebuildToolbar();
     }
@@ -164,11 +164,11 @@ public class WarTableScreen extends Screen {
     }
 
     private void centerOnSelf(MapProjection p) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player != null && client.world != null
-                && client.world.getRegistryKey().getValue().toString().equals("minecraft:overworld")) {
-            centerPx = p.worldToPxX(client.player.getX());
-            centerPy = p.worldToPxZ(client.player.getZ());
+        Minecraft client = Minecraft.getInstance();
+        if (minecraft.player != null && minecraft.level != null
+                && minecraft.level.dimension().identifier().toString().equals("minecraft:overworld")) {
+            centerPx = p.worldToPxX(minecraft.player.getX());
+            centerPy = p.worldToPxZ(minecraft.player.getZ());
         } else {
             centerPx = p.width() / 2.0;
             centerPy = p.height() / 2.0;
@@ -259,16 +259,16 @@ public class WarTableScreen extends Screen {
     }
 
     private void clearTileTextures() {
-        var tm = MinecraftClient.getInstance().getTextureManager();
-        for (Identifier id : tileTextures.values()) tm.destroyTexture(id);
+        var tm = Minecraft.getInstance().getTextureManager();
+        for (Identifier id : tileTextures.values()) tm.release(id);
         tileTextures.clear();
     }
 
     @Override
-    public boolean shouldPause() { return false; }
+    public boolean isPauseScreen() { return false; }
 
     @Override
-    public void renderBackground(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractBackground(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         // Full-dark backdrop; no blur pass (in-world screens must not blur).
         ctx.fill(0, 0, (int) width, (int) height, 0xFF0A0E14);
     }
@@ -276,7 +276,7 @@ public class WarTableScreen extends Screen {
     // ----------------------------------------------------------- render ----
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         LiveMap.ensureLoaded();
         Sanctuaries.ensureLoaded();
         MapProjection proj = LiveMap.projection();
@@ -313,11 +313,11 @@ public class WarTableScreen extends Screen {
         // Chrome text uses the same clean HUD text path as the other OpenIntel
         // surfaces; map labels use the explicit CleanFont fallback helpers.
         UiFont.withHudFont(() -> renderChrome(ctx, mouseX, mouseY, proj));
-        UiFont.withHudFont(() -> super.render(ctx, mouseX, mouseY, delta));
+        UiFont.withHudFont(() -> super.extractRenderState(ctx, mouseX, mouseY, delta));
     }
 
     /** Visible tile grid at the chosen pyramid level. */
-    private void renderTiles(DrawContext ctx, MapProjection proj) {
+    private void renderTiles(GuiGraphicsExtractor ctx, MapProjection proj) {
         int level = pickLevel();
         double tileSpan = LiveMap.TILE * LiveMap.levelScale(level);   // map px per tile
         double tileScreen = tileSpan * zoom;                          // screen px per tile
@@ -345,7 +345,7 @@ public class WarTableScreen extends Screen {
                 int y1 = (int) Math.floor(sy + tileScreen * rh / LiveMap.TILE);
                 Identifier id = tileTexture(level, tx, ty);
                 if (id != null) {
-                    ctx.drawTexture(RenderPipelines.GUI_TEXTURED, id,
+                    ctx.blit(RenderPipelines.GUI_TEXTURED, id,
                             x0, y0, 0f, 0f, x1 - x0, y1 - y0,
                             rw, rh, LiveMap.TILE, LiveMap.TILE);
                 } else {
@@ -368,19 +368,19 @@ public class WarTableScreen extends Screen {
         if (existing != null) return existing;
         if (!LiveMap.tileExists(level, tx, ty)) return null;
 
-        Identifier id = Identifier.of("openintel", "livemap/" + LiveMap.renderer()
+        Identifier id = Identifier.fromNamespaceAndPath("openintel", "livemap/" + LiveMap.renderer()
                 + "/l" + level + "/" + tx + "_" + ty);
         try (InputStream in = Files.newInputStream(LiveMap.tileFile(level, tx, ty))) {
             NativeImage image = NativeImage.read(in);
-            NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> "wartable-tile", image);
-            MinecraftClient.getInstance().getTextureManager().registerTexture(id, tex);
+            DynamicTexture tex = new DynamicTexture(() -> "wartable-tile", image);
+            Minecraft.getInstance().getTextureManager().register(id, tex);
             tileTextures.put(key, id);
             while (tileTextures.size() > MAX_TEXTURES) {
                 Iterator<Map.Entry<String, Identifier>> it = tileTextures.entrySet().iterator();
                 if (!it.hasNext()) break;
                 Identifier evict = it.next().getValue();
                 it.remove();
-                MinecraftClient.getInstance().getTextureManager().destroyTexture(evict);
+                Minecraft.getInstance().getTextureManager().release(evict);
             }
             return id;
         } catch (Exception e) {
@@ -390,12 +390,12 @@ public class WarTableScreen extends Screen {
 
     // ------------------------------------------------------- strokes ----
 
-    private void renderStrokes(DrawContext ctx, MapProjection proj,
+    private void renderStrokes(GuiGraphicsExtractor ctx, MapProjection proj,
                                int mouseX, int mouseY) {
         rebuildStrokeOverlay(proj);
         if (strokeTexId != null) {
             int w = (int) width, h = (int) height;
-            ctx.drawTexture(RenderPipelines.GUI_TEXTURED, strokeTexId,
+            ctx.blit(RenderPipelines.GUI_TEXTURED, strokeTexId,
                     0, 0, 0f, 0f, w, h, w, h, w, h);
         }
 
@@ -409,14 +409,14 @@ public class WarTableScreen extends Screen {
             if (sx < -80 || sy < -20 || sx > width + 80 || sy > height + 20) continue;
             if (s.tool == Stroke.Tool.LABEL) {
                 double sc = Math.min(2.0, Math.max(0.75, zoom));
-                ctx.getMatrices().pushMatrix();
-                ctx.getMatrices().translate((float) sx, (float) sy);
-                ctx.getMatrices().scale((float) sc, (float) sc);
+                ctx.pose().pushMatrix();
+                ctx.pose().translate((float) sx, (float) sy);
+                ctx.pose().scale((float) sc, (float) sc);
                 drawCentered(ctx, s.label, 0, -12, s.color | 0xFF000000);
                 if (s.author != null) {
                     drawCentered(ctx, "— " + s.author, 0, -3, 0x99FFFFFF);
                 }
-                ctx.getMatrices().popMatrix();
+                ctx.pose().popMatrix();
             } else if (s.label != null) {
                 drawCentered(ctx, s.label, (float) sx, (float) sy - 14,
                         s.color | 0xFF000000);
@@ -425,7 +425,7 @@ public class WarTableScreen extends Screen {
         renderPointDraft(ctx, proj);
     }
 
-    private void renderSanctuaryLabels(DrawContext ctx, MapProjection proj) {
+    private void renderSanctuaryLabels(GuiGraphicsExtractor ctx, MapProjection proj) {
         if (!showSanctuaries()) return;
         for (Sanctuaries.Sanctuary s : Sanctuaries.all()) {
             if (!s.overworld()) continue;
@@ -440,11 +440,11 @@ public class WarTableScreen extends Screen {
                 scale = sanctuaryLabelScale(label, maxW, r);
             }
             if (scale <= 0) continue;
-            ctx.getMatrices().pushMatrix();
-            ctx.getMatrices().translate((float) sx, (float) sy);
-            ctx.getMatrices().scale(scale, scale);
+            ctx.pose().pushMatrix();
+            ctx.pose().translate((float) sx, (float) sy);
+            ctx.pose().scale(scale, scale);
             drawCentered(ctx, label, 0, -textHeight() / 2f, 0xE0101010);
-            ctx.getMatrices().popMatrix();
+            ctx.pose().popMatrix();
         }
     }
 
@@ -457,10 +457,10 @@ public class WarTableScreen extends Screen {
     }
 
     /** Pending label/pin input shows at the clicked point instead of the bottom. */
-    private void renderPointDraft(DrawContext ctx, MapProjection proj) {
+    private void renderPointDraft(GuiGraphicsExtractor ctx, MapProjection proj) {
         if (!labeling || labelTool == null) return;
         double sx = screenX(proj, labelAnchorX), sy = screenY(proj, labelAnchorZ);
-        String text = labelField.getText().trim();
+        String text = labelField.getValue().trim();
         if (labelTool == UiTool.PIN) {
             ctx.fill((int) sx - 4, (int) sy - 4, (int) sx + 5, (int) sy + 5, 0xAA000000);
             ctx.fill((int) sx - 3, (int) sy - 3, (int) sx + 4, (int) sy + 4, color);
@@ -476,25 +476,25 @@ public class WarTableScreen extends Screen {
     }
 
     private float textWidth(String text) {
-        return cleanText(text) ? CleanFont.width(text) : textRenderer.getWidth(text);
+        return cleanText(text) ? CleanFont.width(text) : font.width(text);
     }
 
     private float textHeight() {
-        return CleanFont.active() ? CleanFont.LINE_H - 2f : textRenderer.fontHeight;
+        return CleanFont.active() ? CleanFont.LINE_H - 2f : font.lineHeight;
     }
 
-    private void drawText(DrawContext ctx, String text, float x, float y, int color) {
+    private void drawText(GuiGraphicsExtractor ctx, String text, float x, float y, int color) {
         if (cleanText(text)) CleanFont.draw(ctx, text, x, y, color, false);
-        else ctx.drawText(textRenderer, text, Math.round(x), Math.round(y), color, true);
+        else ctx.text(font, text, Math.round(x), Math.round(y), color, true);
     }
 
-    private void drawCentered(DrawContext ctx, String text, float cx, float y, int color) {
+    private void drawCentered(GuiGraphicsExtractor ctx, String text, float cx, float y, int color) {
         if (cleanText(text)) CleanFont.drawCentered(ctx, text, cx, y, color);
-        else ctx.drawCenteredTextWithShadow(textRenderer, text, Math.round(cx), Math.round(y), color);
+        else ctx.centeredText(font, text, Math.round(cx), Math.round(y), color);
     }
 
     /** Small dark halo for gray intel text over light map terrain. */
-    private void drawOutlinedCentered(DrawContext ctx, String text, float cx, float y, int color) {
+    private void drawOutlinedCentered(GuiGraphicsExtractor ctx, String text, float cx, float y, int color) {
         int outline = (Math.clamp((color >>> 24) + 70, 160, 230) << 24);
         drawCentered(ctx, text, cx - 1, y, outline);
         drawCentered(ctx, text, cx + 1, y, outline);
@@ -540,18 +540,18 @@ public class WarTableScreen extends Screen {
 
         NativeImage nimg = new NativeImage(w, h, false);
         for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) nimg.setColorArgb(x, y, img.getRGB(x, y));
+            for (int x = 0; x < w; x++) nimg.setPixel(x, y, img.getRGB(x, y));
         }
-        if (strokeTex == null || strokeTex.getImage().getWidth() != w
-                || strokeTex.getImage().getHeight() != h) {
+        if (strokeTex == null || strokeTex.getPixels().getWidth() != w
+                || strokeTex.getPixels().getHeight() != h) {
             if (strokeTexId != null) {
-                MinecraftClient.getInstance().getTextureManager().destroyTexture(strokeTexId);
+                Minecraft.getInstance().getTextureManager().release(strokeTexId);
             }
-            strokeTex = new NativeImageBackedTexture(() -> "wartable-strokes", nimg);
-            strokeTexId = Identifier.of("openintel", "wartable/strokes");
-            MinecraftClient.getInstance().getTextureManager().registerTexture(strokeTexId, strokeTex);
+            strokeTex = new DynamicTexture(() -> "wartable-strokes", nimg);
+            strokeTexId = Identifier.fromNamespaceAndPath("openintel", "wartable/strokes");
+            Minecraft.getInstance().getTextureManager().register(strokeTexId, strokeTex);
         } else {
-            strokeTex.setImage(nimg);
+            strokeTex.setPixels(nimg);
             strokeTex.upload();
         }
         lastCx = centerPx; lastCy = centerPy; lastZoom = zoom;
@@ -679,7 +679,7 @@ public class WarTableScreen extends Screen {
         g.fill(tri);
     }
 
-    private void renderSanctuaryTooltip(DrawContext ctx, int mouseX, int mouseY) {
+    private void renderSanctuaryTooltip(GuiGraphicsExtractor ctx, int mouseX, int mouseY) {
         Sanctuaries.Sanctuary s = hoveredSanctuary;
         if (s == null) return;
         String title = s.name();
@@ -690,15 +690,15 @@ public class WarTableScreen extends Screen {
         int y = Math.max(TOOLBAR_H + 4,
                 Math.min((int) height - STATUS_H - boxH - 4, mouseY + 10));
         ctx.fill(x - 4, y - 4, x + boxW - 4, y + boxH - 4, 0xE0080C12);
-        ctx.drawStrokedRectangle(x - 4, y - 4, boxW, boxH, 0xAAFFAA00);
+        ctx.outline(x - 4, y - 4, boxW, boxH, 0xAAFFAA00);
         drawText(ctx, title, x, y, 0xFFFFD27A);
         drawText(ctx, sub, x, y + textHeight() + 2, 0xFFDDDDDD);
     }
 
     // ----------------------------------------------------- intel overlay ---
 
-    private void renderOverlays(DrawContext ctx, MapProjection proj) {
-        if (client == null) return;
+    private void renderOverlays(GuiGraphicsExtractor ctx, MapProjection proj) {
+        if (minecraft == null) return;
         // Shared pings first (under player markers).
         for (PingManager.Ping p : PingManager.active()) {
             if (p.dimension != null && !p.dimension.equals("minecraft:overworld")) continue;
@@ -737,7 +737,7 @@ public class WarTableScreen extends Screen {
             }
         }
         // Relay-tracked players in the overworld.
-        String self = client.player != null ? client.player.getGameProfile().name() : "";
+        String self = minecraft.player != null ? minecraft.player.getGameProfile().name() : "";
         for (Tracker.RemotePlayer p : OpenIntelClient.tracker().all()) {
             if (p.dimension == null || !p.dimension.equals("minecraft:overworld")) continue;
             double sx = screenX(proj, p.x), sy = screenY(proj, p.z);
@@ -748,10 +748,10 @@ public class WarTableScreen extends Screen {
             drawCentered(ctx, p.name, (float) sx, (float) sy + 6, c);
         }
         // Own position — bright marker.
-        if (client.player != null && client.world != null
-                && client.world.getRegistryKey().getValue().toString().equals("minecraft:overworld")) {
-            double sx = screenX(proj, client.player.getX());
-            double sy = screenY(proj, client.player.getZ());
+        if (minecraft.player != null && minecraft.level != null
+                && minecraft.level.dimension().identifier().toString().equals("minecraft:overworld")) {
+            double sx = screenX(proj, minecraft.player.getX());
+            double sy = screenY(proj, minecraft.player.getZ());
             ctx.fill((int) sx - 3, (int) sy - 3, (int) sx + 4, (int) sy + 4, 0xFF101010);
             ctx.fill((int) sx - 2, (int) sy - 2, (int) sx + 3, (int) sy + 3, 0xFFFFFFFF);
             drawCentered(ctx, self, (float) sx, (float) sy + 6, 0xFFFFFFFF);
@@ -760,7 +760,7 @@ public class WarTableScreen extends Screen {
 
     // ----------------------------------------------------------- chrome ----
 
-    private void renderChrome(DrawContext ctx, int mouseX, int mouseY, MapProjection proj) {
+    private void renderChrome(GuiGraphicsExtractor ctx, int mouseX, int mouseY, MapProjection proj) {
         // Top bar.
         ctx.fill(0, 0, (int) width, TOOLBAR_H + 2, 0xC0080C12);
         boolean live = WarTable.live();
@@ -775,7 +775,7 @@ public class WarTableScreen extends Screen {
                     && mouseY >= b.y() && mouseY < b.y() + b.h();
             if (hot) bg = 0xFF506880;
             ctx.fill(b.x(), b.y(), b.x() + b.w(), b.y() + b.h(), bg);
-            ctx.drawStrokedRectangle(b.x(), b.y(), b.w(), b.h(),
+            ctx.outline(b.x(), b.y(), b.w(), b.h(),
                     active ? 0xFFFFAA00 : (hot ? 0xFF9FB4C8 : 0xFF3A4652));
             drawText(ctx, b.label(), b.x() + 6, b.y() + 4,
                     active ? 0xFFFFAA00 : 0xFFDDDDDD);
@@ -784,7 +784,7 @@ public class WarTableScreen extends Screen {
             boolean hot = mouseX >= sw[0] && mouseX < sw[0] + 12
                     && mouseY >= sw[1] && mouseY < sw[1] + 12;
             ctx.fill(sw[0], sw[1], sw[0] + 12, sw[1] + 12, sw[2]);
-            ctx.drawStrokedRectangle(sw[0], sw[1], 12, 12,
+            ctx.outline(sw[0], sw[1], 12, 12,
                     color == sw[2] ? 0xFFFFFFFF : (hot ? 0xAAFFFFFF : 0x55000000));
         }
 
@@ -827,7 +827,7 @@ public class WarTableScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
+    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
         double mx = click.x(), my = click.y();
         // Toolbar first.
         for (Tb b : buttons) {
@@ -879,7 +879,7 @@ public class WarTableScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(Click click, double offsetX, double offsetY) {
+    public boolean mouseDragged(MouseButtonEvent click, double offsetX, double offsetY) {
         if (panning) {
             centerPx -= (click.x() - panLastX) / zoom;
             centerPy -= (click.y() - panLastY) / zoom;
@@ -913,7 +913,7 @@ public class WarTableScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(Click click) {
+    public boolean mouseReleased(MouseButtonEvent click) {
         if (panning) { panning = false; return true; }
         if (dragging) {
             dragging = false;
@@ -946,9 +946,9 @@ public class WarTableScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
-        if (labeling && input.getKeycode() == GLFW.GLFW_KEY_ENTER) {
-            String text = labelField.getText().trim();
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent input) {
+        if (labeling && input.key() == GLFW.GLFW_KEY_ENTER) {
+            String text = labelField.getValue().trim();
             Stroke.Tool committed = labelTool == UiTool.PIN
                     ? Stroke.Tool.MARKER : Stroke.Tool.LABEL;
             if (committed == Stroke.Tool.MARKER || !text.isEmpty()) {
@@ -959,14 +959,14 @@ public class WarTableScreen extends Screen {
             endLabeling();
             return true;
         }
-        if (input.getKeycode() == GLFW.GLFW_KEY_Z && input.hasCtrlOrCmd()) {
+        if (input.key() == GLFW.GLFW_KEY_Z && input.hasControlDownWithQuirk()) {
             if (admin) WarTable.undoOwn();
             return true;
         }
-        if (input.getKeycode() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
             if (labeling) { endLabeling(); return true; }
             if (!draft.isEmpty()) { draft.clear(); dragging = false; return true; }
-            close();
+            onClose();
             return true;
         }
         return super.keyPressed(input);
@@ -986,8 +986,8 @@ public class WarTableScreen extends Screen {
         labelField.setY(fy);
         labelField.setWidth(fieldW);
         labelField.setVisible(true);
-        labelField.setText("");
-        labelField.setPlaceholder(Text.literal(kind == UiTool.PIN
+        labelField.setValue("");
+        labelField.setHint(Component.literal(kind == UiTool.PIN
                 ? "pin label…" : "label text…"));
         setFocused(labelField);
     }
@@ -1023,11 +1023,11 @@ public class WarTableScreen extends Screen {
 
     @Override
     public void removed() {
-        var tm = MinecraftClient.getInstance().getTextureManager();
-        for (Identifier id : tileTextures.values()) tm.destroyTexture(id);
+        var tm = Minecraft.getInstance().getTextureManager();
+        for (Identifier id : tileTextures.values()) tm.release(id);
         tileTextures.clear();
         if (strokeTexId != null) {
-            tm.destroyTexture(strokeTexId);
+            tm.release(strokeTexId);
             strokeTexId = null;
             strokeTex = null;
         }
