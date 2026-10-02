@@ -20,13 +20,9 @@ import java.util.Set;
 public final class JunkRejector {
     private JunkRejector() { }
 
-    private static int sweep = 0;
-
     public static void tick(MinecraftClient client) {
         var cfg = OpenIntelClient.config();
-        if (!cfg.junkReject) { sweep = 0; return; }
-        if (++sweep < 5) return;               // ~4 sweeps/sec, light on packets
-        sweep = 0;
+        if (!cfg.junkReject) return;
         if (client.player == null || client.interactionManager == null) return;
         if (client.currentScreen != null) return;                  // never click under an open GUI
         if (client.player.isCreative() || client.player.isSpectator()) return;
@@ -43,6 +39,13 @@ public final class JunkRejector {
                     SlotActionType.THROW, client.player);
             return;                                              // one stack per sweep
         }
+    }
+
+    /** True when junk rejection is on and this stack is on the list. */
+    public static boolean isJunk(ItemStack stack) {
+        var cfg = OpenIntelClient.config();
+        return cfg.junkReject && !stack.isEmpty()
+                && normalized(cfg.junkItems).contains(id(stack));
     }
 
     private static String id(ItemStack stack) {

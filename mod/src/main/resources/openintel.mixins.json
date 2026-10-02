@@ -18,7 +18,8 @@
     "FocusGlowMixin",
     "KeyBindingAccessor",
     "OverlayMessageMixin",
-    "PlayerNameplateMixin"
+    "PlayerNameplateMixin",
+    "PickupAnimMixin"
   ],
   "injectors": {
     "defaultRequire": 1
