@@ -241,6 +241,14 @@ const LAST_SEEN_MS = 6 * 60 * 60 * 1000;
 const lastCmd = new Map();
 const lastWhere = new Map();
 
+// 15414 -> "0:04:16:54" (days:hours:minutes:seconds)
+function fmtAge(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400), h = Math.floor(s / 3600) % 24,
+        m = Math.floor(s / 60) % 60, sec = s % 60;
+  return `${d}:${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
 function noteSeen(name, x, y, z, dim, reporter, kind) {
   if (typeof name !== "string" || !validName(name)) return;
   if (![x, y, z].every(Number.isFinite)) return;
@@ -839,11 +847,11 @@ if (DISCORD.botToken) {
         // Drop a marker every connected client's war table can render.
         broadcast({ type: "where", player: hit.name, x: hit.x, y: hit.y, z: hit.z,
                     dim: hit.dim, t: hit.t, kind: hit.kind, from: hit.reporter });
-        const age = Math.round((Date.now() - hit.t) / 1000);
+        const age = fmtAge(Date.now() - hit.t);
         const kind = hit.kind === "snitch" ? "snitch hit" : "position";
         return void msg.reply(fence(
           `${hit.name}: ${Math.round(hit.x)}, ${Math.round(hit.y)}, ${Math.round(hit.z)} ` +
-          `(${String(hit.dim).replace("minecraft:", "")}) — ${kind} ${age}s ago, reported by ${hit.reporter}`
+          `(${String(hit.dim).replace("minecraft:", "")}) — ${kind} ${age} ago, reported by ${hit.reporter}`
         ));
       }
 
