@@ -400,6 +400,16 @@ public final class ClickGui {
         return field;
     }
 
+    /** Comma/space-separated item ids -> normalized list. */
+    private static List<String> parseJunkList(String text) {
+        List<String> out = new ArrayList<>();
+        for (String part : text.split("[,\s]+")) {
+            String s = part.trim().toLowerCase(java.util.Locale.ROOT);
+            if (!s.isEmpty()) out.add(s);
+        }
+        return out;
+    }
+
     private static AbstractWidget button(String label, Runnable action) {
         return Button.builder(Component.literal(label), b -> action.run()).build();
     }
