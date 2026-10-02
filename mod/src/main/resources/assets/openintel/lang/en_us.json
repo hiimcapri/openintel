@@ -71,5 +71,6 @@
   "options.openintel.wartable.enabled": "War Table (shared map annotations)",
   "options.openintel.wartable.sanctuaries": "Sanctuary overlays",
   "options.openintel.wartable.pin_markers": "War Table waypoints",
-  "options.openintel.wartable.pin_opacity": "Waypoint opacity"
+  "options.openintel.wartable.pin_opacity": "Waypoint opacity",
+  "options.openintel.junk.enabled": "Auto-drop junk"
 }

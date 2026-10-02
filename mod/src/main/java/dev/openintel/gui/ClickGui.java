@@ -312,9 +312,9 @@ public final class ClickGui {
                 new Group("Junk reject"),
                 new Option("Auto-drop junk", "Throw listed items back out the moment they enter your inventory.",
                         bool("options.openintel.junk.enabled", cfg.junkReject, v -> cfg.junkReject = v)),
-                new Option("Junk items", "Comma-separated item ids.",
-                        textField(String.join(",", cfg.junkItems), "cobblestone,dirt,gravel", 512,
-                                s -> cfg.junkItems = parseJunkList(s))),
+                new Option("Junk items", "Pick which blocks and items get thrown out.",
+                        button("Pick items…", () -> MinecraftClient.getInstance()
+                                .setScreen(new JunkItemPickerScreen(self)))),
                 new Option("Reset junk list", "Back to the default common blocks.",
                         button("Restore defaults", () ->
                                 cfg.junkItems = new ArrayList<>(OIConfig.DEFAULT_JUNK_ITEMS)))
@@ -413,15 +413,6 @@ public final class ClickGui {
         return field;
     }
 
-    /** Comma/space-separated item ids -> normalized list. */
-    private static List<String> parseJunkList(String text) {
-        List<String> out = new ArrayList<>();
-        for (String part : text.split("[,\s]+")) {
-            String s = part.trim().toLowerCase(java.util.Locale.ROOT);
-            if (!s.isEmpty()) out.add(s);
-        }
-        return out;
-    }
 
     private static ClickableWidget button(String label, Runnable action) {
         return ButtonWidget.builder(Text.literal(label), b -> action.run()).build();
