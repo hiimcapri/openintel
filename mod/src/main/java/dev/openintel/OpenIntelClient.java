@@ -10,6 +10,7 @@ import dev.openintel.gui.ClickGuiScreen;
 import dev.openintel.gui.HudEditorScreen;
 import dev.openintel.macro.AttackMacro;
 import dev.openintel.macro.HoldKeyMacro;
+import dev.openintel.junk.JunkRejector;
 import dev.openintel.macro.IceRoadMacro;
 import dev.openintel.macro.IntervalMacro;
 import dev.openintel.net.RelayClient;
@@ -122,6 +123,7 @@ public class OpenIntelClient implements ClientModInitializer {
             holdAttackMacro.tick(client);
             holdUseMacro.tick(client);
             iceRoadMacro.tick(client);
+            JunkRejector.tick(client);
             PingManager.tick();
             Runnable jm = jmTick;
             if (jm != null) jm.run();

@@ -8,7 +8,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -314,6 +316,16 @@ public class OIConfig {
 
     /** Park the ice road macro at <=6 hunger until you can eat again. */
     public boolean iceRoadStopAtHunger = false;
+
+    // --------------------------------------------------------------- junk ----
+
+    /** Throw listed items back out the moment they enter the inventory. */
+    public boolean junkReject = false;
+
+    public static final List<String> DEFAULT_JUNK_ITEMS = List.of(
+            "cobblestone", "cobbled_deepslate", "dirt", "gravel", "sand",
+            "andesite", "diorite", "granite", "deepslate", "tuff", "netherrack");
+    public List<String> junkItems = new ArrayList<>(DEFAULT_JUNK_ITEMS);
 
     public int hudReferenceWidth;
     public int hudReferenceHeight;
