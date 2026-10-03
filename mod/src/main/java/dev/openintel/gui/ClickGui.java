@@ -76,6 +76,8 @@ public final class ClickGui {
                         textField(cfg.minecraftServer, "play.example.net", 255, s -> cfg.minecraftServer = s)),
                 new Option("Token", "Your personal relay token. Keep it private.",
                         textField(cfg.token, "relay token", 256, s -> cfg.token = s)),
+                new Option("Live map URL", "Livemap API base used as the War Table backdrop.",
+                        textField(cfg.liveMapBase, "https://host/livemap-api", 512, s -> cfg.liveMapBase = s)),
                 new Option("Reconnect", "Save credentials and reconnect to the relay now.",
                         button("Reconnect", () -> {
                             OpenIntelClient.config().save();
